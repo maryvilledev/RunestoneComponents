@@ -62,9 +62,14 @@
 .ac_section .clearfix{
 	position: initial;
 }
-.ac_output{
-	display:none;
-	max-width: 450px;
+
+.ac_section .code-lens{
+	width: 800px;
+	max-width: 800px;
+}
+
+.ac_section h5{
+	padding: 0 15px;
 }
 
 .ac_caption {

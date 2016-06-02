@@ -213,10 +213,9 @@ ActiveCode.prototype.createOutput = function () {
     // to hold turtle graphics output.  We use a div in case the turtle changes from
     // using a canvas to using some other element like svg in the future.
     var outDiv = document.createElement("div");
-    $(outDiv).addClass("ac_output col-md-5");
+    $(outDiv).addClass("ac_output col-md-12");
     this.outDiv = outDiv;
     this.output = document.createElement('pre');
-    $(this.output).css("visibility","hidden");
 
     this.graphics = document.createElement('div');
     this.graphics.id = this.divid + "_graphics";
@@ -230,6 +229,9 @@ ActiveCode.prototype.createOutput = function () {
 
     outDiv.appendChild(this.output);
     outDiv.appendChild(this.graphics);
+
+    var outputLabel = $("<h5>Output</h5>");
+    $(this.outerDiv).append(outputLabel);
     this.outerDiv.appendChild(outDiv);
 
     clearDiv = document.createElement("div");
@@ -238,7 +240,7 @@ ActiveCode.prototype.createOutput = function () {
 
 
     var lensDiv = document.createElement("div");
-    $(lensDiv).addClass("col-md-6");
+    $(lensDiv).addClass("code-lens");
     $(lensDiv).css("display","none");
     this.codelens = lensDiv;
     this.outerDiv.appendChild(lensDiv);
@@ -661,8 +663,8 @@ ActiveCode.prototype.runProg = function() {
         (Sk.TurtleGraphics || (Sk.TurtleGraphics = {})).target = this.graphics;
         Sk.canvas = this.graphics.id; //todo: get rid of this here and in image
         $(this.runButton).attr('disabled', 'disabled');
-        $(this.codeDiv).switchClass("col-md-12","col-md-7",{duration:500,queue:false});
-        $(this.outDiv).show({duration:700,queue:false});
+        //$(this.codeDiv).switchClass("col-md-12","col-md-7",{duration:500,queue:false});
+        //$(this.outDiv).show({duration:700,queue:false});
         var myPromise = Sk.misceval.asyncToPromise(function() {
 
             return Sk.importMainWithBody("<stdin>", false, prog, true);
@@ -737,8 +739,8 @@ JSActiveCode.prototype.runProg = function() {
 
     $(this.eContainer).remove();
     $(this.output).text('');
-    $(this.codeDiv).switchClass("col-md-12","col-md-6",{duration:500,queue:false});
-    $(this.outDiv).show({duration:700,queue:false});
+    //$(this.codeDiv).switchClass("col-md-12","col-md-6",{duration:500,queue:false});
+    //$(this.outDiv).show({duration:700,queue:false});
 
     try {
         eval(prog)
@@ -759,15 +761,7 @@ function HTMLActiveCode (opts) {
 HTMLActiveCode.prototype.runProg = function () {
     var prog = this.buildProg();
 
-//    $('#'+myDiv+'_iframe').remove();
-//    $('#'+myDiv+'_htmlout').show();
-//    $('#'+myDiv+'_htmlout').append('<iframe class="activehtml" id="' + myDiv + '_iframe" srcdoc="' +
-//        prog.replace(/"/g,"'") + '">' + '</iframe>');
     $(this.output).text('');
-    if (! this.alignVertical ) {
-        $(this.codeDiv).switchClass("col-md-12", "col-md-6", {duration: 500, queue: false});
-    }
-    $(this.outDiv).show({duration:700,queue:false});
     prog = "<script type=text/javascript>window.onerror = function(msg,url,line) {alert(msg+' on line: '+line);};</script>" + prog;
     this.output.srcdoc = prog;
 
@@ -783,17 +777,15 @@ HTMLActiveCode.prototype.init = function(opts) {
 HTMLActiveCode.prototype.createOutput = function () {
     var outDiv = document.createElement("div");
     $(outDiv).addClass("ac_output");
-    if(this.alignVertical) {
-        $(outDiv).addClass("col-md-12");
-    } else {
-        $(outDiv).addClass("col-md-5");
-    }
+    $(outDiv).addClass("col-md-12");
     this.outDiv = outDiv;
     this.output = document.createElement('iframe');
     $(this.output).css("background-color","white");
     $(this.output).css("position","relative");
     $(this.output).css("height","400px");
     $(this.output).css("width","100%");
+    var outputLabel = $("<h5>Output</h5>");
+    $(outDiv).append(outputLabel);
     outDiv.appendChild(this.output);
     this.outerDiv.appendChild(outDiv);
 
@@ -1378,8 +1370,8 @@ LiveCode.prototype.runProg = function() {
 
         var odiv = this.output;
         $(this.runButton).attr('disabled', 'disabled');
-        $(this.codeDiv).switchClass("col-md-12","col-md-6",{duration:500,queue:false});
-        $(this.outDiv).show({duration:700,queue:false});
+        //$(this.codeDiv).switchClass("col-md-12","col-md-6",{duration:500,queue:false});
+        //$(this.outDiv).show({duration:700,queue:false});
         $(this.errDiv).remove();
         $(this.output).css("visibility","visible");
 
