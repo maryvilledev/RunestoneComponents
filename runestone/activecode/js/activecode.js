@@ -421,7 +421,7 @@ ActiveCode.prototype.showCodelens = function () {
 
     var cl = this.codelens.firstChild;
     if (cl) {
-        div.removeChild(cl)
+        this.codelens.removeChild(cl)
     }
     var code = this.editor.getValue();
     var myVars = {};
