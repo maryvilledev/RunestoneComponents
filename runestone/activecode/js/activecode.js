@@ -1545,6 +1545,7 @@ ACFactory.createScratchActivecode = function() {
     divid = divid.split('?')[0];  // remove any query string (e.g ?lastPosition)
     divid = divid.replaceAll('/', '').replace('.html', '').replace(':', '');
     eBookConfig.scratchDiv = divid;
+    eBookConfig.lang = eBookConfig.lang || ''
     // generate the HTML
     var html = '<div id="ac_modal_' + divid + '" class="modal fade">' +
         '  <div class="modal-dialog scratch-ac-modal">' +
@@ -1554,7 +1555,7 @@ ACFactory.createScratchActivecode = function() {
         '        <h4 class="modal-title">Scratch ActiveCode</h4>' +
         '      </div> ' +
         '      <div class="modal-body">' +
-        '      <textarea data-component="activecode" id="' + divid + '">' +
+        '      <textarea data-component="activecode" data-lang="' + eBookConfig.lang + '" id="' + divid + '">' +
         '\n' +
         '\n' +
         '\n' +
