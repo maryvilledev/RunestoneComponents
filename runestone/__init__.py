@@ -3,14 +3,19 @@ from .animation import *
 from .assess import *
 from .blockly import *
 from .codelens import *
+from .clickableArea import *
 from .datafile import *
 from .disqus import *
+from .dragndrop import *
+from .fitb import *
 from .livecode import *
 from .meta import *
 from .parsons import *
 from .poll import *
 from .reveal import *
+from .shortanswer import *
 from .tabbedStuff import *
+from .usageAssignment import *
 from .video import *
 from .server.chapternames import populateChapterInfo
 
@@ -32,6 +37,7 @@ def runestone_extensions():
     module_paths = [ x for x in os.listdir(basedir) if os.path.isdir(os.path.join(basedir,x))]
     modules = [ 'runestone.{}'.format(x) for x in module_paths if os.path.exists('{}/__init__.py'.format(os.path.join(basedir,x)))]
     modules.remove('runestone.server')
+    modules.remove('runestone.common')
     return modules
 
 from paver.easy import task, cmdopts, sh
@@ -81,7 +87,7 @@ def build(options):
             idxfile = os.path.join(options.build.sourcedir,'index.rst')
 
         populateChapterInfo(options.build.project_name, idxfile)
-        print('Creating Chapter Information')
+        print('Creating Chapter Information for {}'.format(idxfile))
     except ImportError as e:
         print('Chapter information database population skipped, This is OK for a standalone build.',e)
     except Exception as e:
@@ -92,3 +98,26 @@ def build(options):
     else:
         print("Error in building {}".format(options.build.project_name) )
 
+
+cmap = {'activecode': ActiveCode,
+        'mchoice': MChoice,
+        'fillintheblank': FillInTheBlank,
+        'blank': Blank,
+        'timed': TimedDirective,
+        'qnum': QuestionNumber,
+        'codelens': Codelens,
+        'clickablearea': ClickableArea,
+        'datafile': DataFile,
+        'disqus': DisqusDirective,
+        'dragndrop': DragNDrop,
+        'parsonsprob': ParsonsProblem,
+        'poll': Poll,
+        'reveal': RevealDirective,
+        'shortanswer': JournalDirective,
+        'tabbed': TabbedStuffDirective,
+        'tab': TabDirective,
+        'video': Video,
+        'youtube': Youtube,
+        'vimeo': Vimeo,
+        'usageassignment': usageAssignment
+        }

@@ -13,6 +13,7 @@ RunestoneComponents
    :target: https://pypi.python.org/pypi/Runestone
    :alt: PyPI Monthly downloads
 
+.. image:: http://bnmnetp.me:8088/buildStatus/icon?job=RunestoneComponents&build=9
 
 Packaging of the Runestone components for publishing educational materials using Sphinx and restructuredText. Check out the `Overview <http://interactivepython.org/runestone/static/overview/overview.html>`_ To see all of the extensions in action.
 **NOTE** -- If you have used an older version of this repo, please know this is a total restart.  I think much better, and it WILL stay up to date as this is now the master copy of the components not just a copy.
@@ -23,8 +24,24 @@ Quick Start
 -----------
 
 If you are completely new to pip and github text editors, I have written a more thorough getting started
- tutorial `on my blog <http://reputablejournal.com/posts/2015/05/how-to-make-a-lab-in-three-easy-steps.html>`_
+ tutorial `on my blog <http://reputablejournal.com/how-to-make-a-lab-in-three-easy-steps.html>`_
  Otherwise, you can install everything you need with one simple command! (Although I recommend that you first create a virtual environment for your work.)
+ 
+ **Install and make a Python virtualenv**
+ 
+* Documentation here:  https://virtualenv.pypa.io/en/stable/
+* Video here:  https://www.youtube.com/watch?v=IX-v6yvGYFg
+* For the impatient:
+
+::
+   
+    $ sudo pip install virtualenv
+    $ virtualenv /path/to/home/MyEnv
+    $ source /path/to/home/MyEnv/bin/activate
+     
+* You will need to do the last command every time you want to work on RunestoneServer.  If you have not used Python virtual environments before I strongly recommend reading the docs or watching the video
+ 
+With the virtual environment installed and configured you can continue.
 
 ::
 

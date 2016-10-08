@@ -1,4 +1,4 @@
-
+from __future__ import print_function
 import sys
 import os
 import shutil
@@ -6,10 +6,14 @@ import getpass
 import six
 import click
 from paver.easy import sh
-from pkg_resources import resource_string, resource_filename
+from pkg_resources import resource_string, resource_filename, require
 
 @click.group(chain=True)
 def cli():
+    """
+    Usage: help for help
+
+    """
     pass
 
 @cli.command()
@@ -64,6 +68,14 @@ def init():
 def build(all):
     from paver.tasks import main as paver_main
     os.chdir(findProjectRoot())
+    sys.path.insert(0, os.getcwd())
+    version = require("runestone")[0].version
+    print("Building with Runestone {}".format(version))
+
+    import pavement
+
+    if not os.path.exists(pavement.options.build.builddir):
+        os.makedirs(pavement.options.build.builddir)
 
     myargs = ['build']
     if all:
@@ -90,14 +102,17 @@ def serve(port,listen):
         import SimpleHTTPServer
         import SocketServer
         Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
-        httpd = SocketServer.TCPServer((listen, port), Handler)
+        httpd = SocketServer.TCPServer((listen, port), Handler, bind_and_activate=False)
     else:
         import http.server
         import socketserver
         Handler = http.server.SimpleHTTPRequestHandler
-        httpd = socketserver.TCPServer((listen, port), Handler)
+        httpd = socketserver.TCPServer((listen, port), Handler, bind_and_activate=False)
 
     print("serving at port", port)
+    httpd.allow_reuse_address = True
+    httpd.server_bind()
+    httpd.server_activate()
     httpd.serve_forever()
 
 @cli.command()
@@ -119,13 +134,63 @@ def deploy(dest):
     click.echo('Deploying from ' + pavement.serving_dir + ' to ' + dest)
     sh("rsync -rav --delete {} {}".format(pavement.serving_dir,dest))
 
+
+from runestone import cmap
+
+@cli.command(short_help="type runestone help for help")
+@click.argument('command', nargs=-1)
+def help(command=None):
+    if not command:
+        print("""Available Commands:
+build  [--all]   * build the current project
+deploy           * deploy the current proejct using rsync
+serve [--port]   * start a simple webserver for the current project
+help             * list all runestone directives
+update           * Get a new copy of the _templates folder
+
+or type help <directive> for doc on a runestone directive""")
+    else:
+        command = command[0]
+        if command in cmap:
+            print(cmap[command].__doc__)
+        elif command == 'list':
+            print("Runestone Directives List")
+            print("  ", "\n   ".join(sorted(cmap.keys())))
+        else:
+            print("""Unknown Directive.  Possible values are""")
+            print("  ", "\n   ".join(sorted(cmap.keys())))
+
+@cli.command(short_help="Update template files")
+def update():
+    """
+    Update all template files
+
+    Warning!  This is a destructive command.  If you have made local changes to your
+    templates (especially and most probably layout.html) They will be moved aside
+    you can merge your changes (in _templates.bak) after you run this command.
+    """
+    os.chdir(findProjectRoot())
+    template_base_dir = resource_filename('runestone', 'common/project_template')
+    print("This will update all files in the _templates folder.")
+    print("The old _templates folder will be in _templates.bak so you can merge manually after you update")
+    click.confirm("Do you want to proceed? ", abort=True, default=True)
+    shutil.rmtree('_templates.bak',ignore_errors=True)
+    shutil.move('_templates','_templates.bak')
+    shutil.copytree(os.path.join(template_base_dir, '_templates'), '_templates',)
+
+
 def main(args=None):
     if not args:
         args = sys.argv[1:]
+    if not args:
+        print("""Usage: runestone help for a list of commands""")
+        sys.exit(0)
     cli.add_command(init)
     cli.add_command(build)
     cli.add_command(serve)
     cli.add_command(deploy)
+    cli.add_command(help)
+    cli.add_command(update)
     cli()
 
 def findProjectRoot():

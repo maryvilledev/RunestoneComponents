@@ -21,6 +21,7 @@ from docutils.parsers.rst import Directive
 from .assessbase import *
 import json
 import random
+from runestone.server.componentdb import addQuestionToDB, addHTMLToDB
 
 
 class MChoiceNode(nodes.General, nodes.Element):
@@ -35,6 +36,10 @@ class MChoiceNode(nodes.General, nodes.Element):
         self.mc_options = content
 
 def visit_mc_node(self,node):
+
+    node.delimiter = "_start__{}_".format(node.mc_options['divid'])
+    self.body.append(node.delimiter)
+
     res = ""
     if 'random' in node.mc_options:
         node.mc_options['random'] = 'data-random'
@@ -58,9 +63,9 @@ def depart_mc_node(self,node):
         if 'answer_' in k:
             x,label = k.split('_')
             node.mc_options['alabel'] = label
-            node.mc_options['atext'] = node.mc_options[k]
+            node.mc_options['atext'] = "(" +k[-1].upper() + ") " + node.mc_options[k]
             currFeedback = "feedback_" + label
-            node.mc_options['feedtext'] = node.mc_options[currFeedback]
+            node.mc_options['feedtext'] = node.mc_options.get(currFeedback,"") #node.mc_options[currFeedback]
             if label in node.mc_options['correct']:
                 node.mc_options["is_correct"] = "data-correct"
             else:
@@ -69,8 +74,14 @@ def depart_mc_node(self,node):
 
 
     res += node.template_end % node.mc_options
-
     self.body.append(res)
+
+    addHTMLToDB(node.mc_options['divid'],
+                node.mc_options['basecourse'],
+                "".join(self.body[self.body.index(node.delimiter) + 1:]))
+
+    self.body.remove(node.delimiter)
+
 
 
 
@@ -81,11 +92,30 @@ def depart_mc_node(self,node):
 # author - Barb Ericson
 # author - Anusha
 class MChoice(Assessment):
+    """
+.. mchoice:: uniqueid
+   :multiple_answers: boolean  [optional]
+   :random: boolean [optional]
+   :answer_a: possible answer  -- what follows _ is label
+   :answer_b: possible answer
+   ...
+   :answer_e: possible answer
+   :correct: letter of correct answer or list of correct answer letters (in case of multiple answers)
+   :feedback_a: displayed if a is picked
+   :feedback_b: displayed if b is picked
+   :feedback_c: displayed if c is picked
+   :feedback_d: displayed if d is picked
+   :feedback_e: displayed if e is picked
+
+   Question text   ...
+
+    """
     required_arguments = 1
     optional_arguments = 1
     final_argument_whitespace = True
     has_content = True
-    option_spec = {'answer_a':directives.unchanged,
+    option_spec = RunestoneDirective.option_spec.copy()
+    option_spec.update({'answer_a':directives.unchanged,
         'answer_b':directives.unchanged,
         'answer_c':directives.unchanged,
         'answer_d':directives.unchanged,
@@ -98,7 +128,7 @@ class MChoice(Assessment):
         'feedback_e':directives.unchanged,
         'random':directives.flag,
         'multiple_answers':directives.flag,
-    }
+    })
 
     def run(self):
         """
@@ -122,6 +152,7 @@ class MChoice(Assessment):
             Question text
             ...
             """
+
         TEMPLATE_START = '''
             <ul data-component="multiplechoice" data-multipleanswers="%(multipleAnswers)s" %(random)s id="%(divid)s">
             '''
@@ -135,7 +166,7 @@ class MChoice(Assessment):
 
             </ul>
             '''
-
+        addQuestionToDB(self)
         super(MChoice,self).run()
 
 
@@ -152,7 +183,7 @@ class MChoice(Assessment):
 #backwards compatibility
 class MChoiceMF(MChoice):
     def run(self):
-        print("This directive has been depreciated. Please convert to the new directive 'mchoice'")
+        raise self.error("This directive has been depreciated. Please convert to the new directive 'mchoice'")
         mcmfNode = super(MChoiceMF,self).run()[0]
 
         return [mcmfNode]
@@ -160,7 +191,7 @@ class MChoiceMF(MChoice):
 class MChoiceMA(MChoice):
     def run(self):
         self.options['multiple_answers'] = 'multipleAnswers'
-        print("This directive has been depreciated. Please convert to the new directive 'mchoice'")
+        raise self.error("This directive has been depreciated. Please convert to the new directive 'mchoice'")
         mchoicemaNode = super(MChoiceMA,self).run()[0]
 
         return [mchoicemaNode]
@@ -168,7 +199,7 @@ class MChoiceMA(MChoice):
 class MChoiceRandomMF(MChoice):
     def run(self):
         self.options['random'] = 'random'
-        print("This directive has been depreciated. Please convert to the new directive 'mchoice'")
+        raise self.error("This directive has been depreciated. Please convert to the new directive 'mchoice'")
         mchoicerandommfNode = super(MChoiceRandomMF,self).run()[0]
 
         return[mchoicerandommfNode]

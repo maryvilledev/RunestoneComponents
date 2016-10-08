@@ -22,6 +22,9 @@ from docutils.parsers.rst import directives
 from docutils.parsers.rst import Directive
 from .textfield import *
 from sqlalchemy import create_engine, Table, MetaData, select, delete
+from runestone.server import get_dburl
+from runestone.server.componentdb import addQuestionToDB, addHTMLToDB
+from runestone.common.runestonedirective import RunestoneDirective
 
 try:
     from html import escape  # py3
@@ -55,11 +58,15 @@ def setup(app):
     app.connect('env-purge-doc', purge_activecodes)
 
 
+TEMPLATE_START = """
+<div data-childcomponent="%(divid)s" class="explainer ac_section alert alert-warning">
+"""
 
-TEMPLATE = """
+TEMPLATE_END = """
 <textarea data-component="activecode" id=%(divid)s data-lang="%(language)s" %(autorun)s %(hidecode)s %(include)s %(timelimit)s %(coach)s %(codelens)s data-audio='%(ctext)s' %(sourcefile)s %(datafile)s %(stdin)s %(gradebutton)s %(caption)s>
 %(initialcode)s
 </textarea>
+</div>
 """
 
 class ActivcodeNode(nodes.General, nodes.Element):
@@ -79,14 +86,16 @@ class ActivcodeNode(nodes.General, nodes.Element):
 # The node that is passed as a parameter is an instance of our node class.
 def visit_ac_node(self, node):
     # print self.settings.env.activecodecounter
-    res = TEMPLATE
+
     #todo:  handle above in node.ac_components
     #todo handle  'hidecode' not in node.ac_components:
     # todo:  handle if 'gradebutton' in node.ac_components: res += GRADES
 
-    res = res % node.ac_components
-    res = res.replace("u'", "'")  # hack:  there must be a better way to include the list and avoid unicode strings
+    node.delimiter = "_start__{}_".format(node.ac_components['divid'])
 
+    self.body.append(node.delimiter)
+
+    res = TEMPLATE_START % node.ac_components
     self.body.append(res)
 
 
@@ -95,7 +104,15 @@ def depart_ac_node(self, node):
         etc and did not want to do all of the processing in visit_ac_node any finishing touches could be
         added here.
     '''
-    pass
+    res = TEMPLATE_END % node.ac_components
+    self.body.append(res)
+
+
+    addHTMLToDB(node.ac_components['divid'],
+                node.ac_components['basecourse'],
+                "".join(self.body[self.body.index(node.delimiter) + 1:]))
+
+    self.body.remove(node.delimiter)
 
 
 def process_activcode_nodes(app, env, docname):
@@ -106,11 +123,42 @@ def purge_activecodes(app, env, docname):
     pass
 
 
-class ActiveCode(Directive):
+class ActiveCode(RunestoneDirective):
+    """
+.. activecode:: uniqueid   'nocanvas': directives.flag,
+   :nopre: do not create an output component
+   :above: put the canvas above the code
+   :autorun: run this activecode as soon as the page is loaded
+   :caption: caption under the active code
+   :include: invisibly include code from another activecode
+   :hidecode: Don:t show the editor initially
+   :language: python, html, javascript, java, python2, python3
+   :tour_1: audio tour track
+   :tour_2: audio tour track
+   :tour_3: audio tour track
+   :tour_4: audio tour track
+   :tour_5: audio tour track
+   :nocodelens: Do not show the codelens button
+   :coach: Show the codecoach button
+   :timelimit: set the time limit for this program
+   :stdin: : A file to simulate stdin (java, python2, python3)
+   :datafile: : A datafile for the program to read (java, python2, python3)
+   :sourcefile: : source files (java, python2, python3)
+   :available_files: : other additional files (java, python2, python3)
+
+    If this is a homework problem instead of an example in the text
+    then the assignment text should go here.  The assignment text ends with
+    the line containing four tilde ~
+    ~~~~
+    print("hello world")
+    ====
+    print("Hidden code, such as unit tests come after the four = signs")
+    """
     required_arguments = 1
     optional_arguments = 1
     has_content = True
-    option_spec = {
+    option_spec = RunestoneDirective.option_spec.copy()
+    option_spec.update({
         'nocanvas': directives.flag,
         'nopre': directives.flag,
         'above': directives.flag,  # put the canvas above the code
@@ -126,26 +174,35 @@ class ActiveCode(Directive):
         'tour_5': directives.unchanged,
         'nocodelens': directives.flag,
         'coach': directives.flag,
+        'gradebutton': directives.flag,
         'timelimit': directives.unchanged,
         'stdin' : directives.unchanged,
         'datafile' : directives.unchanged,
         'sourcefile' : directives.unchanged,
-        'available_files' : directives.unchanged
-    }
+        'available_files' : directives.unchanged,
+    })
 
     def run(self):
+
+        addQuestionToDB(self)
+
         env = self.state.document.settings.env
         # keep track of how many activecodes we have.... could be used to automatically make a unique id for them.
         if not hasattr(env, 'activecodecounter'):
             env.activecodecounter = 0
         env.activecodecounter += 1
         self.options['name'] = self.arguments[0].strip()
-
         self.options['divid'] = self.arguments[0]
+
         if not self.options['divid']:
             raise Exception("No divid for ..activecode or ..actex in activecode.py")
 
+        explain_text = None
         if self.content:
+            if '~~~~' in self.content:
+                idx = self.content.index('~~~~')
+                explain_text = self.content[:idx]
+                self.content = self.content[idx+1:]
             source = "\n".join(self.content)
         else:
             source = '\n'
@@ -233,6 +290,8 @@ class ActiveCode(Directive):
 
         if 'gradebutton' not in self.options:
             self.options['gradebutton'] = ''
+        else:
+            self.options['gradebutton'] = "data-gradebutton=true"
 
         if self.content:
             if '====' in self.content:
@@ -246,7 +305,7 @@ class ActiveCode(Directive):
             source = '\n'
             suffix = '\n'
         try:
-            engine = create_engine(env.config.html_context['dburl'])
+            engine = create_engine(get_dburl(locals()))
             meta = MetaData()
             course_name = env.config.html_context['course_id']
             Source_code = Table('source_code', meta, autoload=True, autoload_with=engine)
@@ -281,7 +340,9 @@ class ActiveCode(Directive):
 
 
         except Exception as e:
+            import traceback
             print("The exception is ", e)
+            traceback.print_exc()
             print(env.config.html_context['course_id'])
             print("Unable to save to source_code table in activecode.py. Possible problems:")
             print("  1. dburl or course_id are not set in conf.py for your book")
@@ -292,6 +353,10 @@ class ActiveCode(Directive):
 
         acnode = ActivcodeNode(self.options)
         self.add_name(acnode)    # make this divid available as a target for :ref:
+
+        if explain_text:
+            self.state.nested_parse(explain_text, self.content_offset, acnode)
+
         return [acnode]
 
 
