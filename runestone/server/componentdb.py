@@ -24,12 +24,13 @@ from sqlalchemy import create_engine, Table, MetaData, select, delete, update, a
 
 # create a global DB query engine to share for the rest of the file
 if all(name in os.environ for name in ['DBHOST', 'DBPASS', 'DBUSER', 'DBNAME']):
-    dburl = 'postgresql://{DBUSER}:{DBPASS}@{DBHOST}/{DBNAME}'.format(**os.environ)
+    dburl = 'postgresql://launchclass:{DBPASS}@{DBHOST}/{DBNAME}'.format(**os.environ)
     engine = create_engine(dburl)
 else:
-    dburl = None
-    engine = None
-    print("Skipping all DB operations because environment variables not set up")
+    dburl = "postgresql://launchclass:toinfinityandbeyond@localhost/runestone".format(**os.environ)
+    engine = create_engine(dburl)
+    print("Using dev database connection setting")
+
 
 def logSource(self):
     sourcelog = self.state.document.settings.env.config.html_context.get('dsource', None)
@@ -45,10 +46,6 @@ def logSource(self):
 
 
 def addQuestionToDB(self):
-    if all(name in os.environ for name in ['DBHOST', 'DBPASS', 'DBUSER', 'DBNAME']):
-        dburl = 'postgresql://{DBUSER}:{DBPASS}@{DBHOST}/{DBNAME}'.format(**os.environ)
-    else:
-        dburl = None
 
     if dburl:
         basecourse = self.state.document.settings.env.config.html_context.get('basecourse', "unknown")
@@ -242,10 +239,6 @@ def addAssignmentToDB(name = None, course_id = None, assignment_type_id = None, 
     return a_id
 
 def addHTMLToDB(divid, basecourse, htmlsrc):
-    if all(name in os.environ for name in ['DBHOST', 'DBPASS', 'DBUSER', 'DBNAME']):
-        dburl = 'postgresql://{DBUSER}:{DBPASS}@{DBHOST}/{DBNAME}'.format(**os.environ)
-    else:
-        dburl = None
 
     if dburl:
         last_changed = datetime.now()

@@ -83,7 +83,7 @@ ActiveCode.prototype.createEditor = function (index) {
     linkdiv.id = this.divid.replace(/_/g,'-').toLowerCase();  // :ref: changes _ to - so add this as a target
     $(this.containerDiv).addClass("ac_section alert alert-warning");
     var codeDiv = document.createElement("div");
-    $(codeDiv).addClass("ac_code_div col-md-12");
+    $(codeDiv).addClass("ac_code_div");
     this.codeDiv = codeDiv;
     this.containerDiv.id = this.divid;
     this.containerDiv.lang = this.language;
@@ -127,7 +127,7 @@ ActiveCode.prototype.createEditor = function (index) {
 ActiveCode.prototype.createControls = function () {
     var ctrlDiv = document.createElement("div");
     $(ctrlDiv).addClass("ac_actions");
-    $(ctrlDiv).addClass("col-md-12");
+    // LCMOD - remove col-md-12 class
     // Run
     var butt = document.createElement("button");
     $(butt).text("Run");
@@ -298,11 +298,13 @@ ActiveCode.prototype.createOutput = function () {
     // to hold turtle graphics output.  We use a div in case the turtle changes from
     // using a canvas to using some other element like svg in the future.
     var outDiv = document.createElement("div");
-    $(outDiv).addClass("ac_output col-md-12");
+
+    // LCMOD - remove class col-md-12
+    $(outDiv).addClass("ac_output");
+
     this.outDiv = outDiv;
     this.output = document.createElement('pre');
-    this.output.id = this.divid+'_stdout';
-    $(this.output).css("visibility","hidden");
+    // LCMOD - Remove code to always display output div
 
     this.graphics = document.createElement('div');
     this.graphics.id = this.divid + "_graphics";
@@ -766,8 +768,8 @@ ActiveCode.prototype.runProg = function() {
         $(this.runButton).attr('disabled', 'disabled');
         $(this.historyScrubber).off("slidechange");
         $(this.historyScrubber).slider("disable");
-        $(this.codeDiv).switchClass("col-md-12","col-md-7",{duration:500,queue:false});
-        $(this.outDiv).show({duration:700,queue:false});
+        // LCMOD - don't swap col-md-* classes
+        // LCMOD - outDiv is already visible, no need to show
 
         if (this.historyScrubber === null && !this.autorun) {
             console.log("Need a new scrubber");
@@ -924,7 +926,7 @@ HTMLActiveCode.prototype.init = function(opts) {
 HTMLActiveCode.prototype.createOutput = function () {
     var outDiv = document.createElement("div");
     $(outDiv).addClass("ac_output");
-    $(outDiv).addClass("col-md-12");
+    // LCMOD - remove col-md-12
     this.outDiv = outDiv;
     this.output = document.createElement('iframe');
     $(this.output).css("background-color","white");
