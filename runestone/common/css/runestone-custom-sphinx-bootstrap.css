@@ -697,3 +697,10 @@ span.caption-text {
     font-weight: bold;
     font-size: large;
 }
+
+/* Launchcode Customizations */
+
+#exercises h1,
+#weekly-graded-assignment h2 {
+    max-width: 90%;
+}
