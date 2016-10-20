@@ -56,7 +56,7 @@ ActiveCode.prototype.init = function(opts) {
     } else {
         this.caption = ""
     }
-    this.addCaption();
+    //this.addCaption();
 
     if ($(orig).data('autorun')) {
         $(document).ready(this.runProg.bind(this));
