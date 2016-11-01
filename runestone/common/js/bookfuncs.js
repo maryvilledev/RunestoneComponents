@@ -216,9 +216,9 @@ function getNumUsers() {
 }
 
 function getOnlineUsers() {
-    if (eBookConfig.useRunestoneServices) {
+    /*if (eBookConfig.useRunestoneServices) {
         $.getJSON(eBookConfig.ajaxURL + 'getnumonline', setOnlineUsers)
-    }
+    }*/
 }
 
 function setOnlineUsers(data) {
