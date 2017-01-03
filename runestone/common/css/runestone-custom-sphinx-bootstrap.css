@@ -1,13 +1,7 @@
 /* Runestone custom modifications */
-@import url('https://fonts.googleapis.com/css?family=Montserrat');
-@import url('https://fonts.googleapis.com/css?family=Arvo');
-
-h1, h2, h3, h4, h5, h6 {
-    font-family: "Arvo", sans-serif;
-}
+@import url("https://djwbyvgln9kts.cloudfront.net/launch_ed_style/custom.css");
 
 body {
-    font-family: "Montserrat", serif;
     padding-top: 60px;
     background-color: #eeeeee;
 }
