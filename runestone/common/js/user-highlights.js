@@ -300,8 +300,9 @@ function enableUserHighlights() {
     // in-progress or completed sections.
     decorateTableOfContents();  //todo: use document.ready to call
 }
-// call enable user highlights after login
-$(document).bind("runestone:login",enableUserHighlights);
+
+// LCMOD - disable highlighting
+// $(document).bind("runestone:login",enableUserHighlights);
 
 function findHighlightClass(classList) {
     var className;
