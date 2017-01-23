@@ -37,3 +37,6 @@ nosetests.xml
 .idea
 bower_componenets/
 test/
+
+# local shared-styles repo, for local dev
+runestone/common/css/shared-custom-styles/
