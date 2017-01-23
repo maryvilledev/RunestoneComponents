@@ -38,6 +38,9 @@
 
 .ac_actions{
 	text-align: center;
+	/*margin-bottom: 0.5em;*/
+	background: #eee;
+	padding: 0.5em;
 }
 
 .ac_sep {
@@ -54,7 +57,7 @@
 	clear:both;
 }
 .ac_section>* {
-	max-width: 500pt;
+	/*max-width: 500pt;*/
 	margin-left: auto;
 	margin-right: auto;
 	position:relative;
@@ -69,7 +72,14 @@
 }
 
 .ac_section h5{
-	padding: 0 15px;
+	/*padding: 0 15px;*/
+}
+
+.ac_output {
+	padding: 0;
+	border: 2px solid #ddd;
+	margin-bottom: 1em;
+	background: white;
 }
 
 .ac_caption {
@@ -95,6 +105,7 @@
 
 .visible-ac-canvas {
     border: 2px solid black;
+	margin: 0 1em;
 }
 
 .full_width ol {
