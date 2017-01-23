@@ -1,18 +1,82 @@
 /* Runestone custom modifications */
 @import url("https://djwbyvgln9kts.cloudfront.net/launch_ed_style/custom.css");
+/*@import url("shared-custom-styles/custom.css");*/
 
 body {
     padding-top: 60px;
     background-color: #eeeeee;
+    line-height: 1.9em;
 }
 
 pre {
     margin: 0 0 1em;
+    font-size: 0.9em;
+    padding: 1.5em;
+    border: 2px solid #ddd;
+    border-radius: 2px;
 }
 
 h5 {
     font-weight: bold;
     padding: 10px 0;
+}
+
+.ac_section, .cd_section {
+    /*background-color: #eee;*/
+    padding: 2em;
+}
+
+.ac_output_label {
+    margin: 0;
+    padding-left: 0.5em;
+    font-size: 0.8em;
+    background: #eee;
+    font-family: "Nexa Black", sans-serif;
+    text-transform: uppercase;
+}
+
+.ac_editor_container {
+    border: 2px solid #ddd;
+    margin-bottom: 1em;
+}
+
+.ac_output pre {
+    border: 0;
+    background: none;
+    margin: 0;
+}
+
+.alert-warning {
+    background-color: #eeeeee;
+    border-color: #eeeeee;
+    padding: 2em;
+}
+
+.btn, .btn-default, .btn-success, .btn-danger {
+    background-color: #5c93ce;
+    color: #fff;
+    border-color: #5c93ce;
+    border-radius: 2px;
+    font-family: "Nexa";
+    padding: 0 1.5em;
+    height: 50px;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.btn:hover, .btn:focus, .btn:active, .btn.active {
+    background-color: #18324b;
+    border-color: #18324b;
+    color: #fff;
+}
+
+.btn.disabled,
+.btn[disabled],
+.btn.disabled:hover,
+.btn[disabled]:hover {
+    color: #fff;
+    background-color: #808080;
+    border-color: #808080;
 }
 
 /* navbar and menu related styles */
@@ -50,7 +114,7 @@ div.section {
 	padding-right:0;
 }
 .container  .section >*:not(.section) {
-	max-width: 500pt;
+	max-width: 600pt;
 	margin-left: auto;
 	margin-right: auto;
 }
@@ -81,9 +145,12 @@ div.section {
 	margin: 20px auto;
 }
 
-.container  .section .parsons, .container  .section .parsons .sortable-code-container, .container  .section .ac_section, .container  .section .cd_section{
+/*.container  .section .parsons,
+.container  .section .parsons .sortable-code-container,
+.container  .section .ac_section,
+.container  .section .cd_section {
 	max-width: none;
-}
+}*/
 .navbar>.container .navbar-brand {
     margin-left: 0;
 }
@@ -148,7 +215,7 @@ div.section {
 /* end navbar and menu related styles */
 
 .CodeMirror {
-    margin: 0 0 1em 0;
+    /*margin: 0 0 1em 0;*/
     background-color: #fff;
 	clear:both;
 }
@@ -169,8 +236,9 @@ div.section {
   border-radius: 0;
   border-width: 0; margin: 0; padding: 0; background: transparent;
   font-family:  Monaco, Courier New, monospace;
-  font-size: inherit;
-  padding: 0; margin: 0;
+  font-size: 0.9em;
+  padding: 0 0 0 0.1em;
+  margin: 0;
   white-space: pre;
   word-wrap: normal;
 }
@@ -178,12 +246,13 @@ div.section {
 button.btn, btn.btn-sm,
 input[type="submit"].btn.btn-sm,
 input[type="button"].btn.btn-sm {
-    font-size: 1em;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    /*font-size: 1em;*/
+    /*font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;*/
 }
 
 .btn {
     margin: 5px;
+    /*background: #09f*/
 }
 
 .btn.disabled {
@@ -191,7 +260,7 @@ input[type="button"].btn.btn-sm {
     pointer-events: auto;
 }
 
-.btn-default,
+/*.btn-default,
 .btn-default.disabled,
 .btn-default[disabled],
 .btn-default.disabled:hover,
@@ -205,7 +274,7 @@ input[type="button"].btn.btn-sm {
     background-color: #3a3c3c;
     border-color: #2e2f2f;
     color: #fff;
-}
+}*/
 
 input[type="radio"],
 input[type="checkbox"] {

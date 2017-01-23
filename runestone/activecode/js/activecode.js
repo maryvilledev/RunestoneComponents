@@ -67,9 +67,11 @@ ActiveCode.prototype.createEditor = function (index) {
     this.containerDiv = document.createElement('div');
     var linkdiv = document.createElement('div')
     linkdiv.id = this.divid.replace(/_/g,'-').toLowerCase();  // :ref: changes _ to - so add this as a target
-    $(this.containerDiv).addClass("ac_section alert alert-warning");
+    $(this.containerDiv).addClass("ac_section");
     var codeDiv = document.createElement("div");
-    $(codeDiv).addClass("ac_code_div col-md-12");
+    // lc mod
+    // add this ac_editor_container class so we can apply styles
+    $(codeDiv).addClass("ac_code_div ac_editor_container");
     this.codeDiv = codeDiv;
     this.containerDiv.id = this.divid;
     this.containerDiv.lang = this.language;
@@ -106,7 +108,11 @@ ActiveCode.prototype.createEditor = function (index) {
 
     this.editor = editor;
     if (this.hidecode) {
-        $(this.codeDiv).css("display","none");
+        // lc mod
+        // instead of toggling visiblity of codeDiv,
+        // we toggle visiblity of its child, .CodeMirror
+        // (because we dont want the ctrl buttons to disappear)
+        $(this.codeDiv).find(".CodeMirror").css("display","none");
     }
 };
 
@@ -165,9 +171,14 @@ ActiveCode.prototype.createControls = function () {
         $(butt).css("margin-left", "10px");
         this.showHideButt = butt;
         ctrlDiv.appendChild(butt);
-        $(butt).click( (function() { $(this.codeDiv).toggle();
-        $(this.loadButton).toggle();
-        $(this.saveButton).toggle();
+        $(butt).click( (function() {
+            // lc mod
+            // instead of toggling visiblity of codeDiv,
+            // we toggle visiblity of its child, .CodeMirror
+            // (because we dont want the ctrl buttons to disappear)
+            $(this.codeDiv).find(".CodeMirror").toggle();
+            $(this.loadButton).toggle();
+            $(this.saveButton).toggle();
         }).bind(this));
     }
 
@@ -204,7 +215,10 @@ ActiveCode.prototype.createControls = function () {
     }
 
 
-    $(this.outerDiv).prepend(ctrlDiv);
+    // lc mod
+    // the control button go inside the container for the code
+    // rather than outside above it
+    $(this.codeDiv).prepend(ctrlDiv);
 
 };
 
@@ -230,8 +244,11 @@ ActiveCode.prototype.createOutput = function () {
     outDiv.appendChild(this.output);
     outDiv.appendChild(this.graphics);
 
-    var outputLabel = $("<h5>Output</h5>");
-    $(this.outerDiv).append(outputLabel);
+    // lc mod
+    // Instead of a header outside (above) the ac_output div,
+    // we use a div inside the ac_output div
+    var outputLabel = $("<div class='ac_output_label'>Output</div>");
+    $(outDiv).prepend(outputLabel);
     this.outerDiv.appendChild(outDiv);
 
     clearDiv = document.createElement("div");
