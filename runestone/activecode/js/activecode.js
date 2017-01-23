@@ -71,7 +71,7 @@ ActiveCode.prototype.createEditor = function (index) {
     var codeDiv = document.createElement("div");
     // lc mod
     // add this ac_editor_container class so we can apply styles
-    $(codeDiv).addClass("col-md-12 ac_code_div ac_editor_container");
+    $(codeDiv).addClass("ac_code_div ac_editor_container");
     this.codeDiv = codeDiv;
     this.containerDiv.id = this.divid;
     this.containerDiv.lang = this.language;
