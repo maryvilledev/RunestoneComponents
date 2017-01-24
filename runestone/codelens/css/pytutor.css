@@ -32,6 +32,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
      div.ExecutionVisualizer
 */
 
+div.ExecutionVisualizer td.vizLayoutTd td {
+    border: 0;
+}
 
 /* reset some styles to nullify effects of existing stylesheets
    e.g., http://meyerweb.com/eric/tools/css/reset/
@@ -53,7 +56,7 @@ table.visualizer tr {
 
 div.ExecutionVisualizer table.visualizer td.vizLayoutTd {
   vertical-align: top;
-  display: inline-block;
+  /*display: inline-block;*/
   margin: 0 20px;
 }
 
@@ -73,7 +76,7 @@ div.ExecutionVisualizer #dataViz {
 
 div.ExecutionVisualizer div#codeDisplayDiv {
   /* set this as default unless user specifies a custom size */
-  width: 550px;
+  width: 600px;
 }
 
 div.ExecutionVisualizer div#pyCodeOutputDiv {
@@ -635,7 +638,7 @@ textarea.bubbleInputText {
 	.ui-tooltip-pgbootstrap .ui-tooltip-content{
 		padding: 5px /* 5px is minimum or else it might look ugly */ 8px;
 	}
-	
+
 
 		.ui-tooltip-pgbootstrap .ui-tooltip-titlebar .ui-state-default{
 			right: 9px; top: 49%;
@@ -689,7 +692,7 @@ textarea.bubbleInputText {
 	.ui-tooltip-pgbootstrap-stub .ui-tooltip-content{
 		padding: 6px 9px;
 	}
-	
+
 
 div.ExecutionVisualizer .annotationText,
 div.ExecutionVisualizer .vizDescriptionText {
