@@ -84,6 +84,26 @@ h5 {
     border-color: #808080;
 }
 
+.ui-sortable {
+    /*background: rgba(0,0,0,0);*/
+}
+
+.sortable-code ul {
+    background: rgba(0,0,0,0.1);
+    border: 2px solid #ccc;
+    padding: 1em;
+}
+
+.sortable-code ul li {
+    border-radius: 2px;
+    border: 2px solid #ccc;
+    background-color: white;
+}
+
+.sortable-code-container {
+    margin-bottom: 1em;
+}
+
 /* navbar and menu related styles */
 @media (max-width: 768px) {
     /* Remove top padding when top navbar goes collapsed in narrow viewports */

@@ -122,12 +122,12 @@ li.correctPosition, .testcase.pass {
 	margin: 10px 0;
 }
 .parsons-text {
-	max-width: 500pt;
+	/*max-width: 500pt;
 	margin-left: auto;
-	margin-right: auto;
+	margin-right: auto;*/
 }
 .sortable-code-container{
-	text-align:center;
+	/*text-align:center;*/
 }
 .parsons-controls{
 	max-width: 500pt;
