@@ -28,7 +28,7 @@ h5 {
 
 .container .section .cd_section {
     /* for codelens, make it nice and wide rather than hard-coded 600pt */
-    max-width: 90%;
+    max-width: 90% !important;
 }
 
 .ac_output_label {
