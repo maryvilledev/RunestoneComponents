@@ -302,7 +302,8 @@ function enableUserHighlights() {
 }
 
 // LCMOD - disable highlighting
-// $(document).bind("runestone:login",enableUserHighlights);
+// LCMOD 2 - I reinstated this line because apparently it is necessary for the Mark as Completed button
+$(document).bind("runestone:login",enableUserHighlights);
 
 function findHighlightClass(classList) {
     var className;
