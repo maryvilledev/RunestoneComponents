@@ -26,6 +26,11 @@ h5 {
     padding: 2em;
 }
 
+.container .section .cd_section {
+    /* for codelens, make it nice and wide rather than hard-coded 600pt */
+    max-width: 90%;
+}
+
 .ac_output_label {
     margin: 0;
     padding-left: 0.5em;

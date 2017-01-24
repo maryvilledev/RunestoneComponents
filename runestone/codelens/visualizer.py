@@ -78,7 +78,9 @@ $(document).ready(function() {
                                     {embeddedMode: %(embedded)s,
                                     verticalStack: false,
                                     heightChangeCallback: redrawAllVisualizerArrows,
-                                    codeDivWidth: 500,
+                                    // LC MOD
+                                    // increase codelense width to 600
+                                    codeDivWidth: 600,
                                     lang : '%(python)s'
                                     });
         attachLoggers(%(divid)s_vis,'%(divid)s');
