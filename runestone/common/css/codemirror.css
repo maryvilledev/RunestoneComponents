@@ -164,6 +164,10 @@ div.CodeMirror span.CodeMirror-nonmatchingbracket {color: #f22;}
   border-right: 30px solid transparent;
   -moz-box-sizing: content-box;
   box-sizing: content-box;
+
+  /* LC MOD*/
+  /* decrease font-size on active code so that people dont have to expand it */
+  font-size: 0.8em
 }
 
 /* The fake, visible scrollbars. Used to force redraw during scrolling
