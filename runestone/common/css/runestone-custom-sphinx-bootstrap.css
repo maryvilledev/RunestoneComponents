@@ -4,7 +4,7 @@
 
 body {
     padding-top: 60px;
-    background-color: #eeeeee;
+    /*background-color: #eeeeee;*/
     line-height: 1.9em;
 }
 
@@ -102,6 +102,10 @@ h5 {
 
 .sortable-code-container {
     margin-bottom: 1em;
+}
+
+blockquote {
+    color: #999;
 }
 
 /* navbar and menu related styles */
