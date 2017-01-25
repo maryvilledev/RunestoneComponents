@@ -89,12 +89,16 @@ ActiveCode.prototype.createEditor = function (index) {
     });
 
     // Make the editor resizable
+    /*
+    LC MOD
+    The resizable UI is janky and we don't need it
     $(editor.getWrapperElement()).resizable({
         resize: function() {
             editor.setSize($(this).width(), $(this).height());
             editor.refresh();
         }
     });
+    */
 
     // give the user a visual cue that they have changed but not saved
     editor.on('change', (function () {
