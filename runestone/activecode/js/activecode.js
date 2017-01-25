@@ -319,8 +319,10 @@ ActiveCode.prototype.saveEditor = function () {
                     save_btn.tooltip('destroy')
                 }, 4000);
 
-                $('#' + acid + ' .CodeMirror').css('border-top', '2px solid #aaa');
-                $('#' + acid + ' .CodeMirror').css('border-bottom', '2px solid #aaa');
+                // lc mod
+                // we want the border to simply disappear after saving
+                $('#' + acid + ' .CodeMirror').css('border-top', '0');
+                $('#' + acid + ' .CodeMirror').css('border-bottom', '0');
             }
         }
     }.bind(this);
