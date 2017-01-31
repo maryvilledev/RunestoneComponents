@@ -187,7 +187,10 @@ ActiveCode.prototype.createControls = function () {
     }
 
     // CodeLens
-    if ($(this.origElem).data("codelens")) {
+    if ( /* $(this.origElem).data("codelens") */ true) {
+        // LC MOD (line above)
+        // always include codelens
+        
         butt = document.createElement("button");
         $(butt).addClass("ac_opt btn btn-default");
         $(butt).text("Show CodeLens");
@@ -1613,6 +1616,10 @@ ACFactory.toggleScratchActivecode = function () {
 };
 
 $(document).ready(function() {
+
+    // LC MOD
+    $(this.origElem).data("codelens");
+
     ACFactory.createScratchActivecode();
     $('[data-component=activecode]').each( function(index ) {
         if ($(this.parentNode).data("component") !== "timedAssessment") {   // If this element exists within a timed component, don't render it here
