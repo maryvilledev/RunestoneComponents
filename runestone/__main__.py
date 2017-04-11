@@ -1,4 +1,3 @@
-
 import sys
 import os
 import shutil
@@ -82,7 +81,7 @@ def serve(port,listen):
     except:
         print("Error, you must be in your project root directory")
         return
-    
+
     os.chdir(pavement.serving_dir)
 
 
