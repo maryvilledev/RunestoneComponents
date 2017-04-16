@@ -13,13 +13,9 @@ pre {
     margin: 0 0 1em;
     font-size: 0.9em;
     padding: 1.5em;
-    border: 2px solid #ddd;
-    border-radius: 2px;
-}
-
-h5 {
-    font-weight: bold;
-    padding: 10px 0;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    color: #666;
 }
 
 .cd_section {
@@ -462,7 +458,7 @@ div.flash {
 
 /* Modal dialog styles (scratch activecode, compare me, etc) */
 .scratch-ac-modal {
-    width: 800px;
+    width: 900px;
 }
 
 .compare-modal .progress {
