@@ -124,7 +124,7 @@ function gotUser(data, status, whatever) {
             eBookConfig.email = d.email;
             eBookConfig.isLoggedIn = true;
             eBookConfig.cohortId = d.cohortId;
-            $(document).trigger("runestone:login")
+						$(document).trigger("runestone:login")
             timedRefresh();
         }
     }

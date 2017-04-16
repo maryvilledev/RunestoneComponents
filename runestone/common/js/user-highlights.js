@@ -41,45 +41,8 @@ function showLastPositionBanner() {
 }
 
 function addNavigationAndCompletionButtons() {
-    var navLinkBgRightHiddenPosition = -$("#navLinkBgRight").outerWidth() - 5;
-    var navLinkBgRightHalfOpen;
-    var navLinkBgRightFullOpen = 0;
 
-    if ($("#completionButton").hasClass("buttonAskCompletion")) {
-        navLinkBgRightHalfOpen = navLinkBgRightHiddenPosition + 70;
-    }
-    else if ($("#completionButton").hasClass("buttonConfirmCompletion")) {
-        navLinkBgRightHalfOpen = 0;
-    }
-    var relationsNextIconInitialPosition = $("#relations-next").css("right");
-    var relationsNextIconNewPosition = -(navLinkBgRightHiddenPosition + 35);
-
-    $("#navLinkBgRight").css("right", navLinkBgRightHiddenPosition).show();
-    var navBgShown = false;
-    $(window).scroll(function () {
-        if ($(window).scrollTop() + $(window).height() == $(document).height()) {
-            $("#navLinkBgRight").animate(
-                {"right": navLinkBgRightHalfOpen}, 200
-            );
-            $("#navLinkBgLeft").animate(
-                {"left": "0px"}, 200
-            );
-            if ($("#completionButton").hasClass("buttonConfirmCompletion")) {
-                $("#relations-next").animate({"right": relationsNextIconNewPosition}, 200);
-            }
-            navBgShown = true;
-        }
-        else if (navBgShown) {
-            $("#navLinkBgRight").animate(
-                {"right": navLinkBgRightHiddenPosition}, 200
-            );
-            $("#navLinkBgLeft").animate(
-                {"left": "-65px"}, 200
-            );
-            $("#relations-next").animate({"right": relationsNextIconInitialPosition});
-            navBgShown = false;
-        }
-    });
+    // LCMOD - remove code to update next/prev nav button locations
 
     var completionFlag = 0;
     if ($("#completionButton").hasClass("buttonAskCompletion")) {

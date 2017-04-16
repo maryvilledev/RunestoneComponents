@@ -6,6 +6,7 @@ body {
     padding-top: 60px;
     /*background-color: #eeeeee;*/
     line-height: 1.9em;
+    position: relative;
 }
 
 pre {
@@ -52,7 +53,6 @@ h5 {
 }
 
 .alert-warning {
-    background-color: #eeeeee;
     border-color: #eeeeee;
     padding: 2em;
 }
@@ -67,6 +67,11 @@ h5 {
     height: 50px;
     text-transform: uppercase;
     font-weight: 700;
+}
+
+.navbar-search .btn {
+    height: 34px;
+    padding: 0 1em;
 }
 
 .btn:hover, .btn:focus, .btn:active, .btn.active {
@@ -180,16 +185,19 @@ div.section {
 .container  .section .cd_section {
 	max-width: none;
 }*/
-.navbar>.container .navbar-brand {
+.navbar > .container .navbar-brand {
     margin-left: 0;
 }
 
-.navbar>.container  {
+.navbar > .container  {
     background-color: #f8f8f8;
 }
 
-.footer>.container {
+.footer > .container {
     background-color: #eeeeee;
+    width: 100%;
+    max-width: 100%;
+    padding: 0 1em;
 }
 
 .brand-logo {
@@ -239,6 +247,11 @@ div.section {
 
 .loggedinuser {
     font-weight: bold;
+}
+
+code {
+    color: #f47753;
+    background-color: #f9f1ef;
 }
 
 /* end navbar and menu related styles */
@@ -537,8 +550,8 @@ div.flash {
 .navLink{
 	z-index:2;
 	display: inline;
-	bottom: 65px;
-	position:fixed;
+	bottom: 95px;
+	position:absolute;
 }
 
 #relations-next{
@@ -610,13 +623,14 @@ div.flash {
 	height: 40px;
 	background-color: #fff;
 	z-index: 1;
-	position: fixed;
-	bottom: 55px;
+	bottom: 92px;
 	color: #999;
 	font-weight: bold;
 	-webkit-box-shadow: 0px 0px 3px rgba(50, 50, 50, 0.5);
 	-moz-box-shadow:    0px 0px 3px rgba(50, 50, 50, 0.5);
 	box-shadow:         0px 0px 3px rgba(50, 50, 50, 0.5);
+    position: absolute;
+	padding: 0 15px 0 50px;
 }
 
 .navLinkBg:hover{
@@ -624,14 +638,11 @@ div.flash {
 }
 
 #navLinkBgRight{
-	right: -1000px;
-	padding: 10px 15px 0 65px;
+	right: 0;
 }
 
 #navLinkBgLeft{
-	left: -65px;
-	padding-left: 15px;
-	padding-right: 50px;
+	left: 0;
 }
 
 .activehtml  {
