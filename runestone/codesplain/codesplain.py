@@ -4,9 +4,10 @@ from docutils.parsers.rst import directives, Directive
 def setup(app):
     app.add_directive('codesplain', Codesplain)
     app.add_node(CodesplainNode, html=(visit_codesplain_node, depart_codesplain_node))
+    app.add_javascript('codesplain.js')
 
 TEMPLATE = """
-<div data-component="codesplain" data-snippet="%(snippet_key)s" />
+<div data-component="codesplain" data-snippet="%(snippet_key)s"></div>
 """
 
 class CodesplainNode(nodes.General, nodes.Element):
