@@ -6,9 +6,9 @@
 /******/ 	function __webpack_require__(moduleId) {
 /******/
 /******/ 		// Check if module is in cache
-/******/ 		if(installedModules[moduleId])
+/******/ 		if(installedModules[moduleId]) {
 /******/ 			return installedModules[moduleId].exports;
-/******/
+/******/ 		}
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = installedModules[moduleId] = {
 /******/ 			i: moduleId,
@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 107);
+/******/ 	return __webpack_require__(__webpack_require__.s = 138);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -331,7 +331,7 @@ module.exports = invariant;
 
 
 
-var emptyFunction = __webpack_require__(10);
+var emptyFunction = __webpack_require__(11);
 
 /**
  * Similar to invariant but only logs a warning if the condition is not met.
@@ -547,8 +547,8 @@ module.exports = shouldUseNative() ? Object.assign : function (target, source) {
 
 var _prodInvariant = __webpack_require__(3);
 
-var DOMProperty = __webpack_require__(14);
-var ReactDOMComponentFlags = __webpack_require__(65);
+var DOMProperty = __webpack_require__(16);
+var ReactDOMComponentFlags = __webpack_require__(80);
 
 var invariant = __webpack_require__(1);
 
@@ -775,6 +775,154 @@ module.exports = ExecutionEnvironment;
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
+
+
+/**
+ * Utility functions
+ */
+
+function typeOf(obj) {
+  return Object.prototype.toString.call(obj);
+}
+
+function isString(obj) {
+  return typeOf(obj) === '[object String]';
+}
+
+var hasOwn = Object.prototype.hasOwnProperty;
+
+function has(object, key) {
+  return object
+    ? hasOwn.call(object, key)
+    : false;
+}
+
+// Extend objects
+//
+function assign(obj /*from1, from2, from3, ...*/) {
+  var sources = [].slice.call(arguments, 1);
+
+  sources.forEach(function (source) {
+    if (!source) { return; }
+
+    if (typeof source !== 'object') {
+      throw new TypeError(source + 'must be object');
+    }
+
+    Object.keys(source).forEach(function (key) {
+      obj[key] = source[key];
+    });
+  });
+
+  return obj;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+var UNESCAPE_MD_RE = /\\([\\!"#$%&'()*+,.\/:;<=>?@[\]^_`{|}~-])/g;
+
+function unescapeMd(str) {
+  if (str.indexOf('\\') < 0) { return str; }
+  return str.replace(UNESCAPE_MD_RE, '$1');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+function isValidEntityCode(c) {
+  /*eslint no-bitwise:0*/
+  // broken sequence
+  if (c >= 0xD800 && c <= 0xDFFF) { return false; }
+  // never used
+  if (c >= 0xFDD0 && c <= 0xFDEF) { return false; }
+  if ((c & 0xFFFF) === 0xFFFF || (c & 0xFFFF) === 0xFFFE) { return false; }
+  // control codes
+  if (c >= 0x00 && c <= 0x08) { return false; }
+  if (c === 0x0B) { return false; }
+  if (c >= 0x0E && c <= 0x1F) { return false; }
+  if (c >= 0x7F && c <= 0x9F) { return false; }
+  // out of range
+  if (c > 0x10FFFF) { return false; }
+  return true;
+}
+
+function fromCodePoint(c) {
+  /*eslint no-bitwise:0*/
+  if (c > 0xffff) {
+    c -= 0x10000;
+    var surrogate1 = 0xd800 + (c >> 10),
+        surrogate2 = 0xdc00 + (c & 0x3ff);
+
+    return String.fromCharCode(surrogate1, surrogate2);
+  }
+  return String.fromCharCode(c);
+}
+
+var NAMED_ENTITY_RE   = /&([a-z#][a-z0-9]{1,31});/gi;
+var DIGITAL_ENTITY_TEST_RE = /^#((?:x[a-f0-9]{1,8}|[0-9]{1,8}))/i;
+var entities = __webpack_require__(110);
+
+function replaceEntityPattern(match, name) {
+  var code = 0;
+
+  if (has(entities, name)) {
+    return entities[name];
+  } else if (name.charCodeAt(0) === 0x23/* # */ && DIGITAL_ENTITY_TEST_RE.test(name)) {
+    code = name[1].toLowerCase() === 'x' ?
+      parseInt(name.slice(2), 16)
+    :
+      parseInt(name.slice(1), 10);
+    if (isValidEntityCode(code)) {
+      return fromCodePoint(code);
+    }
+  }
+  return match;
+}
+
+function replaceEntities(str) {
+  if (str.indexOf('&') < 0) { return str; }
+
+  return str.replace(NAMED_ENTITY_RE, replaceEntityPattern);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+var HTML_ESCAPE_TEST_RE = /[&<>"]/;
+var HTML_ESCAPE_REPLACE_RE = /[&<>"]/g;
+var HTML_REPLACEMENTS = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;'
+};
+
+function replaceUnsafeChar(ch) {
+  return HTML_REPLACEMENTS[ch];
+}
+
+function escapeHtml(str) {
+  if (HTML_ESCAPE_TEST_RE.test(str)) {
+    return str.replace(HTML_ESCAPE_REPLACE_RE, replaceUnsafeChar);
+  }
+  return str;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+exports.assign            = assign;
+exports.isString          = isString;
+exports.has               = has;
+exports.unescapeMd        = unescapeMd;
+exports.isValidEntityCode = isValidEntityCode;
+exports.fromCodePoint     = fromCodePoint;
+exports.replaceEntities   = replaceEntities;
+exports.escapeHtml        = escapeHtml;
+
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
 /* WEBPACK VAR INJECTION */(function(process) {/**
  * Copyright 2016-present, Facebook, Inc.
  * All rights reserved.
@@ -788,9 +936,9 @@ module.exports = ExecutionEnvironment;
 
 
 
-var _prodInvariant = __webpack_require__(17);
+var _prodInvariant = __webpack_require__(19);
 
-var ReactCurrentOwner = __webpack_require__(12);
+var ReactCurrentOwner = __webpack_require__(14);
 
 var invariant = __webpack_require__(1);
 var warning = __webpack_require__(2);
@@ -1111,13 +1259,23 @@ module.exports = ReactComponentTreeHook;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 8 */
+/* 9 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+module.exports = __webpack_require__(22);
+
+
+/***/ }),
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 /* WEBPACK VAR INJECTION */(function(Buffer) {
 
-var bind = __webpack_require__(56);
+var bind = __webpack_require__(68);
 
 /*global toString:true*/
 
@@ -1428,40 +1586,10 @@ module.exports = {
   trim: trim
 };
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(109).Buffer))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(141).Buffer))
 
 /***/ }),
-/* 9 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-/* WEBPACK VAR INJECTION */(function(process) {/**
- * Copyright 2016-present, Facebook, Inc.
- * All rights reserved.
- *
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree. An additional grant
- * of patent rights can be found in the PATENTS file in the same directory.
- *
- * 
- */
-
-
-
-// Trust the developer to only use ReactInstrumentation with a __DEV__ check
-
-var debugTool = null;
-
-if (process.env.NODE_ENV !== 'production') {
-  var ReactDebugTool = __webpack_require__(156);
-  debugTool = ReactDebugTool;
-}
-
-module.exports = { debugTool: debugTool };
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
-
-/***/ }),
-/* 10 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1505,7 +1633,37 @@ emptyFunction.thatReturnsArgument = function (arg) {
 module.exports = emptyFunction;
 
 /***/ }),
-/* 11 */
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/* WEBPACK VAR INJECTION */(function(process) {/**
+ * Copyright 2016-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ *
+ * 
+ */
+
+
+
+// Trust the developer to only use ReactInstrumentation with a __DEV__ check
+
+var debugTool = null;
+
+if (process.env.NODE_ENV !== 'production') {
+  var ReactDebugTool = __webpack_require__(203);
+  debugTool = ReactDebugTool;
+}
+
+module.exports = { debugTool: debugTool };
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
+
+/***/ }),
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1524,11 +1682,11 @@ module.exports = emptyFunction;
 var _prodInvariant = __webpack_require__(3),
     _assign = __webpack_require__(4);
 
-var CallbackQueue = __webpack_require__(63);
-var PooledClass = __webpack_require__(15);
-var ReactFeatureFlags = __webpack_require__(68);
-var ReactReconciler = __webpack_require__(19);
-var Transaction = __webpack_require__(29);
+var CallbackQueue = __webpack_require__(78);
+var PooledClass = __webpack_require__(17);
+var ReactFeatureFlags = __webpack_require__(83);
+var ReactReconciler = __webpack_require__(21);
+var Transaction = __webpack_require__(31);
 
 var invariant = __webpack_require__(1);
 
@@ -1762,7 +1920,7 @@ module.exports = ReactUpdates;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 12 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1798,7 +1956,7 @@ var ReactCurrentOwner = {
 module.exports = ReactCurrentOwner;
 
 /***/ }),
-/* 13 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1816,9 +1974,9 @@ module.exports = ReactCurrentOwner;
 
 var _assign = __webpack_require__(4);
 
-var PooledClass = __webpack_require__(15);
+var PooledClass = __webpack_require__(17);
 
-var emptyFunction = __webpack_require__(10);
+var emptyFunction = __webpack_require__(11);
 var warning = __webpack_require__(2);
 
 var didWarnForAddedNewProperty = false;
@@ -2072,7 +2230,7 @@ function getPooledWarningPropertyDefinition(propName, getVal) {
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 14 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2288,7 +2446,7 @@ module.exports = DOMProperty;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 15 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2406,7 +2564,7 @@ module.exports = PooledClass;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 16 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2424,13 +2582,13 @@ module.exports = PooledClass;
 
 var _assign = __webpack_require__(4);
 
-var ReactCurrentOwner = __webpack_require__(12);
+var ReactCurrentOwner = __webpack_require__(14);
 
 var warning = __webpack_require__(2);
-var canDefineProperty = __webpack_require__(32);
+var canDefineProperty = __webpack_require__(35);
 var hasOwnProperty = Object.prototype.hasOwnProperty;
 
-var REACT_ELEMENT_TYPE = __webpack_require__(83);
+var REACT_ELEMENT_TYPE = __webpack_require__(102);
 
 var RESERVED_PROPS = {
   key: true,
@@ -2753,7 +2911,7 @@ module.exports = ReactElement;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 17 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2797,7 +2955,7 @@ function reactProdInvariant(code) {
 module.exports = reactProdInvariant;
 
 /***/ }),
-/* 18 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2813,11 +2971,11 @@ module.exports = reactProdInvariant;
 
 
 
-var DOMNamespaces = __webpack_require__(36);
-var setInnerHTML = __webpack_require__(31);
+var DOMNamespaces = __webpack_require__(44);
+var setInnerHTML = __webpack_require__(33);
 
-var createMicrosoftUnsafeLocalFunction = __webpack_require__(43);
-var setTextContent = __webpack_require__(81);
+var createMicrosoftUnsafeLocalFunction = __webpack_require__(51);
+var setTextContent = __webpack_require__(96);
 
 var ELEMENT_NODE_TYPE = 1;
 var DOCUMENT_FRAGMENT_NODE_TYPE = 11;
@@ -2920,7 +3078,7 @@ DOMLazyTree.queueText = queueText;
 module.exports = DOMLazyTree;
 
 /***/ }),
-/* 19 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2936,8 +3094,8 @@ module.exports = DOMLazyTree;
 
 
 
-var ReactRef = __webpack_require__(170);
-var ReactInstrumentation = __webpack_require__(9);
+var ReactRef = __webpack_require__(217);
+var ReactInstrumentation = __webpack_require__(12);
 
 var warning = __webpack_require__(2);
 
@@ -3094,7 +3252,7 @@ module.exports = ReactReconciler;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 20 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3112,16 +3270,16 @@ module.exports = ReactReconciler;
 
 var _assign = __webpack_require__(4);
 
-var ReactChildren = __webpack_require__(200);
-var ReactComponent = __webpack_require__(50);
-var ReactPureComponent = __webpack_require__(205);
-var ReactClass = __webpack_require__(201);
-var ReactDOMFactories = __webpack_require__(202);
-var ReactElement = __webpack_require__(16);
-var ReactPropTypes = __webpack_require__(203);
-var ReactVersion = __webpack_require__(206);
+var ReactChildren = __webpack_require__(257);
+var ReactComponent = __webpack_require__(59);
+var ReactPureComponent = __webpack_require__(262);
+var ReactClass = __webpack_require__(258);
+var ReactDOMFactories = __webpack_require__(259);
+var ReactElement = __webpack_require__(18);
+var ReactPropTypes = __webpack_require__(260);
+var ReactVersion = __webpack_require__(263);
 
-var onlyChild = __webpack_require__(209);
+var onlyChild = __webpack_require__(266);
 var warning = __webpack_require__(2);
 
 var createElement = ReactElement.createElement;
@@ -3129,8 +3287,8 @@ var createFactory = ReactElement.createFactory;
 var cloneElement = ReactElement.cloneElement;
 
 if (process.env.NODE_ENV !== 'production') {
-  var canDefineProperty = __webpack_require__(32);
-  var ReactElementValidator = __webpack_require__(84);
+  var canDefineProperty = __webpack_require__(35);
+  var ReactElementValidator = __webpack_require__(103);
   var didWarnPropTypesDeprecated = false;
   createElement = ReactElementValidator.createElement;
   createFactory = ReactElementValidator.createFactory;
@@ -3204,7 +3362,7 @@ module.exports = React;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 21 */
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3230,7 +3388,7 @@ module.exports = emptyObject;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 22 */
+/* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3248,12 +3406,12 @@ module.exports = emptyObject;
 
 var _prodInvariant = __webpack_require__(3);
 
-var EventPluginRegistry = __webpack_require__(26);
-var EventPluginUtils = __webpack_require__(37);
-var ReactErrorUtils = __webpack_require__(41);
+var EventPluginRegistry = __webpack_require__(28);
+var EventPluginUtils = __webpack_require__(45);
+var ReactErrorUtils = __webpack_require__(49);
 
-var accumulateInto = __webpack_require__(75);
-var forEachAccumulated = __webpack_require__(76);
+var accumulateInto = __webpack_require__(90);
+var forEachAccumulated = __webpack_require__(91);
 var invariant = __webpack_require__(1);
 
 /**
@@ -3514,7 +3672,7 @@ module.exports = EventPluginHub;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 23 */
+/* 25 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3530,11 +3688,11 @@ module.exports = EventPluginHub;
 
 
 
-var EventPluginHub = __webpack_require__(22);
-var EventPluginUtils = __webpack_require__(37);
+var EventPluginHub = __webpack_require__(24);
+var EventPluginUtils = __webpack_require__(45);
 
-var accumulateInto = __webpack_require__(75);
-var forEachAccumulated = __webpack_require__(76);
+var accumulateInto = __webpack_require__(90);
+var forEachAccumulated = __webpack_require__(91);
 var warning = __webpack_require__(2);
 
 var getListener = EventPluginHub.getListener;
@@ -3654,7 +3812,7 @@ module.exports = EventPropagators;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 24 */
+/* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3707,7 +3865,7 @@ var ReactInstanceMap = {
 module.exports = ReactInstanceMap;
 
 /***/ }),
-/* 25 */
+/* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3723,9 +3881,9 @@ module.exports = ReactInstanceMap;
 
 
 
-var SyntheticEvent = __webpack_require__(13);
+var SyntheticEvent = __webpack_require__(15);
 
-var getEventTarget = __webpack_require__(46);
+var getEventTarget = __webpack_require__(54);
 
 /**
  * @interface UIEvent
@@ -3771,7 +3929,7 @@ SyntheticEvent.augmentClass(SyntheticUIEvent, UIEventInterface);
 module.exports = SyntheticUIEvent;
 
 /***/ }),
-/* 26 */
+/* 28 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4032,7 +4190,7 @@ module.exports = EventPluginRegistry;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 27 */
+/* 29 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4050,12 +4208,12 @@ module.exports = EventPluginRegistry;
 
 var _assign = __webpack_require__(4);
 
-var EventPluginRegistry = __webpack_require__(26);
-var ReactEventEmitterMixin = __webpack_require__(160);
-var ViewportMetrics = __webpack_require__(74);
+var EventPluginRegistry = __webpack_require__(28);
+var ReactEventEmitterMixin = __webpack_require__(207);
+var ViewportMetrics = __webpack_require__(89);
 
-var getVendorPrefixedEventName = __webpack_require__(195);
-var isEventSupported = __webpack_require__(47);
+var getVendorPrefixedEventName = __webpack_require__(242);
+var isEventSupported = __webpack_require__(55);
 
 /**
  * Summary of `ReactBrowserEventEmitter` event handling:
@@ -4365,7 +4523,7 @@ var ReactBrowserEventEmitter = _assign({}, ReactEventEmitterMixin, {
 module.exports = ReactBrowserEventEmitter;
 
 /***/ }),
-/* 28 */
+/* 30 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4381,10 +4539,10 @@ module.exports = ReactBrowserEventEmitter;
 
 
 
-var SyntheticUIEvent = __webpack_require__(25);
-var ViewportMetrics = __webpack_require__(74);
+var SyntheticUIEvent = __webpack_require__(27);
+var ViewportMetrics = __webpack_require__(89);
 
-var getEventModifierState = __webpack_require__(45);
+var getEventModifierState = __webpack_require__(53);
 
 /**
  * @interface MouseEvent
@@ -4442,7 +4600,7 @@ SyntheticUIEvent.augmentClass(SyntheticMouseEvent, MouseEventInterface);
 module.exports = SyntheticMouseEvent;
 
 /***/ }),
-/* 29 */
+/* 31 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4673,7 +4831,7 @@ module.exports = TransactionImpl;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 30 */
+/* 32 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4801,7 +4959,7 @@ function escapeTextContentForBrowser(text) {
 module.exports = escapeTextContentForBrowser;
 
 /***/ }),
-/* 31 */
+/* 33 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4818,12 +4976,12 @@ module.exports = escapeTextContentForBrowser;
 
 
 var ExecutionEnvironment = __webpack_require__(6);
-var DOMNamespaces = __webpack_require__(36);
+var DOMNamespaces = __webpack_require__(44);
 
 var WHITESPACE_TEST = /^[ \r\n\t\f]/;
 var NONVISIBLE_TEST = /<(!--|link|noscript|meta|script|style)[ \r\n\t\f\/>]/;
 
-var createMicrosoftUnsafeLocalFunction = __webpack_require__(43);
+var createMicrosoftUnsafeLocalFunction = __webpack_require__(51);
 
 // SVG temp container for IE lacking innerHTML
 var reusableSVGContainer;
@@ -4904,7 +5062,25 @@ if (ExecutionEnvironment.canUseDOM) {
 module.exports = setInnerHTML;
 
 /***/ }),
-/* 32 */
+/* 34 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__components_Provider__ = __webpack_require__(246);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__components_connectAdvanced__ = __webpack_require__(98);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__connect_connect__ = __webpack_require__(247);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "Provider", function() { return __WEBPACK_IMPORTED_MODULE_0__components_Provider__["a"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "connectAdvanced", function() { return __WEBPACK_IMPORTED_MODULE_1__components_connectAdvanced__["a"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "connect", function() { return __WEBPACK_IMPORTED_MODULE_2__connect_connect__["a"]; });
+
+
+
+
+
+
+/***/ }),
+/* 35 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4936,14 +5112,387 @@ module.exports = canDefineProperty;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 33 */
+/* 36 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+/**
+ * Parse link labels
+ *
+ * This function assumes that first character (`[`) already matches;
+ * returns the end of the label.
+ *
+ * @param  {Object} state
+ * @param  {Number} start
+ * @api private
+ */
+
+module.exports = function parseLinkLabel(state, start) {
+  var level, found, marker,
+      labelEnd = -1,
+      max = state.posMax,
+      oldPos = state.pos,
+      oldFlag = state.isInLabel;
+
+  if (state.isInLabel) { return -1; }
+
+  if (state.labelUnmatchedScopes) {
+    state.labelUnmatchedScopes--;
+    return -1;
+  }
+
+  state.pos = start + 1;
+  state.isInLabel = true;
+  level = 1;
+
+  while (state.pos < max) {
+    marker = state.src.charCodeAt(state.pos);
+    if (marker === 0x5B /* [ */) {
+      level++;
+    } else if (marker === 0x5D /* ] */) {
+      level--;
+      if (level === 0) {
+        found = true;
+        break;
+      }
+    }
+
+    state.parser.skipToken(state);
+  }
+
+  if (found) {
+    labelEnd = state.pos;
+    state.labelUnmatchedScopes = 0;
+  } else {
+    state.labelUnmatchedScopes = level - 1;
+  }
+
+  // restore old state
+  state.pos = oldPos;
+  state.isInLabel = oldFlag;
+
+  return labelEnd;
+};
+
+
+/***/ }),
+/* 37 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+/**
+ * Ruler is a helper class for building responsibility chains from
+ * parse rules. It allows:
+ *
+ *   - easy stack rules chains
+ *   - getting main chain and named chains content (as arrays of functions)
+ *
+ * Helper methods, should not be used directly.
+ * @api private
+ */
+
+function Ruler() {
+  // List of added rules. Each element is:
+  //
+  // { name: XXX,
+  //   enabled: Boolean,
+  //   fn: Function(),
+  //   alt: [ name2, name3 ] }
+  //
+  this.__rules__ = [];
+
+  // Cached rule chains.
+  //
+  // First level - chain name, '' for default.
+  // Second level - digital anchor for fast filtering by charcodes.
+  //
+  this.__cache__ = null;
+}
+
+/**
+ * Find the index of a rule by `name`.
+ *
+ * @param  {String} `name`
+ * @return {Number} Index of the given `name`
+ * @api private
+ */
+
+Ruler.prototype.__find__ = function (name) {
+  var len = this.__rules__.length;
+  var i = -1;
+
+  while (len--) {
+    if (this.__rules__[++i].name === name) {
+      return i;
+    }
+  }
+  return -1;
+};
+
+/**
+ * Build the rules lookup cache
+ *
+ * @api private
+ */
+
+Ruler.prototype.__compile__ = function () {
+  var self = this;
+  var chains = [ '' ];
+
+  // collect unique names
+  self.__rules__.forEach(function (rule) {
+    if (!rule.enabled) {
+      return;
+    }
+
+    rule.alt.forEach(function (altName) {
+      if (chains.indexOf(altName) < 0) {
+        chains.push(altName);
+      }
+    });
+  });
+
+  self.__cache__ = {};
+
+  chains.forEach(function (chain) {
+    self.__cache__[chain] = [];
+    self.__rules__.forEach(function (rule) {
+      if (!rule.enabled) {
+        return;
+      }
+
+      if (chain && rule.alt.indexOf(chain) < 0) {
+        return;
+      }
+      self.__cache__[chain].push(rule.fn);
+    });
+  });
+};
+
+/**
+ * Ruler public methods
+ * ------------------------------------------------
+ */
+
+/**
+ * Replace rule function
+ *
+ * @param  {String} `name` Rule name
+ * @param  {Function `fn`
+ * @param  {Object} `options`
+ * @api private
+ */
+
+Ruler.prototype.at = function (name, fn, options) {
+  var idx = this.__find__(name);
+  var opt = options || {};
+
+  if (idx === -1) {
+    throw new Error('Parser rule not found: ' + name);
+  }
+
+  this.__rules__[idx].fn = fn;
+  this.__rules__[idx].alt = opt.alt || [];
+  this.__cache__ = null;
+};
+
+/**
+ * Add a rule to the chain before given the `ruleName`.
+ *
+ * @param  {String}   `beforeName`
+ * @param  {String}   `ruleName`
+ * @param  {Function} `fn`
+ * @param  {Object}   `options`
+ * @api private
+ */
+
+Ruler.prototype.before = function (beforeName, ruleName, fn, options) {
+  var idx = this.__find__(beforeName);
+  var opt = options || {};
+
+  if (idx === -1) {
+    throw new Error('Parser rule not found: ' + beforeName);
+  }
+
+  this.__rules__.splice(idx, 0, {
+    name: ruleName,
+    enabled: true,
+    fn: fn,
+    alt: opt.alt || []
+  });
+
+  this.__cache__ = null;
+};
+
+/**
+ * Add a rule to the chain after the given `ruleName`.
+ *
+ * @param  {String}   `afterName`
+ * @param  {String}   `ruleName`
+ * @param  {Function} `fn`
+ * @param  {Object}   `options`
+ * @api private
+ */
+
+Ruler.prototype.after = function (afterName, ruleName, fn, options) {
+  var idx = this.__find__(afterName);
+  var opt = options || {};
+
+  if (idx === -1) {
+    throw new Error('Parser rule not found: ' + afterName);
+  }
+
+  this.__rules__.splice(idx + 1, 0, {
+    name: ruleName,
+    enabled: true,
+    fn: fn,
+    alt: opt.alt || []
+  });
+
+  this.__cache__ = null;
+};
+
+/**
+ * Add a rule to the end of chain.
+ *
+ * @param  {String}   `ruleName`
+ * @param  {Function} `fn`
+ * @param  {Object}   `options`
+ * @return {String}
+ */
+
+Ruler.prototype.push = function (ruleName, fn, options) {
+  var opt = options || {};
+
+  this.__rules__.push({
+    name: ruleName,
+    enabled: true,
+    fn: fn,
+    alt: opt.alt || []
+  });
+
+  this.__cache__ = null;
+};
+
+/**
+ * Enable a rule or list of rules.
+ *
+ * @param  {String|Array} `list` Name or array of rule names to enable
+ * @param  {Boolean} `strict` If `true`, all non listed rules will be disabled.
+ * @api private
+ */
+
+Ruler.prototype.enable = function (list, strict) {
+  list = !Array.isArray(list)
+    ? [ list ]
+    : list;
+
+  // In strict mode disable all existing rules first
+  if (strict) {
+    this.__rules__.forEach(function (rule) {
+      rule.enabled = false;
+    });
+  }
+
+  // Search by name and enable
+  list.forEach(function (name) {
+    var idx = this.__find__(name);
+    if (idx < 0) {
+      throw new Error('Rules manager: invalid rule name ' + name);
+    }
+    this.__rules__[idx].enabled = true;
+  }, this);
+
+  this.__cache__ = null;
+};
+
+
+/**
+ * Disable a rule or list of rules.
+ *
+ * @param  {String|Array} `list` Name or array of rule names to disable
+ * @api private
+ */
+
+Ruler.prototype.disable = function (list) {
+  list = !Array.isArray(list)
+    ? [ list ]
+    : list;
+
+  // Search by name and disable
+  list.forEach(function (name) {
+    var idx = this.__find__(name);
+    if (idx < 0) {
+      throw new Error('Rules manager: invalid rule name ' + name);
+    }
+    this.__rules__[idx].enabled = false;
+  }, this);
+
+  this.__cache__ = null;
+};
+
+/**
+ * Get a rules list as an array of functions.
+ *
+ * @param  {String} `chainName`
+ * @return {Object}
+ * @api private
+ */
+
+Ruler.prototype.getRules = function (chainName) {
+  if (this.__cache__ === null) {
+    this.__compile__();
+  }
+  return this.__cache__[chainName] || [];
+};
+
+/**
+ * Expose `Ruler`
+ */
+
+module.exports = Ruler;
+
+
+/***/ }),
+/* 38 */
+/***/ (function(module, exports) {
+
+var g;
+
+// This works in non-strict mode
+g = (function() {
+	return this;
+})();
+
+try {
+	// This works if eval is allowed (see CSP)
+	g = g || Function("return this")() || (1,eval)("this");
+} catch(e) {
+	// This works if the window reference is available
+	if(typeof window === "object")
+		g = window;
+}
+
+// g can still be undefined, but nothing to do about it...
+// We return undefined, instead of nothing here, so it's
+// easier to handle this case. if(!global) { ...}
+
+module.exports = g;
+
+
+/***/ }),
+/* 39 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 /* WEBPACK VAR INJECTION */(function(process) {
 
-var utils = __webpack_require__(8);
-var normalizeHeaderName = __webpack_require__(104);
+var utils = __webpack_require__(10);
+var normalizeHeaderName = __webpack_require__(131);
 
 var DEFAULT_CONTENT_TYPE = {
   'Content-Type': 'application/x-www-form-urlencoded'
@@ -4959,10 +5508,10 @@ function getDefaultAdapter() {
   var adapter;
   if (typeof XMLHttpRequest !== 'undefined') {
     // For browsers use XHR adapter
-    adapter = __webpack_require__(52);
+    adapter = __webpack_require__(64);
   } else if (typeof process !== 'undefined') {
     // For node use HTTP adapter
-    adapter = __webpack_require__(52);
+    adapter = __webpack_require__(64);
   }
   return adapter;
 }
@@ -5036,7 +5585,34 @@ module.exports = defaults;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 34 */
+/* 40 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+var SET_STATE = exports.SET_STATE = 'RESTORE_STATE';
+var SET_SELECTED_LINE = exports.SET_SELECTED_LINE = 'SET_SELECTED_LINE';
+
+var setState = exports.setState = function setState(newState) {
+  return {
+    type: SET_STATE,
+    payload: newState
+  };
+};
+
+var setSelectedLine = exports.setSelectedLine = function setSelectedLine(line) {
+  return {
+    type: SET_SELECTED_LINE,
+    payload: line
+  };
+};
+
+/***/ }),
+/* 41 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5109,7 +5685,79 @@ function shallowEqual(objA, objB) {
 module.exports = shallowEqual;
 
 /***/ }),
-/* 35 */
+/* 42 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__baseGetTag_js__ = __webpack_require__(163);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__getPrototype_js__ = __webpack_require__(165);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__isObjectLike_js__ = __webpack_require__(170);
+
+
+
+
+/** `Object#toString` result references. */
+var objectTag = '[object Object]';
+
+/** Used for built-in method references. */
+var funcProto = Function.prototype,
+    objectProto = Object.prototype;
+
+/** Used to resolve the decompiled source of functions. */
+var funcToString = funcProto.toString;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/** Used to infer the `Object` constructor. */
+var objectCtorString = funcToString.call(Object);
+
+/**
+ * Checks if `value` is a plain object, that is, an object created by the
+ * `Object` constructor or one with a `[[Prototype]]` of `null`.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.8.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a plain object, else `false`.
+ * @example
+ *
+ * function Foo() {
+ *   this.a = 1;
+ * }
+ *
+ * _.isPlainObject(new Foo);
+ * // => false
+ *
+ * _.isPlainObject([1, 2, 3]);
+ * // => false
+ *
+ * _.isPlainObject({ 'x': 0, 'y': 0 });
+ * // => true
+ *
+ * _.isPlainObject(Object.create(null));
+ * // => true
+ */
+function isPlainObject(value) {
+  if (!__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__isObjectLike_js__["a" /* default */])(value) || __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__baseGetTag_js__["a" /* default */])(value) != objectTag) {
+    return false;
+  }
+  var proto = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1__getPrototype_js__["a" /* default */])(value);
+  if (proto === null) {
+    return true;
+  }
+  var Ctor = hasOwnProperty.call(proto, 'constructor') && proto.constructor;
+  return typeof Ctor == 'function' && Ctor instanceof Ctor &&
+    funcToString.call(Ctor) == objectCtorString;
+}
+
+/* harmony default export */ __webpack_exports__["a"] = (isPlainObject);
+
+
+/***/ }),
+/* 43 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5125,14 +5773,14 @@ module.exports = shallowEqual;
 
 
 
-var DOMLazyTree = __webpack_require__(18);
-var Danger = __webpack_require__(133);
+var DOMLazyTree = __webpack_require__(20);
+var Danger = __webpack_require__(180);
 var ReactDOMComponentTree = __webpack_require__(5);
-var ReactInstrumentation = __webpack_require__(9);
+var ReactInstrumentation = __webpack_require__(12);
 
-var createMicrosoftUnsafeLocalFunction = __webpack_require__(43);
-var setInnerHTML = __webpack_require__(31);
-var setTextContent = __webpack_require__(81);
+var createMicrosoftUnsafeLocalFunction = __webpack_require__(51);
+var setInnerHTML = __webpack_require__(33);
+var setTextContent = __webpack_require__(96);
 
 function getNodeAfter(parentNode, node) {
   // Special case for text components, which return [open, close] comments
@@ -5340,7 +5988,7 @@ module.exports = DOMChildrenOperations;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 36 */
+/* 44 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5365,7 +6013,7 @@ var DOMNamespaces = {
 module.exports = DOMNamespaces;
 
 /***/ }),
-/* 37 */
+/* 45 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5383,7 +6031,7 @@ module.exports = DOMNamespaces;
 
 var _prodInvariant = __webpack_require__(3);
 
-var ReactErrorUtils = __webpack_require__(41);
+var ReactErrorUtils = __webpack_require__(49);
 
 var invariant = __webpack_require__(1);
 var warning = __webpack_require__(2);
@@ -5597,7 +6245,7 @@ module.exports = EventPluginUtils;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 38 */
+/* 46 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5661,7 +6309,7 @@ var KeyEscapeUtils = {
 module.exports = KeyEscapeUtils;
 
 /***/ }),
-/* 39 */
+/* 47 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5679,10 +6327,10 @@ module.exports = KeyEscapeUtils;
 
 var _prodInvariant = __webpack_require__(3);
 
-var ReactPropTypesSecret = __webpack_require__(73);
-var propTypesFactory = __webpack_require__(60);
+var ReactPropTypesSecret = __webpack_require__(88);
+var propTypesFactory = __webpack_require__(73);
 
-var React = __webpack_require__(20);
+var React = __webpack_require__(22);
 var PropTypes = propTypesFactory(React.isValidElement);
 
 var invariant = __webpack_require__(1);
@@ -5805,7 +6453,7 @@ module.exports = LinkedValueUtils;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 40 */
+/* 48 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5857,7 +6505,7 @@ module.exports = ReactComponentEnvironment;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 41 */
+/* 49 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5939,7 +6587,7 @@ module.exports = ReactErrorUtils;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 42 */
+/* 50 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5957,10 +6605,10 @@ module.exports = ReactErrorUtils;
 
 var _prodInvariant = __webpack_require__(3);
 
-var ReactCurrentOwner = __webpack_require__(12);
-var ReactInstanceMap = __webpack_require__(24);
-var ReactInstrumentation = __webpack_require__(9);
-var ReactUpdates = __webpack_require__(11);
+var ReactCurrentOwner = __webpack_require__(14);
+var ReactInstanceMap = __webpack_require__(26);
+var ReactInstrumentation = __webpack_require__(12);
+var ReactUpdates = __webpack_require__(13);
 
 var invariant = __webpack_require__(1);
 var warning = __webpack_require__(2);
@@ -6181,7 +6829,7 @@ module.exports = ReactUpdateQueue;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 43 */
+/* 51 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6218,7 +6866,7 @@ var createMicrosoftUnsafeLocalFunction = function (func) {
 module.exports = createMicrosoftUnsafeLocalFunction;
 
 /***/ }),
-/* 44 */
+/* 52 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6273,7 +6921,7 @@ function getEventCharCode(nativeEvent) {
 module.exports = getEventCharCode;
 
 /***/ }),
-/* 45 */
+/* 53 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6321,7 +6969,7 @@ function getEventModifierState(nativeEvent) {
 module.exports = getEventModifierState;
 
 /***/ }),
-/* 46 */
+/* 54 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6361,7 +7009,7 @@ function getEventTarget(nativeEvent) {
 module.exports = getEventTarget;
 
 /***/ }),
-/* 47 */
+/* 55 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6426,7 +7074,7 @@ function isEventSupported(eventNameSuffix, capture) {
 module.exports = isEventSupported;
 
 /***/ }),
-/* 48 */
+/* 56 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6473,7 +7121,7 @@ function shouldUpdateReactComponent(prevElement, nextElement) {
 module.exports = shouldUpdateReactComponent;
 
 /***/ }),
-/* 49 */
+/* 57 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6491,7 +7139,7 @@ module.exports = shouldUpdateReactComponent;
 
 var _assign = __webpack_require__(4);
 
-var emptyFunction = __webpack_require__(10);
+var emptyFunction = __webpack_require__(11);
 var warning = __webpack_require__(2);
 
 var validateDOMNesting = emptyFunction;
@@ -6856,7 +7504,35 @@ module.exports = validateDOMNesting;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 50 */
+/* 58 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony export (immutable) */ __webpack_exports__["a"] = warning;
+/**
+ * Prints a warning in the console if it exists.
+ *
+ * @param {String} message The warning message.
+ * @returns {void}
+ */
+function warning(message) {
+  /* eslint-disable no-console */
+  if (typeof console !== 'undefined' && typeof console.error === 'function') {
+    console.error(message);
+  }
+  /* eslint-enable no-console */
+  try {
+    // This error was thrown as a convenience so that if you enable
+    // "break on all exceptions" in your console,
+    // it would pause the execution at this line.
+    throw new Error(message);
+    /* eslint-disable no-empty */
+  } catch (e) {}
+  /* eslint-enable no-empty */
+}
+
+/***/ }),
+/* 59 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6872,12 +7548,12 @@ module.exports = validateDOMNesting;
 
 
 
-var _prodInvariant = __webpack_require__(17);
+var _prodInvariant = __webpack_require__(19);
 
-var ReactNoopUpdateQueue = __webpack_require__(51);
+var ReactNoopUpdateQueue = __webpack_require__(60);
 
-var canDefineProperty = __webpack_require__(32);
-var emptyObject = __webpack_require__(21);
+var canDefineProperty = __webpack_require__(35);
+var emptyObject = __webpack_require__(23);
 var invariant = __webpack_require__(1);
 var warning = __webpack_require__(2);
 
@@ -6980,7 +7656,7 @@ module.exports = ReactComponent;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 51 */
+/* 60 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7082,19 +7758,118 @@ module.exports = ReactNoopUpdateQueue;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 52 */
+/* 61 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Inline parser state
+
+
+
+function StateInline(src, parserInline, options, env, outTokens) {
+  this.src = src;
+  this.env = env;
+  this.options = options;
+  this.parser = parserInline;
+  this.tokens = outTokens;
+  this.pos = 0;
+  this.posMax = this.src.length;
+  this.level = 0;
+  this.pending = '';
+  this.pendingLevel = 0;
+
+  this.cache = [];        // Stores { start: end } pairs. Useful for backtrack
+                          // optimization of pairs parse (emphasis, strikes).
+
+  // Link parser state vars
+
+  this.isInLabel = false; // Set true when seek link label - we should disable
+                          // "paired" rules (emphasis, strikes) to not skip
+                          // tailing `]`
+
+  this.linkLevel = 0;     // Increment for each nesting link. Used to prevent
+                          // nesting in definitions
+
+  this.linkContent = '';  // Temporary storage for link url
+
+  this.labelUnmatchedScopes = 0; // Track unpaired `[` for link labels
+                                 // (backtrack optimization)
+}
+
+// Flush pending text
+//
+StateInline.prototype.pushPending = function () {
+  this.tokens.push({
+    type: 'text',
+    content: this.pending,
+    level: this.pendingLevel
+  });
+  this.pending = '';
+};
+
+// Push new token to "stream".
+// If pending text exists - flush it as text token
+//
+StateInline.prototype.push = function (token) {
+  if (this.pending) {
+    this.pushPending();
+  }
+
+  this.tokens.push(token);
+  this.pendingLevel = this.level;
+};
+
+// Store value to cache.
+// !!! Implementation has parser-specific optimizations
+// !!! keys MUST be integer, >= 0; values MUST be integer, > 0
+//
+StateInline.prototype.cacheSet = function (key, val) {
+  for (var i = this.cache.length; i <= key; i++) {
+    this.cache.push(0);
+  }
+
+  this.cache[key] = val;
+};
+
+// Get cache value
+//
+StateInline.prototype.cacheGet = function (key) {
+  return key < this.cache.length ? this.cache[key] : 0;
+};
+
+module.exports = StateInline;
+
+
+/***/ }),
+/* 62 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__(117);
+
+/***/ }),
+/* 63 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+module.exports = __webpack_require__(188);
+
+
+/***/ }),
+/* 64 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 /* WEBPACK VAR INJECTION */(function(process) {
 
-var utils = __webpack_require__(8);
-var settle = __webpack_require__(96);
-var buildURL = __webpack_require__(99);
-var parseHeaders = __webpack_require__(105);
-var isURLSameOrigin = __webpack_require__(103);
-var createError = __webpack_require__(55);
-var btoa = (typeof window !== 'undefined' && window.btoa && window.btoa.bind(window)) || __webpack_require__(98);
+var utils = __webpack_require__(10);
+var settle = __webpack_require__(123);
+var buildURL = __webpack_require__(126);
+var parseHeaders = __webpack_require__(132);
+var isURLSameOrigin = __webpack_require__(130);
+var createError = __webpack_require__(67);
+var btoa = (typeof window !== 'undefined' && window.btoa && window.btoa.bind(window)) || __webpack_require__(125);
 
 module.exports = function xhrAdapter(config) {
   return new Promise(function dispatchXhrRequest(resolve, reject) {
@@ -7190,7 +7965,7 @@ module.exports = function xhrAdapter(config) {
     // This is only done if running in a standard browser environment.
     // Specifically not if we're in a web worker, or react-native.
     if (utils.isStandardBrowserEnv()) {
-      var cookies = __webpack_require__(101);
+      var cookies = __webpack_require__(128);
 
       // Add xsrf header
       var xsrfValue = (config.withCredentials || isURLSameOrigin(config.url)) && config.xsrfCookieName ?
@@ -7269,7 +8044,7 @@ module.exports = function xhrAdapter(config) {
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 53 */
+/* 65 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7295,7 +8070,7 @@ module.exports = Cancel;
 
 
 /***/ }),
-/* 54 */
+/* 66 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7307,13 +8082,13 @@ module.exports = function isCancel(value) {
 
 
 /***/ }),
-/* 55 */
+/* 67 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var enhanceError = __webpack_require__(95);
+var enhanceError = __webpack_require__(122);
 
 /**
  * Create an Error with the specified message, config, error code, and response.
@@ -7331,7 +8106,7 @@ module.exports = function createError(message, config, code, response) {
 
 
 /***/ }),
-/* 56 */
+/* 68 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7349,7 +8124,7 @@ module.exports = function bind(fn, thisArg) {
 
 
 /***/ }),
-/* 57 */
+/* 69 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7373,7 +8148,7 @@ module.exports = function bind(fn, thisArg) {
  * @typechecks
  */
 
-var emptyFunction = __webpack_require__(10);
+var emptyFunction = __webpack_require__(11);
 
 /**
  * Upstream version of event listener. Does not take into account specific
@@ -7439,7 +8214,7 @@ module.exports = EventListener;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 58 */
+/* 70 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7471,7 +8246,7 @@ function focusNode(node) {
 module.exports = focusNode;
 
 /***/ }),
-/* 59 */
+/* 71 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7515,7 +8290,21 @@ function getActiveElement(doc) /*?DOMElement*/{
 module.exports = getActiveElement;
 
 /***/ }),
-/* 60 */
+/* 72 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__root_js__ = __webpack_require__(169);
+
+
+/** Built-in value references. */
+var Symbol = __WEBPACK_IMPORTED_MODULE_0__root_js__["a" /* default */].Symbol;
+
+/* harmony default export */ __webpack_exports__["a"] = (Symbol);
+
+
+/***/ }),
+/* 73 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7534,7 +8323,7 @@ module.exports = getActiveElement;
 // Therefore we re-export development-only version with all the PropTypes checks here.
 // However if one is migrating to the `prop-types` npm library, they will go through the
 // `index.js` entry point, and it will branch depending on the environment.
-var factory = __webpack_require__(127);
+var factory = __webpack_require__(74);
 module.exports = function(isValidElement) {
   // It is still allowed in 15.5.
   var throwOnDirectAccess = false;
@@ -7543,7 +8332,530 @@ module.exports = function(isValidElement) {
 
 
 /***/ }),
-/* 61 */
+/* 74 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/* WEBPACK VAR INJECTION */(function(process) {/**
+ * Copyright 2013-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ */
+
+
+
+var emptyFunction = __webpack_require__(11);
+var invariant = __webpack_require__(1);
+var warning = __webpack_require__(2);
+
+var ReactPropTypesSecret = __webpack_require__(76);
+var checkPropTypes = __webpack_require__(172);
+
+module.exports = function(isValidElement, throwOnDirectAccess) {
+  /* global Symbol */
+  var ITERATOR_SYMBOL = typeof Symbol === 'function' && Symbol.iterator;
+  var FAUX_ITERATOR_SYMBOL = '@@iterator'; // Before Symbol spec.
+
+  /**
+   * Returns the iterator method function contained on the iterable object.
+   *
+   * Be sure to invoke the function with the iterable as context:
+   *
+   *     var iteratorFn = getIteratorFn(myIterable);
+   *     if (iteratorFn) {
+   *       var iterator = iteratorFn.call(myIterable);
+   *       ...
+   *     }
+   *
+   * @param {?object} maybeIterable
+   * @return {?function}
+   */
+  function getIteratorFn(maybeIterable) {
+    var iteratorFn = maybeIterable && (ITERATOR_SYMBOL && maybeIterable[ITERATOR_SYMBOL] || maybeIterable[FAUX_ITERATOR_SYMBOL]);
+    if (typeof iteratorFn === 'function') {
+      return iteratorFn;
+    }
+  }
+
+  /**
+   * Collection of methods that allow declaration and validation of props that are
+   * supplied to React components. Example usage:
+   *
+   *   var Props = require('ReactPropTypes');
+   *   var MyArticle = React.createClass({
+   *     propTypes: {
+   *       // An optional string prop named "description".
+   *       description: Props.string,
+   *
+   *       // A required enum prop named "category".
+   *       category: Props.oneOf(['News','Photos']).isRequired,
+   *
+   *       // A prop named "dialog" that requires an instance of Dialog.
+   *       dialog: Props.instanceOf(Dialog).isRequired
+   *     },
+   *     render: function() { ... }
+   *   });
+   *
+   * A more formal specification of how these methods are used:
+   *
+   *   type := array|bool|func|object|number|string|oneOf([...])|instanceOf(...)
+   *   decl := ReactPropTypes.{type}(.isRequired)?
+   *
+   * Each and every declaration produces a function with the same signature. This
+   * allows the creation of custom validation functions. For example:
+   *
+   *  var MyLink = React.createClass({
+   *    propTypes: {
+   *      // An optional string or URI prop named "href".
+   *      href: function(props, propName, componentName) {
+   *        var propValue = props[propName];
+   *        if (propValue != null && typeof propValue !== 'string' &&
+   *            !(propValue instanceof URI)) {
+   *          return new Error(
+   *            'Expected a string or an URI for ' + propName + ' in ' +
+   *            componentName
+   *          );
+   *        }
+   *      }
+   *    },
+   *    render: function() {...}
+   *  });
+   *
+   * @internal
+   */
+
+  var ANONYMOUS = '<<anonymous>>';
+
+  // Important!
+  // Keep this list in sync with production version in `./factoryWithThrowingShims.js`.
+  var ReactPropTypes = {
+    array: createPrimitiveTypeChecker('array'),
+    bool: createPrimitiveTypeChecker('boolean'),
+    func: createPrimitiveTypeChecker('function'),
+    number: createPrimitiveTypeChecker('number'),
+    object: createPrimitiveTypeChecker('object'),
+    string: createPrimitiveTypeChecker('string'),
+    symbol: createPrimitiveTypeChecker('symbol'),
+
+    any: createAnyTypeChecker(),
+    arrayOf: createArrayOfTypeChecker,
+    element: createElementTypeChecker(),
+    instanceOf: createInstanceTypeChecker,
+    node: createNodeChecker(),
+    objectOf: createObjectOfTypeChecker,
+    oneOf: createEnumTypeChecker,
+    oneOfType: createUnionTypeChecker,
+    shape: createShapeTypeChecker
+  };
+
+  /**
+   * inlined Object.is polyfill to avoid requiring consumers ship their own
+   * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is
+   */
+  /*eslint-disable no-self-compare*/
+  function is(x, y) {
+    // SameValue algorithm
+    if (x === y) {
+      // Steps 1-5, 7-10
+      // Steps 6.b-6.e: +0 != -0
+      return x !== 0 || 1 / x === 1 / y;
+    } else {
+      // Step 6.a: NaN == NaN
+      return x !== x && y !== y;
+    }
+  }
+  /*eslint-enable no-self-compare*/
+
+  /**
+   * We use an Error-like object for backward compatibility as people may call
+   * PropTypes directly and inspect their output. However, we don't use real
+   * Errors anymore. We don't inspect their stack anyway, and creating them
+   * is prohibitively expensive if they are created too often, such as what
+   * happens in oneOfType() for any type before the one that matched.
+   */
+  function PropTypeError(message) {
+    this.message = message;
+    this.stack = '';
+  }
+  // Make `instanceof Error` still work for returned errors.
+  PropTypeError.prototype = Error.prototype;
+
+  function createChainableTypeChecker(validate) {
+    if (process.env.NODE_ENV !== 'production') {
+      var manualPropTypeCallCache = {};
+      var manualPropTypeWarningCount = 0;
+    }
+    function checkType(isRequired, props, propName, componentName, location, propFullName, secret) {
+      componentName = componentName || ANONYMOUS;
+      propFullName = propFullName || propName;
+
+      if (secret !== ReactPropTypesSecret) {
+        if (throwOnDirectAccess) {
+          // New behavior only for users of `prop-types` package
+          invariant(
+            false,
+            'Calling PropTypes validators directly is not supported by the `prop-types` package. ' +
+            'Use `PropTypes.checkPropTypes()` to call them. ' +
+            'Read more at http://fb.me/use-check-prop-types'
+          );
+        } else if (process.env.NODE_ENV !== 'production' && typeof console !== 'undefined') {
+          // Old behavior for people using React.PropTypes
+          var cacheKey = componentName + ':' + propName;
+          if (
+            !manualPropTypeCallCache[cacheKey] &&
+            // Avoid spamming the console because they are often not actionable except for lib authors
+            manualPropTypeWarningCount < 3
+          ) {
+            warning(
+              false,
+              'You are manually calling a React.PropTypes validation ' +
+              'function for the `%s` prop on `%s`. This is deprecated ' +
+              'and will throw in the standalone `prop-types` package. ' +
+              'You may be seeing this warning due to a third-party PropTypes ' +
+              'library. See https://fb.me/react-warning-dont-call-proptypes ' + 'for details.',
+              propFullName,
+              componentName
+            );
+            manualPropTypeCallCache[cacheKey] = true;
+            manualPropTypeWarningCount++;
+          }
+        }
+      }
+      if (props[propName] == null) {
+        if (isRequired) {
+          if (props[propName] === null) {
+            return new PropTypeError('The ' + location + ' `' + propFullName + '` is marked as required ' + ('in `' + componentName + '`, but its value is `null`.'));
+          }
+          return new PropTypeError('The ' + location + ' `' + propFullName + '` is marked as required in ' + ('`' + componentName + '`, but its value is `undefined`.'));
+        }
+        return null;
+      } else {
+        return validate(props, propName, componentName, location, propFullName);
+      }
+    }
+
+    var chainedCheckType = checkType.bind(null, false);
+    chainedCheckType.isRequired = checkType.bind(null, true);
+
+    return chainedCheckType;
+  }
+
+  function createPrimitiveTypeChecker(expectedType) {
+    function validate(props, propName, componentName, location, propFullName, secret) {
+      var propValue = props[propName];
+      var propType = getPropType(propValue);
+      if (propType !== expectedType) {
+        // `propValue` being instance of, say, date/regexp, pass the 'object'
+        // check, but we can offer a more precise error message here rather than
+        // 'of type `object`'.
+        var preciseType = getPreciseType(propValue);
+
+        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + preciseType + '` supplied to `' + componentName + '`, expected ') + ('`' + expectedType + '`.'));
+      }
+      return null;
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function createAnyTypeChecker() {
+    return createChainableTypeChecker(emptyFunction.thatReturnsNull);
+  }
+
+  function createArrayOfTypeChecker(typeChecker) {
+    function validate(props, propName, componentName, location, propFullName) {
+      if (typeof typeChecker !== 'function') {
+        return new PropTypeError('Property `' + propFullName + '` of component `' + componentName + '` has invalid PropType notation inside arrayOf.');
+      }
+      var propValue = props[propName];
+      if (!Array.isArray(propValue)) {
+        var propType = getPropType(propValue);
+        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + propType + '` supplied to `' + componentName + '`, expected an array.'));
+      }
+      for (var i = 0; i < propValue.length; i++) {
+        var error = typeChecker(propValue, i, componentName, location, propFullName + '[' + i + ']', ReactPropTypesSecret);
+        if (error instanceof Error) {
+          return error;
+        }
+      }
+      return null;
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function createElementTypeChecker() {
+    function validate(props, propName, componentName, location, propFullName) {
+      var propValue = props[propName];
+      if (!isValidElement(propValue)) {
+        var propType = getPropType(propValue);
+        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + propType + '` supplied to `' + componentName + '`, expected a single ReactElement.'));
+      }
+      return null;
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function createInstanceTypeChecker(expectedClass) {
+    function validate(props, propName, componentName, location, propFullName) {
+      if (!(props[propName] instanceof expectedClass)) {
+        var expectedClassName = expectedClass.name || ANONYMOUS;
+        var actualClassName = getClassName(props[propName]);
+        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + actualClassName + '` supplied to `' + componentName + '`, expected ') + ('instance of `' + expectedClassName + '`.'));
+      }
+      return null;
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function createEnumTypeChecker(expectedValues) {
+    if (!Array.isArray(expectedValues)) {
+      process.env.NODE_ENV !== 'production' ? warning(false, 'Invalid argument supplied to oneOf, expected an instance of array.') : void 0;
+      return emptyFunction.thatReturnsNull;
+    }
+
+    function validate(props, propName, componentName, location, propFullName) {
+      var propValue = props[propName];
+      for (var i = 0; i < expectedValues.length; i++) {
+        if (is(propValue, expectedValues[i])) {
+          return null;
+        }
+      }
+
+      var valuesString = JSON.stringify(expectedValues);
+      return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of value `' + propValue + '` ' + ('supplied to `' + componentName + '`, expected one of ' + valuesString + '.'));
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function createObjectOfTypeChecker(typeChecker) {
+    function validate(props, propName, componentName, location, propFullName) {
+      if (typeof typeChecker !== 'function') {
+        return new PropTypeError('Property `' + propFullName + '` of component `' + componentName + '` has invalid PropType notation inside objectOf.');
+      }
+      var propValue = props[propName];
+      var propType = getPropType(propValue);
+      if (propType !== 'object') {
+        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + propType + '` supplied to `' + componentName + '`, expected an object.'));
+      }
+      for (var key in propValue) {
+        if (propValue.hasOwnProperty(key)) {
+          var error = typeChecker(propValue, key, componentName, location, propFullName + '.' + key, ReactPropTypesSecret);
+          if (error instanceof Error) {
+            return error;
+          }
+        }
+      }
+      return null;
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function createUnionTypeChecker(arrayOfTypeCheckers) {
+    if (!Array.isArray(arrayOfTypeCheckers)) {
+      process.env.NODE_ENV !== 'production' ? warning(false, 'Invalid argument supplied to oneOfType, expected an instance of array.') : void 0;
+      return emptyFunction.thatReturnsNull;
+    }
+
+    function validate(props, propName, componentName, location, propFullName) {
+      for (var i = 0; i < arrayOfTypeCheckers.length; i++) {
+        var checker = arrayOfTypeCheckers[i];
+        if (checker(props, propName, componentName, location, propFullName, ReactPropTypesSecret) == null) {
+          return null;
+        }
+      }
+
+      return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` supplied to ' + ('`' + componentName + '`.'));
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function createNodeChecker() {
+    function validate(props, propName, componentName, location, propFullName) {
+      if (!isNode(props[propName])) {
+        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` supplied to ' + ('`' + componentName + '`, expected a ReactNode.'));
+      }
+      return null;
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function createShapeTypeChecker(shapeTypes) {
+    function validate(props, propName, componentName, location, propFullName) {
+      var propValue = props[propName];
+      var propType = getPropType(propValue);
+      if (propType !== 'object') {
+        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type `' + propType + '` ' + ('supplied to `' + componentName + '`, expected `object`.'));
+      }
+      for (var key in shapeTypes) {
+        var checker = shapeTypes[key];
+        if (!checker) {
+          continue;
+        }
+        var error = checker(propValue, key, componentName, location, propFullName + '.' + key, ReactPropTypesSecret);
+        if (error) {
+          return error;
+        }
+      }
+      return null;
+    }
+    return createChainableTypeChecker(validate);
+  }
+
+  function isNode(propValue) {
+    switch (typeof propValue) {
+      case 'number':
+      case 'string':
+      case 'undefined':
+        return true;
+      case 'boolean':
+        return !propValue;
+      case 'object':
+        if (Array.isArray(propValue)) {
+          return propValue.every(isNode);
+        }
+        if (propValue === null || isValidElement(propValue)) {
+          return true;
+        }
+
+        var iteratorFn = getIteratorFn(propValue);
+        if (iteratorFn) {
+          var iterator = iteratorFn.call(propValue);
+          var step;
+          if (iteratorFn !== propValue.entries) {
+            while (!(step = iterator.next()).done) {
+              if (!isNode(step.value)) {
+                return false;
+              }
+            }
+          } else {
+            // Iterator will provide entry [k,v] tuples rather than values.
+            while (!(step = iterator.next()).done) {
+              var entry = step.value;
+              if (entry) {
+                if (!isNode(entry[1])) {
+                  return false;
+                }
+              }
+            }
+          }
+        } else {
+          return false;
+        }
+
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  function isSymbol(propType, propValue) {
+    // Native Symbol.
+    if (propType === 'symbol') {
+      return true;
+    }
+
+    // 19.4.3.5 Symbol.prototype[@@toStringTag] === 'Symbol'
+    if (propValue['@@toStringTag'] === 'Symbol') {
+      return true;
+    }
+
+    // Fallback for non-spec compliant Symbols which are polyfilled.
+    if (typeof Symbol === 'function' && propValue instanceof Symbol) {
+      return true;
+    }
+
+    return false;
+  }
+
+  // Equivalent of `typeof` but with special handling for array and regexp.
+  function getPropType(propValue) {
+    var propType = typeof propValue;
+    if (Array.isArray(propValue)) {
+      return 'array';
+    }
+    if (propValue instanceof RegExp) {
+      // Old webkits (at least until Android 4.0) return 'function' rather than
+      // 'object' for typeof a RegExp. We'll normalize this here so that /bla/
+      // passes PropTypes.object.
+      return 'object';
+    }
+    if (isSymbol(propType, propValue)) {
+      return 'symbol';
+    }
+    return propType;
+  }
+
+  // This handles more types than `getPropType`. Only used for error messages.
+  // See `createPrimitiveTypeChecker`.
+  function getPreciseType(propValue) {
+    var propType = getPropType(propValue);
+    if (propType === 'object') {
+      if (propValue instanceof Date) {
+        return 'date';
+      } else if (propValue instanceof RegExp) {
+        return 'regexp';
+      }
+    }
+    return propType;
+  }
+
+  // Returns class name of the object, if any.
+  function getClassName(propValue) {
+    if (!propValue.constructor || !propValue.constructor.name) {
+      return ANONYMOUS;
+    }
+    return propValue.constructor.name;
+  }
+
+  ReactPropTypes.checkPropTypes = checkPropTypes;
+  ReactPropTypes.PropTypes = ReactPropTypes;
+
+  return ReactPropTypes;
+};
+
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
+
+/***/ }),
+/* 75 */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(process) {/**
+ * Copyright 2013-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ */
+
+if (process.env.NODE_ENV !== 'production') {
+  var REACT_ELEMENT_TYPE = (typeof Symbol === 'function' &&
+    Symbol.for &&
+    Symbol.for('react.element')) ||
+    0xeac7;
+
+  var isValidElement = function(object) {
+    return typeof object === 'object' &&
+      object !== null &&
+      object.$$typeof === REACT_ELEMENT_TYPE;
+  };
+
+  // By explicitly using `prop-types` you are opting into new development behavior.
+  // http://fb.me/prop-types-in-prod
+  var throwOnDirectAccess = true;
+  module.exports = __webpack_require__(74)(isValidElement, throwOnDirectAccess);
+} else {
+  // By explicitly using `prop-types` you are opting into new production behavior.
+  // http://fb.me/prop-types-in-prod
+  module.exports = __webpack_require__(173)();
+}
+
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
+
+/***/ }),
+/* 76 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7564,7 +8876,7 @@ module.exports = ReactPropTypesSecret;
 
 
 /***/ }),
-/* 62 */
+/* 77 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7717,7 +9029,7 @@ var CSSProperty = {
 module.exports = CSSProperty;
 
 /***/ }),
-/* 63 */
+/* 78 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7738,7 +9050,7 @@ var _prodInvariant = __webpack_require__(3);
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var PooledClass = __webpack_require__(15);
+var PooledClass = __webpack_require__(17);
 
 var invariant = __webpack_require__(1);
 
@@ -7842,7 +9154,7 @@ module.exports = PooledClass.addPoolingTo(CallbackQueue);
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 64 */
+/* 79 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7858,11 +9170,11 @@ module.exports = PooledClass.addPoolingTo(CallbackQueue);
 
 
 
-var DOMProperty = __webpack_require__(14);
+var DOMProperty = __webpack_require__(16);
 var ReactDOMComponentTree = __webpack_require__(5);
-var ReactInstrumentation = __webpack_require__(9);
+var ReactInstrumentation = __webpack_require__(12);
 
-var quoteAttributeValueForBrowser = __webpack_require__(196);
+var quoteAttributeValueForBrowser = __webpack_require__(243);
 var warning = __webpack_require__(2);
 
 var VALID_ATTRIBUTE_NAME_REGEX = new RegExp('^[' + DOMProperty.ATTRIBUTE_NAME_START_CHAR + '][' + DOMProperty.ATTRIBUTE_NAME_CHAR + ']*$');
@@ -8085,7 +9397,7 @@ module.exports = DOMPropertyOperations;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 65 */
+/* 80 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8108,7 +9420,7 @@ var ReactDOMComponentFlags = {
 module.exports = ReactDOMComponentFlags;
 
 /***/ }),
-/* 66 */
+/* 81 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8126,9 +9438,9 @@ module.exports = ReactDOMComponentFlags;
 
 var _assign = __webpack_require__(4);
 
-var LinkedValueUtils = __webpack_require__(39);
+var LinkedValueUtils = __webpack_require__(47);
 var ReactDOMComponentTree = __webpack_require__(5);
-var ReactUpdates = __webpack_require__(11);
+var ReactUpdates = __webpack_require__(13);
 
 var warning = __webpack_require__(2);
 
@@ -8314,7 +9626,7 @@ module.exports = ReactDOMSelect;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 67 */
+/* 82 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8349,7 +9661,7 @@ ReactEmptyComponent.injection = ReactEmptyComponentInjection;
 module.exports = ReactEmptyComponent;
 
 /***/ }),
-/* 68 */
+/* 83 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8376,7 +9688,7 @@ var ReactFeatureFlags = {
 module.exports = ReactFeatureFlags;
 
 /***/ }),
-/* 69 */
+/* 84 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8450,7 +9762,7 @@ module.exports = ReactHostComponent;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 70 */
+/* 85 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8466,11 +9778,11 @@ module.exports = ReactHostComponent;
 
 
 
-var ReactDOMSelection = __webpack_require__(151);
+var ReactDOMSelection = __webpack_require__(198);
 
-var containsNode = __webpack_require__(112);
-var focusNode = __webpack_require__(58);
-var getActiveElement = __webpack_require__(59);
+var containsNode = __webpack_require__(147);
+var focusNode = __webpack_require__(70);
+var getActiveElement = __webpack_require__(71);
 
 function isInDocument(node) {
   return containsNode(document.documentElement, node);
@@ -8579,7 +9891,7 @@ var ReactInputSelection = {
 module.exports = ReactInputSelection;
 
 /***/ }),
-/* 71 */
+/* 86 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8597,27 +9909,27 @@ module.exports = ReactInputSelection;
 
 var _prodInvariant = __webpack_require__(3);
 
-var DOMLazyTree = __webpack_require__(18);
-var DOMProperty = __webpack_require__(14);
-var React = __webpack_require__(20);
-var ReactBrowserEventEmitter = __webpack_require__(27);
-var ReactCurrentOwner = __webpack_require__(12);
+var DOMLazyTree = __webpack_require__(20);
+var DOMProperty = __webpack_require__(16);
+var React = __webpack_require__(22);
+var ReactBrowserEventEmitter = __webpack_require__(29);
+var ReactCurrentOwner = __webpack_require__(14);
 var ReactDOMComponentTree = __webpack_require__(5);
-var ReactDOMContainerInfo = __webpack_require__(143);
-var ReactDOMFeatureFlags = __webpack_require__(145);
-var ReactFeatureFlags = __webpack_require__(68);
-var ReactInstanceMap = __webpack_require__(24);
-var ReactInstrumentation = __webpack_require__(9);
-var ReactMarkupChecksum = __webpack_require__(165);
-var ReactReconciler = __webpack_require__(19);
-var ReactUpdateQueue = __webpack_require__(42);
-var ReactUpdates = __webpack_require__(11);
+var ReactDOMContainerInfo = __webpack_require__(190);
+var ReactDOMFeatureFlags = __webpack_require__(192);
+var ReactFeatureFlags = __webpack_require__(83);
+var ReactInstanceMap = __webpack_require__(26);
+var ReactInstrumentation = __webpack_require__(12);
+var ReactMarkupChecksum = __webpack_require__(212);
+var ReactReconciler = __webpack_require__(21);
+var ReactUpdateQueue = __webpack_require__(50);
+var ReactUpdates = __webpack_require__(13);
 
-var emptyObject = __webpack_require__(21);
-var instantiateReactComponent = __webpack_require__(79);
+var emptyObject = __webpack_require__(23);
+var instantiateReactComponent = __webpack_require__(94);
 var invariant = __webpack_require__(1);
-var setInnerHTML = __webpack_require__(31);
-var shouldUpdateReactComponent = __webpack_require__(48);
+var setInnerHTML = __webpack_require__(33);
+var shouldUpdateReactComponent = __webpack_require__(56);
 var warning = __webpack_require__(2);
 
 var ATTR_NAME = DOMProperty.ID_ATTRIBUTE_NAME;
@@ -9123,7 +10435,7 @@ module.exports = ReactMount;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 72 */
+/* 87 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9142,7 +10454,7 @@ module.exports = ReactMount;
 
 var _prodInvariant = __webpack_require__(3);
 
-var React = __webpack_require__(20);
+var React = __webpack_require__(22);
 
 var invariant = __webpack_require__(1);
 
@@ -9169,7 +10481,7 @@ module.exports = ReactNodeTypes;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 73 */
+/* 88 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9191,7 +10503,7 @@ var ReactPropTypesSecret = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
 module.exports = ReactPropTypesSecret;
 
 /***/ }),
-/* 74 */
+/* 89 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9223,7 +10535,7 @@ var ViewportMetrics = {
 module.exports = ViewportMetrics;
 
 /***/ }),
-/* 75 */
+/* 90 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9287,7 +10599,7 @@ module.exports = accumulateInto;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 76 */
+/* 91 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9323,7 +10635,7 @@ function forEachAccumulated(arr, cb, scope) {
 module.exports = forEachAccumulated;
 
 /***/ }),
-/* 77 */
+/* 92 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9339,7 +10651,7 @@ module.exports = forEachAccumulated;
 
 
 
-var ReactNodeTypes = __webpack_require__(72);
+var ReactNodeTypes = __webpack_require__(87);
 
 function getHostComponentFromComposite(inst) {
   var type;
@@ -9358,7 +10670,7 @@ function getHostComponentFromComposite(inst) {
 module.exports = getHostComponentFromComposite;
 
 /***/ }),
-/* 78 */
+/* 93 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9396,7 +10708,7 @@ function getTextContentAccessor() {
 module.exports = getTextContentAccessor;
 
 /***/ }),
-/* 79 */
+/* 94 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9415,11 +10727,11 @@ module.exports = getTextContentAccessor;
 var _prodInvariant = __webpack_require__(3),
     _assign = __webpack_require__(4);
 
-var ReactCompositeComponent = __webpack_require__(140);
-var ReactEmptyComponent = __webpack_require__(67);
-var ReactHostComponent = __webpack_require__(69);
+var ReactCompositeComponent = __webpack_require__(187);
+var ReactEmptyComponent = __webpack_require__(82);
+var ReactHostComponent = __webpack_require__(84);
 
-var getNextDebugID = __webpack_require__(208);
+var getNextDebugID = __webpack_require__(265);
 var invariant = __webpack_require__(1);
 var warning = __webpack_require__(2);
 
@@ -9531,7 +10843,7 @@ module.exports = instantiateReactComponent;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 80 */
+/* 95 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9587,7 +10899,7 @@ function isTextInputElement(elem) {
 module.exports = isTextInputElement;
 
 /***/ }),
-/* 81 */
+/* 96 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9604,8 +10916,8 @@ module.exports = isTextInputElement;
 
 
 var ExecutionEnvironment = __webpack_require__(6);
-var escapeTextContentForBrowser = __webpack_require__(30);
-var setInnerHTML = __webpack_require__(31);
+var escapeTextContentForBrowser = __webpack_require__(32);
+var setInnerHTML = __webpack_require__(33);
 
 /**
  * Set the textContent property of a node, ensuring that whitespace is preserved
@@ -9644,7 +10956,7 @@ if (ExecutionEnvironment.canUseDOM) {
 module.exports = setTextContent;
 
 /***/ }),
-/* 82 */
+/* 97 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9662,12 +10974,12 @@ module.exports = setTextContent;
 
 var _prodInvariant = __webpack_require__(3);
 
-var ReactCurrentOwner = __webpack_require__(12);
-var REACT_ELEMENT_TYPE = __webpack_require__(159);
+var ReactCurrentOwner = __webpack_require__(14);
+var REACT_ELEMENT_TYPE = __webpack_require__(206);
 
-var getIteratorFn = __webpack_require__(193);
+var getIteratorFn = __webpack_require__(240);
 var invariant = __webpack_require__(1);
-var KeyEscapeUtils = __webpack_require__(38);
+var KeyEscapeUtils = __webpack_require__(46);
 var warning = __webpack_require__(2);
 
 var SEPARATOR = '.';
@@ -9826,7 +11138,414 @@ module.exports = traverseAllChildren;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 83 */
+/* 98 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* WEBPACK VAR INJECTION */(function(process) {/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_hoist_non_react_statics__ = __webpack_require__(159);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_hoist_non_react_statics___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_hoist_non_react_statics__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_invariant__ = __webpack_require__(161);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_invariant___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_invariant__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_react__ = __webpack_require__(9);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_react___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_2_react__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__utils_Subscription__ = __webpack_require__(253);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__utils_PropTypes__ = __webpack_require__(100);
+/* harmony export (immutable) */ __webpack_exports__["a"] = connectAdvanced;
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+function _objectWithoutProperties(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
+
+
+
+
+
+
+
+
+var hotReloadingVersion = 0;
+var dummyState = {};
+function noop() {}
+function makeSelectorStateful(sourceSelector, store) {
+  // wrap the selector in an object that tracks its results between runs.
+  var selector = {
+    run: function runComponentSelector(props) {
+      try {
+        var nextProps = sourceSelector(store.getState(), props);
+        if (nextProps !== selector.props || selector.error) {
+          selector.shouldComponentUpdate = true;
+          selector.props = nextProps;
+          selector.error = null;
+        }
+      } catch (error) {
+        selector.shouldComponentUpdate = true;
+        selector.error = error;
+      }
+    }
+  };
+
+  return selector;
+}
+
+function connectAdvanced(
+/*
+  selectorFactory is a func that is responsible for returning the selector function used to
+  compute new props from state, props, and dispatch. For example:
+     export default connectAdvanced((dispatch, options) => (state, props) => ({
+      thing: state.things[props.thingId],
+      saveThing: fields => dispatch(actionCreators.saveThing(props.thingId, fields)),
+    }))(YourComponent)
+   Access to dispatch is provided to the factory so selectorFactories can bind actionCreators
+  outside of their selector as an optimization. Options passed to connectAdvanced are passed to
+  the selectorFactory, along with displayName and WrappedComponent, as the second argument.
+   Note that selectorFactory is responsible for all caching/memoization of inbound and outbound
+  props. Do not use connectAdvanced directly without memoizing results between calls to your
+  selector, otherwise the Connect component will re-render on every state or props change.
+*/
+selectorFactory) {
+  var _contextTypes, _childContextTypes;
+
+  var _ref = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+      _ref$getDisplayName = _ref.getDisplayName,
+      getDisplayName = _ref$getDisplayName === undefined ? function (name) {
+    return 'ConnectAdvanced(' + name + ')';
+  } : _ref$getDisplayName,
+      _ref$methodName = _ref.methodName,
+      methodName = _ref$methodName === undefined ? 'connectAdvanced' : _ref$methodName,
+      _ref$renderCountProp = _ref.renderCountProp,
+      renderCountProp = _ref$renderCountProp === undefined ? undefined : _ref$renderCountProp,
+      _ref$shouldHandleStat = _ref.shouldHandleStateChanges,
+      shouldHandleStateChanges = _ref$shouldHandleStat === undefined ? true : _ref$shouldHandleStat,
+      _ref$storeKey = _ref.storeKey,
+      storeKey = _ref$storeKey === undefined ? 'store' : _ref$storeKey,
+      _ref$withRef = _ref.withRef,
+      withRef = _ref$withRef === undefined ? false : _ref$withRef,
+      connectOptions = _objectWithoutProperties(_ref, ['getDisplayName', 'methodName', 'renderCountProp', 'shouldHandleStateChanges', 'storeKey', 'withRef']);
+
+  var subscriptionKey = storeKey + 'Subscription';
+  var version = hotReloadingVersion++;
+
+  var contextTypes = (_contextTypes = {}, _contextTypes[storeKey] = __WEBPACK_IMPORTED_MODULE_4__utils_PropTypes__["a" /* storeShape */], _contextTypes[subscriptionKey] = __WEBPACK_IMPORTED_MODULE_4__utils_PropTypes__["b" /* subscriptionShape */], _contextTypes);
+  var childContextTypes = (_childContextTypes = {}, _childContextTypes[subscriptionKey] = __WEBPACK_IMPORTED_MODULE_4__utils_PropTypes__["b" /* subscriptionShape */], _childContextTypes);
+
+  return function wrapWithConnect(WrappedComponent) {
+    __WEBPACK_IMPORTED_MODULE_1_invariant___default()(typeof WrappedComponent == 'function', 'You must pass a component to the function returned by ' + ('connect. Instead received ' + JSON.stringify(WrappedComponent)));
+
+    var wrappedComponentName = WrappedComponent.displayName || WrappedComponent.name || 'Component';
+
+    var displayName = getDisplayName(wrappedComponentName);
+
+    var selectorFactoryOptions = _extends({}, connectOptions, {
+      getDisplayName: getDisplayName,
+      methodName: methodName,
+      renderCountProp: renderCountProp,
+      shouldHandleStateChanges: shouldHandleStateChanges,
+      storeKey: storeKey,
+      withRef: withRef,
+      displayName: displayName,
+      wrappedComponentName: wrappedComponentName,
+      WrappedComponent: WrappedComponent
+    });
+
+    var Connect = function (_Component) {
+      _inherits(Connect, _Component);
+
+      function Connect(props, context) {
+        _classCallCheck(this, Connect);
+
+        var _this = _possibleConstructorReturn(this, _Component.call(this, props, context));
+
+        _this.version = version;
+        _this.state = {};
+        _this.renderCount = 0;
+        _this.store = props[storeKey] || context[storeKey];
+        _this.propsMode = Boolean(props[storeKey]);
+        _this.setWrappedInstance = _this.setWrappedInstance.bind(_this);
+
+        __WEBPACK_IMPORTED_MODULE_1_invariant___default()(_this.store, 'Could not find "' + storeKey + '" in either the context or props of ' + ('"' + displayName + '". Either wrap the root component in a <Provider>, ') + ('or explicitly pass "' + storeKey + '" as a prop to "' + displayName + '".'));
+
+        _this.initSelector();
+        _this.initSubscription();
+        return _this;
+      }
+
+      Connect.prototype.getChildContext = function getChildContext() {
+        var _ref2;
+
+        // If this component received store from props, its subscription should be transparent
+        // to any descendants receiving store+subscription from context; it passes along
+        // subscription passed to it. Otherwise, it shadows the parent subscription, which allows
+        // Connect to control ordering of notifications to flow top-down.
+        var subscription = this.propsMode ? null : this.subscription;
+        return _ref2 = {}, _ref2[subscriptionKey] = subscription || this.context[subscriptionKey], _ref2;
+      };
+
+      Connect.prototype.componentDidMount = function componentDidMount() {
+        if (!shouldHandleStateChanges) return;
+
+        // componentWillMount fires during server side rendering, but componentDidMount and
+        // componentWillUnmount do not. Because of this, trySubscribe happens during ...didMount.
+        // Otherwise, unsubscription would never take place during SSR, causing a memory leak.
+        // To handle the case where a child component may have triggered a state change by
+        // dispatching an action in its componentWillMount, we have to re-run the select and maybe
+        // re-render.
+        this.subscription.trySubscribe();
+        this.selector.run(this.props);
+        if (this.selector.shouldComponentUpdate) this.forceUpdate();
+      };
+
+      Connect.prototype.componentWillReceiveProps = function componentWillReceiveProps(nextProps) {
+        this.selector.run(nextProps);
+      };
+
+      Connect.prototype.shouldComponentUpdate = function shouldComponentUpdate() {
+        return this.selector.shouldComponentUpdate;
+      };
+
+      Connect.prototype.componentWillUnmount = function componentWillUnmount() {
+        if (this.subscription) this.subscription.tryUnsubscribe();
+        this.subscription = null;
+        this.notifyNestedSubs = noop;
+        this.store = null;
+        this.selector.run = noop;
+        this.selector.shouldComponentUpdate = false;
+      };
+
+      Connect.prototype.getWrappedInstance = function getWrappedInstance() {
+        __WEBPACK_IMPORTED_MODULE_1_invariant___default()(withRef, 'To access the wrapped instance, you need to specify ' + ('{ withRef: true } in the options argument of the ' + methodName + '() call.'));
+        return this.wrappedInstance;
+      };
+
+      Connect.prototype.setWrappedInstance = function setWrappedInstance(ref) {
+        this.wrappedInstance = ref;
+      };
+
+      Connect.prototype.initSelector = function initSelector() {
+        var sourceSelector = selectorFactory(this.store.dispatch, selectorFactoryOptions);
+        this.selector = makeSelectorStateful(sourceSelector, this.store);
+        this.selector.run(this.props);
+      };
+
+      Connect.prototype.initSubscription = function initSubscription() {
+        if (!shouldHandleStateChanges) return;
+
+        // parentSub's source should match where store came from: props vs. context. A component
+        // connected to the store via props shouldn't use subscription from context, or vice versa.
+        var parentSub = (this.propsMode ? this.props : this.context)[subscriptionKey];
+        this.subscription = new __WEBPACK_IMPORTED_MODULE_3__utils_Subscription__["a" /* default */](this.store, parentSub, this.onStateChange.bind(this));
+
+        // `notifyNestedSubs` is duplicated to handle the case where the component is  unmounted in
+        // the middle of the notification loop, where `this.subscription` will then be null. An
+        // extra null check every change can be avoided by copying the method onto `this` and then
+        // replacing it with a no-op on unmount. This can probably be avoided if Subscription's
+        // listeners logic is changed to not call listeners that have been unsubscribed in the
+        // middle of the notification loop.
+        this.notifyNestedSubs = this.subscription.notifyNestedSubs.bind(this.subscription);
+      };
+
+      Connect.prototype.onStateChange = function onStateChange() {
+        this.selector.run(this.props);
+
+        if (!this.selector.shouldComponentUpdate) {
+          this.notifyNestedSubs();
+        } else {
+          this.componentDidUpdate = this.notifyNestedSubsOnComponentDidUpdate;
+          this.setState(dummyState);
+        }
+      };
+
+      Connect.prototype.notifyNestedSubsOnComponentDidUpdate = function notifyNestedSubsOnComponentDidUpdate() {
+        // `componentDidUpdate` is conditionally implemented when `onStateChange` determines it
+        // needs to notify nested subs. Once called, it unimplements itself until further state
+        // changes occur. Doing it this way vs having a permanent `componentDidMount` that does
+        // a boolean check every time avoids an extra method call most of the time, resulting
+        // in some perf boost.
+        this.componentDidUpdate = undefined;
+        this.notifyNestedSubs();
+      };
+
+      Connect.prototype.isSubscribed = function isSubscribed() {
+        return Boolean(this.subscription) && this.subscription.isSubscribed();
+      };
+
+      Connect.prototype.addExtraProps = function addExtraProps(props) {
+        if (!withRef && !renderCountProp && !(this.propsMode && this.subscription)) return props;
+        // make a shallow copy so that fields added don't leak to the original selector.
+        // this is especially important for 'ref' since that's a reference back to the component
+        // instance. a singleton memoized selector would then be holding a reference to the
+        // instance, preventing the instance from being garbage collected, and that would be bad
+        var withExtras = _extends({}, props);
+        if (withRef) withExtras.ref = this.setWrappedInstance;
+        if (renderCountProp) withExtras[renderCountProp] = this.renderCount++;
+        if (this.propsMode && this.subscription) withExtras[subscriptionKey] = this.subscription;
+        return withExtras;
+      };
+
+      Connect.prototype.render = function render() {
+        var selector = this.selector;
+        selector.shouldComponentUpdate = false;
+
+        if (selector.error) {
+          throw selector.error;
+        } else {
+          return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2_react__["createElement"])(WrappedComponent, this.addExtraProps(selector.props));
+        }
+      };
+
+      return Connect;
+    }(__WEBPACK_IMPORTED_MODULE_2_react__["Component"]);
+
+    Connect.WrappedComponent = WrappedComponent;
+    Connect.displayName = displayName;
+    Connect.childContextTypes = childContextTypes;
+    Connect.contextTypes = contextTypes;
+    Connect.propTypes = contextTypes;
+
+    if (process.env.NODE_ENV !== 'production') {
+      Connect.prototype.componentWillUpdate = function componentWillUpdate() {
+        // We are hot reloading!
+        if (this.version !== version) {
+          this.version = version;
+          this.initSelector();
+
+          if (this.subscription) this.subscription.tryUnsubscribe();
+          this.initSubscription();
+          if (shouldHandleStateChanges) this.subscription.trySubscribe();
+        }
+      };
+    }
+
+    return __WEBPACK_IMPORTED_MODULE_0_hoist_non_react_statics___default()(Connect, WrappedComponent);
+  };
+}
+/* WEBPACK VAR INJECTION */}.call(__webpack_exports__, __webpack_require__(0)))
+
+/***/ }),
+/* 99 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* WEBPACK VAR INJECTION */(function(process) {/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__utils_verifyPlainObject__ = __webpack_require__(101);
+/* harmony export (immutable) */ __webpack_exports__["b"] = wrapMapToPropsConstant;
+/* unused harmony export getDependsOnOwnProps */
+/* harmony export (immutable) */ __webpack_exports__["a"] = wrapMapToPropsFunc;
+
+
+function wrapMapToPropsConstant(getConstant) {
+  return function initConstantSelector(dispatch, options) {
+    var constant = getConstant(dispatch, options);
+
+    function constantSelector() {
+      return constant;
+    }
+    constantSelector.dependsOnOwnProps = false;
+    return constantSelector;
+  };
+}
+
+// dependsOnOwnProps is used by createMapToPropsProxy to determine whether to pass props as args
+// to the mapToProps function being wrapped. It is also used by makePurePropsSelector to determine
+// whether mapToProps needs to be invoked when props have changed.
+// 
+// A length of one signals that mapToProps does not depend on props from the parent component.
+// A length of zero is assumed to mean mapToProps is getting args via arguments or ...args and
+// therefore not reporting its length accurately..
+function getDependsOnOwnProps(mapToProps) {
+  return mapToProps.dependsOnOwnProps !== null && mapToProps.dependsOnOwnProps !== undefined ? Boolean(mapToProps.dependsOnOwnProps) : mapToProps.length !== 1;
+}
+
+// Used by whenMapStateToPropsIsFunction and whenMapDispatchToPropsIsFunction,
+// this function wraps mapToProps in a proxy function which does several things:
+// 
+//  * Detects whether the mapToProps function being called depends on props, which
+//    is used by selectorFactory to decide if it should reinvoke on props changes.
+//    
+//  * On first call, handles mapToProps if returns another function, and treats that
+//    new function as the true mapToProps for subsequent calls.
+//    
+//  * On first call, verifies the first result is a plain object, in order to warn
+//    the developer that their mapToProps function is not returning a valid result.
+//    
+function wrapMapToPropsFunc(mapToProps, methodName) {
+  return function initProxySelector(dispatch, _ref) {
+    var displayName = _ref.displayName;
+
+    var proxy = function mapToPropsProxy(stateOrDispatch, ownProps) {
+      return proxy.dependsOnOwnProps ? proxy.mapToProps(stateOrDispatch, ownProps) : proxy.mapToProps(stateOrDispatch);
+    };
+
+    // allow detectFactoryAndVerify to get ownProps
+    proxy.dependsOnOwnProps = true;
+
+    proxy.mapToProps = function detectFactoryAndVerify(stateOrDispatch, ownProps) {
+      proxy.mapToProps = mapToProps;
+      proxy.dependsOnOwnProps = getDependsOnOwnProps(mapToProps);
+      var props = proxy(stateOrDispatch, ownProps);
+
+      if (typeof props === 'function') {
+        proxy.mapToProps = props;
+        proxy.dependsOnOwnProps = getDependsOnOwnProps(props);
+        props = proxy(stateOrDispatch, ownProps);
+      }
+
+      if (process.env.NODE_ENV !== 'production') __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__utils_verifyPlainObject__["a" /* default */])(props, displayName, methodName);
+
+      return props;
+    };
+
+    return proxy;
+  };
+}
+/* WEBPACK VAR INJECTION */}.call(__webpack_exports__, __webpack_require__(0)))
+
+/***/ }),
+/* 100 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_prop_types__ = __webpack_require__(75);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_prop_types___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_prop_types__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return subscriptionShape; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return storeShape; });
+
+
+var subscriptionShape = __WEBPACK_IMPORTED_MODULE_0_prop_types___default.a.shape({
+  trySubscribe: __WEBPACK_IMPORTED_MODULE_0_prop_types___default.a.func.isRequired,
+  tryUnsubscribe: __WEBPACK_IMPORTED_MODULE_0_prop_types___default.a.func.isRequired,
+  notifyNestedSubs: __WEBPACK_IMPORTED_MODULE_0_prop_types___default.a.func.isRequired,
+  isSubscribed: __WEBPACK_IMPORTED_MODULE_0_prop_types___default.a.func.isRequired
+});
+
+var storeShape = __WEBPACK_IMPORTED_MODULE_0_prop_types___default.a.shape({
+  subscribe: __WEBPACK_IMPORTED_MODULE_0_prop_types___default.a.func.isRequired,
+  dispatch: __WEBPACK_IMPORTED_MODULE_0_prop_types___default.a.func.isRequired,
+  getState: __WEBPACK_IMPORTED_MODULE_0_prop_types___default.a.func.isRequired
+});
+
+/***/ }),
+/* 101 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_lodash_es_isPlainObject__ = __webpack_require__(42);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__warning__ = __webpack_require__(58);
+/* harmony export (immutable) */ __webpack_exports__["a"] = verifyPlainObject;
+
+
+
+function verifyPlainObject(value, displayName, methodName) {
+  if (!__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0_lodash_es_isPlainObject__["a" /* default */])(value)) {
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1__warning__["a" /* default */])(methodName + '() in ' + displayName + ' must return a plain object. Instead received ' + value + '.');
+  }
+}
+
+/***/ }),
+/* 102 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9851,7 +11570,7 @@ var REACT_ELEMENT_TYPE = typeof Symbol === 'function' && Symbol['for'] && Symbol
 module.exports = REACT_ELEMENT_TYPE;
 
 /***/ }),
-/* 84 */
+/* 103 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9874,14 +11593,14 @@ module.exports = REACT_ELEMENT_TYPE;
 
 
 
-var ReactCurrentOwner = __webpack_require__(12);
-var ReactComponentTreeHook = __webpack_require__(7);
-var ReactElement = __webpack_require__(16);
+var ReactCurrentOwner = __webpack_require__(14);
+var ReactComponentTreeHook = __webpack_require__(8);
+var ReactElement = __webpack_require__(18);
 
-var checkReactTypeSpec = __webpack_require__(207);
+var checkReactTypeSpec = __webpack_require__(264);
 
-var canDefineProperty = __webpack_require__(32);
-var getIteratorFn = __webpack_require__(86);
+var canDefineProperty = __webpack_require__(35);
+var getIteratorFn = __webpack_require__(105);
 var warning = __webpack_require__(2);
 
 function getDeclarationErrorAddendum() {
@@ -10110,7 +11829,7 @@ module.exports = ReactElementValidator;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 85 */
+/* 104 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -10141,7 +11860,7 @@ module.exports = ReactPropTypeLocationNames;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 86 */
+/* 105 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -10187,42 +11906,5095 @@ function getIteratorFn(maybeIterable) {
 module.exports = getIteratorFn;
 
 /***/ }),
-/* 87 */
-/***/ (function(module, exports, __webpack_require__) {
+/* 106 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
 
-module.exports = __webpack_require__(90);
+"use strict";
+/* harmony export (immutable) */ __webpack_exports__["a"] = compose;
+/**
+ * Composes single-argument functions from right to left. The rightmost
+ * function can take multiple arguments as it provides the signature for
+ * the resulting composite function.
+ *
+ * @param {...Function} funcs The functions to compose.
+ * @returns {Function} A function obtained by composing the argument functions
+ * from right to left. For example, compose(f, g, h) is identical to doing
+ * (...args) => f(g(h(...args))).
+ */
+
+function compose() {
+  for (var _len = arguments.length, funcs = Array(_len), _key = 0; _key < _len; _key++) {
+    funcs[_key] = arguments[_key];
+  }
+
+  if (funcs.length === 0) {
+    return function (arg) {
+      return arg;
+    };
+  }
+
+  if (funcs.length === 1) {
+    return funcs[0];
+  }
+
+  var last = funcs[funcs.length - 1];
+  var rest = funcs.slice(0, -1);
+  return function () {
+    return rest.reduceRight(function (composed, f) {
+      return f(composed);
+    }, last.apply(undefined, arguments));
+  };
+}
 
 /***/ }),
-/* 88 */
+/* 107 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_lodash_es_isPlainObject__ = __webpack_require__(42);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_symbol_observable__ = __webpack_require__(322);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_symbol_observable___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_symbol_observable__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return ActionTypes; });
+/* harmony export (immutable) */ __webpack_exports__["a"] = createStore;
+
+
+
+/**
+ * These are private action types reserved by Redux.
+ * For any unknown actions, you must return the current state.
+ * If the current state is undefined, you must return the initial state.
+ * Do not reference these action types directly in your code.
+ */
+var ActionTypes = {
+  INIT: '@@redux/INIT'
+};
+
+/**
+ * Creates a Redux store that holds the state tree.
+ * The only way to change the data in the store is to call `dispatch()` on it.
+ *
+ * There should only be a single store in your app. To specify how different
+ * parts of the state tree respond to actions, you may combine several reducers
+ * into a single reducer function by using `combineReducers`.
+ *
+ * @param {Function} reducer A function that returns the next state tree, given
+ * the current state tree and the action to handle.
+ *
+ * @param {any} [preloadedState] The initial state. You may optionally specify it
+ * to hydrate the state from the server in universal apps, or to restore a
+ * previously serialized user session.
+ * If you use `combineReducers` to produce the root reducer function, this must be
+ * an object with the same shape as `combineReducers` keys.
+ *
+ * @param {Function} enhancer The store enhancer. You may optionally specify it
+ * to enhance the store with third-party capabilities such as middleware,
+ * time travel, persistence, etc. The only store enhancer that ships with Redux
+ * is `applyMiddleware()`.
+ *
+ * @returns {Store} A Redux store that lets you read the state, dispatch actions
+ * and subscribe to changes.
+ */
+function createStore(reducer, preloadedState, enhancer) {
+  var _ref2;
+
+  if (typeof preloadedState === 'function' && typeof enhancer === 'undefined') {
+    enhancer = preloadedState;
+    preloadedState = undefined;
+  }
+
+  if (typeof enhancer !== 'undefined') {
+    if (typeof enhancer !== 'function') {
+      throw new Error('Expected the enhancer to be a function.');
+    }
+
+    return enhancer(createStore)(reducer, preloadedState);
+  }
+
+  if (typeof reducer !== 'function') {
+    throw new Error('Expected the reducer to be a function.');
+  }
+
+  var currentReducer = reducer;
+  var currentState = preloadedState;
+  var currentListeners = [];
+  var nextListeners = currentListeners;
+  var isDispatching = false;
+
+  function ensureCanMutateNextListeners() {
+    if (nextListeners === currentListeners) {
+      nextListeners = currentListeners.slice();
+    }
+  }
+
+  /**
+   * Reads the state tree managed by the store.
+   *
+   * @returns {any} The current state tree of your application.
+   */
+  function getState() {
+    return currentState;
+  }
+
+  /**
+   * Adds a change listener. It will be called any time an action is dispatched,
+   * and some part of the state tree may potentially have changed. You may then
+   * call `getState()` to read the current state tree inside the callback.
+   *
+   * You may call `dispatch()` from a change listener, with the following
+   * caveats:
+   *
+   * 1. The subscriptions are snapshotted just before every `dispatch()` call.
+   * If you subscribe or unsubscribe while the listeners are being invoked, this
+   * will not have any effect on the `dispatch()` that is currently in progress.
+   * However, the next `dispatch()` call, whether nested or not, will use a more
+   * recent snapshot of the subscription list.
+   *
+   * 2. The listener should not expect to see all state changes, as the state
+   * might have been updated multiple times during a nested `dispatch()` before
+   * the listener is called. It is, however, guaranteed that all subscribers
+   * registered before the `dispatch()` started will be called with the latest
+   * state by the time it exits.
+   *
+   * @param {Function} listener A callback to be invoked on every dispatch.
+   * @returns {Function} A function to remove this change listener.
+   */
+  function subscribe(listener) {
+    if (typeof listener !== 'function') {
+      throw new Error('Expected listener to be a function.');
+    }
+
+    var isSubscribed = true;
+
+    ensureCanMutateNextListeners();
+    nextListeners.push(listener);
+
+    return function unsubscribe() {
+      if (!isSubscribed) {
+        return;
+      }
+
+      isSubscribed = false;
+
+      ensureCanMutateNextListeners();
+      var index = nextListeners.indexOf(listener);
+      nextListeners.splice(index, 1);
+    };
+  }
+
+  /**
+   * Dispatches an action. It is the only way to trigger a state change.
+   *
+   * The `reducer` function, used to create the store, will be called with the
+   * current state tree and the given `action`. Its return value will
+   * be considered the **next** state of the tree, and the change listeners
+   * will be notified.
+   *
+   * The base implementation only supports plain object actions. If you want to
+   * dispatch a Promise, an Observable, a thunk, or something else, you need to
+   * wrap your store creating function into the corresponding middleware. For
+   * example, see the documentation for the `redux-thunk` package. Even the
+   * middleware will eventually dispatch plain object actions using this method.
+   *
+   * @param {Object} action A plain object representing “what changed”. It is
+   * a good idea to keep actions serializable so you can record and replay user
+   * sessions, or use the time travelling `redux-devtools`. An action must have
+   * a `type` property which may not be `undefined`. It is a good idea to use
+   * string constants for action types.
+   *
+   * @returns {Object} For convenience, the same action object you dispatched.
+   *
+   * Note that, if you use a custom middleware, it may wrap `dispatch()` to
+   * return something else (for example, a Promise you can await).
+   */
+  function dispatch(action) {
+    if (!__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0_lodash_es_isPlainObject__["a" /* default */])(action)) {
+      throw new Error('Actions must be plain objects. ' + 'Use custom middleware for async actions.');
+    }
+
+    if (typeof action.type === 'undefined') {
+      throw new Error('Actions may not have an undefined "type" property. ' + 'Have you misspelled a constant?');
+    }
+
+    if (isDispatching) {
+      throw new Error('Reducers may not dispatch actions.');
+    }
+
+    try {
+      isDispatching = true;
+      currentState = currentReducer(currentState, action);
+    } finally {
+      isDispatching = false;
+    }
+
+    var listeners = currentListeners = nextListeners;
+    for (var i = 0; i < listeners.length; i++) {
+      listeners[i]();
+    }
+
+    return action;
+  }
+
+  /**
+   * Replaces the reducer currently used by the store to calculate the state.
+   *
+   * You might need this if your app implements code splitting and you want to
+   * load some of the reducers dynamically. You might also need this if you
+   * implement a hot reloading mechanism for Redux.
+   *
+   * @param {Function} nextReducer The reducer for the store to use instead.
+   * @returns {void}
+   */
+  function replaceReducer(nextReducer) {
+    if (typeof nextReducer !== 'function') {
+      throw new Error('Expected the nextReducer to be a function.');
+    }
+
+    currentReducer = nextReducer;
+    dispatch({ type: ActionTypes.INIT });
+  }
+
+  /**
+   * Interoperability point for observable/reactive libraries.
+   * @returns {observable} A minimal observable of state changes.
+   * For more information, see the observable proposal:
+   * https://github.com/zenparsing/es-observable
+   */
+  function observable() {
+    var _ref;
+
+    var outerSubscribe = subscribe;
+    return _ref = {
+      /**
+       * The minimal observable subscription method.
+       * @param {Object} observer Any object that can be used as an observer.
+       * The observer object should have a `next` method.
+       * @returns {subscription} An object with an `unsubscribe` method that can
+       * be used to unsubscribe the observable from the store, and prevent further
+       * emission of values from the observable.
+       */
+      subscribe: function subscribe(observer) {
+        if (typeof observer !== 'object') {
+          throw new TypeError('Expected the observer to be an object.');
+        }
+
+        function observeState() {
+          if (observer.next) {
+            observer.next(getState());
+          }
+        }
+
+        observeState();
+        var unsubscribe = outerSubscribe(observeState);
+        return { unsubscribe: unsubscribe };
+      }
+    }, _ref[__WEBPACK_IMPORTED_MODULE_1_symbol_observable___default.a] = function () {
+      return this;
+    }, _ref;
+  }
+
+  // When a store is created, an "INIT" action is dispatched so that every
+  // reducer returns their initial state. This effectively populates
+  // the initial state tree.
+  dispatch({ type: ActionTypes.INIT });
+
+  return _ref2 = {
+    dispatch: dispatch,
+    subscribe: subscribe,
+    getState: getState,
+    replaceReducer: replaceReducer
+  }, _ref2[__WEBPACK_IMPORTED_MODULE_1_symbol_observable___default.a] = observable, _ref2;
+}
+
+/***/ }),
+/* 108 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* WEBPACK VAR INJECTION */(function(process) {Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__createStore__ = __webpack_require__(107);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__combineReducers__ = __webpack_require__(270);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__bindActionCreators__ = __webpack_require__(269);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__applyMiddleware__ = __webpack_require__(268);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__compose__ = __webpack_require__(106);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5__utils_warning__ = __webpack_require__(109);
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "createStore", function() { return __WEBPACK_IMPORTED_MODULE_0__createStore__["a"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "combineReducers", function() { return __WEBPACK_IMPORTED_MODULE_1__combineReducers__["a"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "bindActionCreators", function() { return __WEBPACK_IMPORTED_MODULE_2__bindActionCreators__["a"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "applyMiddleware", function() { return __WEBPACK_IMPORTED_MODULE_3__applyMiddleware__["a"]; });
+/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "compose", function() { return __WEBPACK_IMPORTED_MODULE_4__compose__["a"]; });
+
+
+
+
+
+
+
+/*
+* This is a dummy function to check if the function name has been altered by minification.
+* If the function has been minified and NODE_ENV !== 'production', warn the user.
+*/
+function isCrushed() {}
+
+if (process.env.NODE_ENV !== 'production' && typeof isCrushed.name === 'string' && isCrushed.name !== 'isCrushed') {
+  __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5__utils_warning__["a" /* default */])('You are currently using minified code outside of NODE_ENV === \'production\'. ' + 'This means that you are running a slower development build of Redux. ' + 'You can use loose-envify (https://github.com/zertosh/loose-envify) for browserify ' + 'or DefinePlugin for webpack (http://stackoverflow.com/questions/30030031) ' + 'to ensure you have the correct code for your production build.');
+}
+
+
+/* WEBPACK VAR INJECTION */}.call(__webpack_exports__, __webpack_require__(0)))
+
+/***/ }),
+/* 109 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony export (immutable) */ __webpack_exports__["a"] = warning;
+/**
+ * Prints a warning in the console if it exists.
+ *
+ * @param {String} message The warning message.
+ * @returns {void}
+ */
+function warning(message) {
+  /* eslint-disable no-console */
+  if (typeof console !== 'undefined' && typeof console.error === 'function') {
+    console.error(message);
+  }
+  /* eslint-enable no-console */
+  try {
+    // This error was thrown as a convenience so that if you enable
+    // "break on all exceptions" in your console,
+    // it would pause the execution at this line.
+    throw new Error(message);
+    /* eslint-disable no-empty */
+  } catch (e) {}
+  /* eslint-enable no-empty */
+}
+
+/***/ }),
+/* 110 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// List of valid entities
+//
+// Generate with ./support/entities.js script
+//
+
+
+/*eslint quotes:0*/
+module.exports = {
+  "Aacute":"\u00C1",
+  "aacute":"\u00E1",
+  "Abreve":"\u0102",
+  "abreve":"\u0103",
+  "ac":"\u223E",
+  "acd":"\u223F",
+  "acE":"\u223E\u0333",
+  "Acirc":"\u00C2",
+  "acirc":"\u00E2",
+  "acute":"\u00B4",
+  "Acy":"\u0410",
+  "acy":"\u0430",
+  "AElig":"\u00C6",
+  "aelig":"\u00E6",
+  "af":"\u2061",
+  "Afr":"\uD835\uDD04",
+  "afr":"\uD835\uDD1E",
+  "Agrave":"\u00C0",
+  "agrave":"\u00E0",
+  "alefsym":"\u2135",
+  "aleph":"\u2135",
+  "Alpha":"\u0391",
+  "alpha":"\u03B1",
+  "Amacr":"\u0100",
+  "amacr":"\u0101",
+  "amalg":"\u2A3F",
+  "AMP":"\u0026",
+  "amp":"\u0026",
+  "And":"\u2A53",
+  "and":"\u2227",
+  "andand":"\u2A55",
+  "andd":"\u2A5C",
+  "andslope":"\u2A58",
+  "andv":"\u2A5A",
+  "ang":"\u2220",
+  "ange":"\u29A4",
+  "angle":"\u2220",
+  "angmsd":"\u2221",
+  "angmsdaa":"\u29A8",
+  "angmsdab":"\u29A9",
+  "angmsdac":"\u29AA",
+  "angmsdad":"\u29AB",
+  "angmsdae":"\u29AC",
+  "angmsdaf":"\u29AD",
+  "angmsdag":"\u29AE",
+  "angmsdah":"\u29AF",
+  "angrt":"\u221F",
+  "angrtvb":"\u22BE",
+  "angrtvbd":"\u299D",
+  "angsph":"\u2222",
+  "angst":"\u00C5",
+  "angzarr":"\u237C",
+  "Aogon":"\u0104",
+  "aogon":"\u0105",
+  "Aopf":"\uD835\uDD38",
+  "aopf":"\uD835\uDD52",
+  "ap":"\u2248",
+  "apacir":"\u2A6F",
+  "apE":"\u2A70",
+  "ape":"\u224A",
+  "apid":"\u224B",
+  "apos":"\u0027",
+  "ApplyFunction":"\u2061",
+  "approx":"\u2248",
+  "approxeq":"\u224A",
+  "Aring":"\u00C5",
+  "aring":"\u00E5",
+  "Ascr":"\uD835\uDC9C",
+  "ascr":"\uD835\uDCB6",
+  "Assign":"\u2254",
+  "ast":"\u002A",
+  "asymp":"\u2248",
+  "asympeq":"\u224D",
+  "Atilde":"\u00C3",
+  "atilde":"\u00E3",
+  "Auml":"\u00C4",
+  "auml":"\u00E4",
+  "awconint":"\u2233",
+  "awint":"\u2A11",
+  "backcong":"\u224C",
+  "backepsilon":"\u03F6",
+  "backprime":"\u2035",
+  "backsim":"\u223D",
+  "backsimeq":"\u22CD",
+  "Backslash":"\u2216",
+  "Barv":"\u2AE7",
+  "barvee":"\u22BD",
+  "Barwed":"\u2306",
+  "barwed":"\u2305",
+  "barwedge":"\u2305",
+  "bbrk":"\u23B5",
+  "bbrktbrk":"\u23B6",
+  "bcong":"\u224C",
+  "Bcy":"\u0411",
+  "bcy":"\u0431",
+  "bdquo":"\u201E",
+  "becaus":"\u2235",
+  "Because":"\u2235",
+  "because":"\u2235",
+  "bemptyv":"\u29B0",
+  "bepsi":"\u03F6",
+  "bernou":"\u212C",
+  "Bernoullis":"\u212C",
+  "Beta":"\u0392",
+  "beta":"\u03B2",
+  "beth":"\u2136",
+  "between":"\u226C",
+  "Bfr":"\uD835\uDD05",
+  "bfr":"\uD835\uDD1F",
+  "bigcap":"\u22C2",
+  "bigcirc":"\u25EF",
+  "bigcup":"\u22C3",
+  "bigodot":"\u2A00",
+  "bigoplus":"\u2A01",
+  "bigotimes":"\u2A02",
+  "bigsqcup":"\u2A06",
+  "bigstar":"\u2605",
+  "bigtriangledown":"\u25BD",
+  "bigtriangleup":"\u25B3",
+  "biguplus":"\u2A04",
+  "bigvee":"\u22C1",
+  "bigwedge":"\u22C0",
+  "bkarow":"\u290D",
+  "blacklozenge":"\u29EB",
+  "blacksquare":"\u25AA",
+  "blacktriangle":"\u25B4",
+  "blacktriangledown":"\u25BE",
+  "blacktriangleleft":"\u25C2",
+  "blacktriangleright":"\u25B8",
+  "blank":"\u2423",
+  "blk12":"\u2592",
+  "blk14":"\u2591",
+  "blk34":"\u2593",
+  "block":"\u2588",
+  "bne":"\u003D\u20E5",
+  "bnequiv":"\u2261\u20E5",
+  "bNot":"\u2AED",
+  "bnot":"\u2310",
+  "Bopf":"\uD835\uDD39",
+  "bopf":"\uD835\uDD53",
+  "bot":"\u22A5",
+  "bottom":"\u22A5",
+  "bowtie":"\u22C8",
+  "boxbox":"\u29C9",
+  "boxDL":"\u2557",
+  "boxDl":"\u2556",
+  "boxdL":"\u2555",
+  "boxdl":"\u2510",
+  "boxDR":"\u2554",
+  "boxDr":"\u2553",
+  "boxdR":"\u2552",
+  "boxdr":"\u250C",
+  "boxH":"\u2550",
+  "boxh":"\u2500",
+  "boxHD":"\u2566",
+  "boxHd":"\u2564",
+  "boxhD":"\u2565",
+  "boxhd":"\u252C",
+  "boxHU":"\u2569",
+  "boxHu":"\u2567",
+  "boxhU":"\u2568",
+  "boxhu":"\u2534",
+  "boxminus":"\u229F",
+  "boxplus":"\u229E",
+  "boxtimes":"\u22A0",
+  "boxUL":"\u255D",
+  "boxUl":"\u255C",
+  "boxuL":"\u255B",
+  "boxul":"\u2518",
+  "boxUR":"\u255A",
+  "boxUr":"\u2559",
+  "boxuR":"\u2558",
+  "boxur":"\u2514",
+  "boxV":"\u2551",
+  "boxv":"\u2502",
+  "boxVH":"\u256C",
+  "boxVh":"\u256B",
+  "boxvH":"\u256A",
+  "boxvh":"\u253C",
+  "boxVL":"\u2563",
+  "boxVl":"\u2562",
+  "boxvL":"\u2561",
+  "boxvl":"\u2524",
+  "boxVR":"\u2560",
+  "boxVr":"\u255F",
+  "boxvR":"\u255E",
+  "boxvr":"\u251C",
+  "bprime":"\u2035",
+  "Breve":"\u02D8",
+  "breve":"\u02D8",
+  "brvbar":"\u00A6",
+  "Bscr":"\u212C",
+  "bscr":"\uD835\uDCB7",
+  "bsemi":"\u204F",
+  "bsim":"\u223D",
+  "bsime":"\u22CD",
+  "bsol":"\u005C",
+  "bsolb":"\u29C5",
+  "bsolhsub":"\u27C8",
+  "bull":"\u2022",
+  "bullet":"\u2022",
+  "bump":"\u224E",
+  "bumpE":"\u2AAE",
+  "bumpe":"\u224F",
+  "Bumpeq":"\u224E",
+  "bumpeq":"\u224F",
+  "Cacute":"\u0106",
+  "cacute":"\u0107",
+  "Cap":"\u22D2",
+  "cap":"\u2229",
+  "capand":"\u2A44",
+  "capbrcup":"\u2A49",
+  "capcap":"\u2A4B",
+  "capcup":"\u2A47",
+  "capdot":"\u2A40",
+  "CapitalDifferentialD":"\u2145",
+  "caps":"\u2229\uFE00",
+  "caret":"\u2041",
+  "caron":"\u02C7",
+  "Cayleys":"\u212D",
+  "ccaps":"\u2A4D",
+  "Ccaron":"\u010C",
+  "ccaron":"\u010D",
+  "Ccedil":"\u00C7",
+  "ccedil":"\u00E7",
+  "Ccirc":"\u0108",
+  "ccirc":"\u0109",
+  "Cconint":"\u2230",
+  "ccups":"\u2A4C",
+  "ccupssm":"\u2A50",
+  "Cdot":"\u010A",
+  "cdot":"\u010B",
+  "cedil":"\u00B8",
+  "Cedilla":"\u00B8",
+  "cemptyv":"\u29B2",
+  "cent":"\u00A2",
+  "CenterDot":"\u00B7",
+  "centerdot":"\u00B7",
+  "Cfr":"\u212D",
+  "cfr":"\uD835\uDD20",
+  "CHcy":"\u0427",
+  "chcy":"\u0447",
+  "check":"\u2713",
+  "checkmark":"\u2713",
+  "Chi":"\u03A7",
+  "chi":"\u03C7",
+  "cir":"\u25CB",
+  "circ":"\u02C6",
+  "circeq":"\u2257",
+  "circlearrowleft":"\u21BA",
+  "circlearrowright":"\u21BB",
+  "circledast":"\u229B",
+  "circledcirc":"\u229A",
+  "circleddash":"\u229D",
+  "CircleDot":"\u2299",
+  "circledR":"\u00AE",
+  "circledS":"\u24C8",
+  "CircleMinus":"\u2296",
+  "CirclePlus":"\u2295",
+  "CircleTimes":"\u2297",
+  "cirE":"\u29C3",
+  "cire":"\u2257",
+  "cirfnint":"\u2A10",
+  "cirmid":"\u2AEF",
+  "cirscir":"\u29C2",
+  "ClockwiseContourIntegral":"\u2232",
+  "CloseCurlyDoubleQuote":"\u201D",
+  "CloseCurlyQuote":"\u2019",
+  "clubs":"\u2663",
+  "clubsuit":"\u2663",
+  "Colon":"\u2237",
+  "colon":"\u003A",
+  "Colone":"\u2A74",
+  "colone":"\u2254",
+  "coloneq":"\u2254",
+  "comma":"\u002C",
+  "commat":"\u0040",
+  "comp":"\u2201",
+  "compfn":"\u2218",
+  "complement":"\u2201",
+  "complexes":"\u2102",
+  "cong":"\u2245",
+  "congdot":"\u2A6D",
+  "Congruent":"\u2261",
+  "Conint":"\u222F",
+  "conint":"\u222E",
+  "ContourIntegral":"\u222E",
+  "Copf":"\u2102",
+  "copf":"\uD835\uDD54",
+  "coprod":"\u2210",
+  "Coproduct":"\u2210",
+  "COPY":"\u00A9",
+  "copy":"\u00A9",
+  "copysr":"\u2117",
+  "CounterClockwiseContourIntegral":"\u2233",
+  "crarr":"\u21B5",
+  "Cross":"\u2A2F",
+  "cross":"\u2717",
+  "Cscr":"\uD835\uDC9E",
+  "cscr":"\uD835\uDCB8",
+  "csub":"\u2ACF",
+  "csube":"\u2AD1",
+  "csup":"\u2AD0",
+  "csupe":"\u2AD2",
+  "ctdot":"\u22EF",
+  "cudarrl":"\u2938",
+  "cudarrr":"\u2935",
+  "cuepr":"\u22DE",
+  "cuesc":"\u22DF",
+  "cularr":"\u21B6",
+  "cularrp":"\u293D",
+  "Cup":"\u22D3",
+  "cup":"\u222A",
+  "cupbrcap":"\u2A48",
+  "CupCap":"\u224D",
+  "cupcap":"\u2A46",
+  "cupcup":"\u2A4A",
+  "cupdot":"\u228D",
+  "cupor":"\u2A45",
+  "cups":"\u222A\uFE00",
+  "curarr":"\u21B7",
+  "curarrm":"\u293C",
+  "curlyeqprec":"\u22DE",
+  "curlyeqsucc":"\u22DF",
+  "curlyvee":"\u22CE",
+  "curlywedge":"\u22CF",
+  "curren":"\u00A4",
+  "curvearrowleft":"\u21B6",
+  "curvearrowright":"\u21B7",
+  "cuvee":"\u22CE",
+  "cuwed":"\u22CF",
+  "cwconint":"\u2232",
+  "cwint":"\u2231",
+  "cylcty":"\u232D",
+  "Dagger":"\u2021",
+  "dagger":"\u2020",
+  "daleth":"\u2138",
+  "Darr":"\u21A1",
+  "dArr":"\u21D3",
+  "darr":"\u2193",
+  "dash":"\u2010",
+  "Dashv":"\u2AE4",
+  "dashv":"\u22A3",
+  "dbkarow":"\u290F",
+  "dblac":"\u02DD",
+  "Dcaron":"\u010E",
+  "dcaron":"\u010F",
+  "Dcy":"\u0414",
+  "dcy":"\u0434",
+  "DD":"\u2145",
+  "dd":"\u2146",
+  "ddagger":"\u2021",
+  "ddarr":"\u21CA",
+  "DDotrahd":"\u2911",
+  "ddotseq":"\u2A77",
+  "deg":"\u00B0",
+  "Del":"\u2207",
+  "Delta":"\u0394",
+  "delta":"\u03B4",
+  "demptyv":"\u29B1",
+  "dfisht":"\u297F",
+  "Dfr":"\uD835\uDD07",
+  "dfr":"\uD835\uDD21",
+  "dHar":"\u2965",
+  "dharl":"\u21C3",
+  "dharr":"\u21C2",
+  "DiacriticalAcute":"\u00B4",
+  "DiacriticalDot":"\u02D9",
+  "DiacriticalDoubleAcute":"\u02DD",
+  "DiacriticalGrave":"\u0060",
+  "DiacriticalTilde":"\u02DC",
+  "diam":"\u22C4",
+  "Diamond":"\u22C4",
+  "diamond":"\u22C4",
+  "diamondsuit":"\u2666",
+  "diams":"\u2666",
+  "die":"\u00A8",
+  "DifferentialD":"\u2146",
+  "digamma":"\u03DD",
+  "disin":"\u22F2",
+  "div":"\u00F7",
+  "divide":"\u00F7",
+  "divideontimes":"\u22C7",
+  "divonx":"\u22C7",
+  "DJcy":"\u0402",
+  "djcy":"\u0452",
+  "dlcorn":"\u231E",
+  "dlcrop":"\u230D",
+  "dollar":"\u0024",
+  "Dopf":"\uD835\uDD3B",
+  "dopf":"\uD835\uDD55",
+  "Dot":"\u00A8",
+  "dot":"\u02D9",
+  "DotDot":"\u20DC",
+  "doteq":"\u2250",
+  "doteqdot":"\u2251",
+  "DotEqual":"\u2250",
+  "dotminus":"\u2238",
+  "dotplus":"\u2214",
+  "dotsquare":"\u22A1",
+  "doublebarwedge":"\u2306",
+  "DoubleContourIntegral":"\u222F",
+  "DoubleDot":"\u00A8",
+  "DoubleDownArrow":"\u21D3",
+  "DoubleLeftArrow":"\u21D0",
+  "DoubleLeftRightArrow":"\u21D4",
+  "DoubleLeftTee":"\u2AE4",
+  "DoubleLongLeftArrow":"\u27F8",
+  "DoubleLongLeftRightArrow":"\u27FA",
+  "DoubleLongRightArrow":"\u27F9",
+  "DoubleRightArrow":"\u21D2",
+  "DoubleRightTee":"\u22A8",
+  "DoubleUpArrow":"\u21D1",
+  "DoubleUpDownArrow":"\u21D5",
+  "DoubleVerticalBar":"\u2225",
+  "DownArrow":"\u2193",
+  "Downarrow":"\u21D3",
+  "downarrow":"\u2193",
+  "DownArrowBar":"\u2913",
+  "DownArrowUpArrow":"\u21F5",
+  "DownBreve":"\u0311",
+  "downdownarrows":"\u21CA",
+  "downharpoonleft":"\u21C3",
+  "downharpoonright":"\u21C2",
+  "DownLeftRightVector":"\u2950",
+  "DownLeftTeeVector":"\u295E",
+  "DownLeftVector":"\u21BD",
+  "DownLeftVectorBar":"\u2956",
+  "DownRightTeeVector":"\u295F",
+  "DownRightVector":"\u21C1",
+  "DownRightVectorBar":"\u2957",
+  "DownTee":"\u22A4",
+  "DownTeeArrow":"\u21A7",
+  "drbkarow":"\u2910",
+  "drcorn":"\u231F",
+  "drcrop":"\u230C",
+  "Dscr":"\uD835\uDC9F",
+  "dscr":"\uD835\uDCB9",
+  "DScy":"\u0405",
+  "dscy":"\u0455",
+  "dsol":"\u29F6",
+  "Dstrok":"\u0110",
+  "dstrok":"\u0111",
+  "dtdot":"\u22F1",
+  "dtri":"\u25BF",
+  "dtrif":"\u25BE",
+  "duarr":"\u21F5",
+  "duhar":"\u296F",
+  "dwangle":"\u29A6",
+  "DZcy":"\u040F",
+  "dzcy":"\u045F",
+  "dzigrarr":"\u27FF",
+  "Eacute":"\u00C9",
+  "eacute":"\u00E9",
+  "easter":"\u2A6E",
+  "Ecaron":"\u011A",
+  "ecaron":"\u011B",
+  "ecir":"\u2256",
+  "Ecirc":"\u00CA",
+  "ecirc":"\u00EA",
+  "ecolon":"\u2255",
+  "Ecy":"\u042D",
+  "ecy":"\u044D",
+  "eDDot":"\u2A77",
+  "Edot":"\u0116",
+  "eDot":"\u2251",
+  "edot":"\u0117",
+  "ee":"\u2147",
+  "efDot":"\u2252",
+  "Efr":"\uD835\uDD08",
+  "efr":"\uD835\uDD22",
+  "eg":"\u2A9A",
+  "Egrave":"\u00C8",
+  "egrave":"\u00E8",
+  "egs":"\u2A96",
+  "egsdot":"\u2A98",
+  "el":"\u2A99",
+  "Element":"\u2208",
+  "elinters":"\u23E7",
+  "ell":"\u2113",
+  "els":"\u2A95",
+  "elsdot":"\u2A97",
+  "Emacr":"\u0112",
+  "emacr":"\u0113",
+  "empty":"\u2205",
+  "emptyset":"\u2205",
+  "EmptySmallSquare":"\u25FB",
+  "emptyv":"\u2205",
+  "EmptyVerySmallSquare":"\u25AB",
+  "emsp":"\u2003",
+  "emsp13":"\u2004",
+  "emsp14":"\u2005",
+  "ENG":"\u014A",
+  "eng":"\u014B",
+  "ensp":"\u2002",
+  "Eogon":"\u0118",
+  "eogon":"\u0119",
+  "Eopf":"\uD835\uDD3C",
+  "eopf":"\uD835\uDD56",
+  "epar":"\u22D5",
+  "eparsl":"\u29E3",
+  "eplus":"\u2A71",
+  "epsi":"\u03B5",
+  "Epsilon":"\u0395",
+  "epsilon":"\u03B5",
+  "epsiv":"\u03F5",
+  "eqcirc":"\u2256",
+  "eqcolon":"\u2255",
+  "eqsim":"\u2242",
+  "eqslantgtr":"\u2A96",
+  "eqslantless":"\u2A95",
+  "Equal":"\u2A75",
+  "equals":"\u003D",
+  "EqualTilde":"\u2242",
+  "equest":"\u225F",
+  "Equilibrium":"\u21CC",
+  "equiv":"\u2261",
+  "equivDD":"\u2A78",
+  "eqvparsl":"\u29E5",
+  "erarr":"\u2971",
+  "erDot":"\u2253",
+  "Escr":"\u2130",
+  "escr":"\u212F",
+  "esdot":"\u2250",
+  "Esim":"\u2A73",
+  "esim":"\u2242",
+  "Eta":"\u0397",
+  "eta":"\u03B7",
+  "ETH":"\u00D0",
+  "eth":"\u00F0",
+  "Euml":"\u00CB",
+  "euml":"\u00EB",
+  "euro":"\u20AC",
+  "excl":"\u0021",
+  "exist":"\u2203",
+  "Exists":"\u2203",
+  "expectation":"\u2130",
+  "ExponentialE":"\u2147",
+  "exponentiale":"\u2147",
+  "fallingdotseq":"\u2252",
+  "Fcy":"\u0424",
+  "fcy":"\u0444",
+  "female":"\u2640",
+  "ffilig":"\uFB03",
+  "fflig":"\uFB00",
+  "ffllig":"\uFB04",
+  "Ffr":"\uD835\uDD09",
+  "ffr":"\uD835\uDD23",
+  "filig":"\uFB01",
+  "FilledSmallSquare":"\u25FC",
+  "FilledVerySmallSquare":"\u25AA",
+  "fjlig":"\u0066\u006A",
+  "flat":"\u266D",
+  "fllig":"\uFB02",
+  "fltns":"\u25B1",
+  "fnof":"\u0192",
+  "Fopf":"\uD835\uDD3D",
+  "fopf":"\uD835\uDD57",
+  "ForAll":"\u2200",
+  "forall":"\u2200",
+  "fork":"\u22D4",
+  "forkv":"\u2AD9",
+  "Fouriertrf":"\u2131",
+  "fpartint":"\u2A0D",
+  "frac12":"\u00BD",
+  "frac13":"\u2153",
+  "frac14":"\u00BC",
+  "frac15":"\u2155",
+  "frac16":"\u2159",
+  "frac18":"\u215B",
+  "frac23":"\u2154",
+  "frac25":"\u2156",
+  "frac34":"\u00BE",
+  "frac35":"\u2157",
+  "frac38":"\u215C",
+  "frac45":"\u2158",
+  "frac56":"\u215A",
+  "frac58":"\u215D",
+  "frac78":"\u215E",
+  "frasl":"\u2044",
+  "frown":"\u2322",
+  "Fscr":"\u2131",
+  "fscr":"\uD835\uDCBB",
+  "gacute":"\u01F5",
+  "Gamma":"\u0393",
+  "gamma":"\u03B3",
+  "Gammad":"\u03DC",
+  "gammad":"\u03DD",
+  "gap":"\u2A86",
+  "Gbreve":"\u011E",
+  "gbreve":"\u011F",
+  "Gcedil":"\u0122",
+  "Gcirc":"\u011C",
+  "gcirc":"\u011D",
+  "Gcy":"\u0413",
+  "gcy":"\u0433",
+  "Gdot":"\u0120",
+  "gdot":"\u0121",
+  "gE":"\u2267",
+  "ge":"\u2265",
+  "gEl":"\u2A8C",
+  "gel":"\u22DB",
+  "geq":"\u2265",
+  "geqq":"\u2267",
+  "geqslant":"\u2A7E",
+  "ges":"\u2A7E",
+  "gescc":"\u2AA9",
+  "gesdot":"\u2A80",
+  "gesdoto":"\u2A82",
+  "gesdotol":"\u2A84",
+  "gesl":"\u22DB\uFE00",
+  "gesles":"\u2A94",
+  "Gfr":"\uD835\uDD0A",
+  "gfr":"\uD835\uDD24",
+  "Gg":"\u22D9",
+  "gg":"\u226B",
+  "ggg":"\u22D9",
+  "gimel":"\u2137",
+  "GJcy":"\u0403",
+  "gjcy":"\u0453",
+  "gl":"\u2277",
+  "gla":"\u2AA5",
+  "glE":"\u2A92",
+  "glj":"\u2AA4",
+  "gnap":"\u2A8A",
+  "gnapprox":"\u2A8A",
+  "gnE":"\u2269",
+  "gne":"\u2A88",
+  "gneq":"\u2A88",
+  "gneqq":"\u2269",
+  "gnsim":"\u22E7",
+  "Gopf":"\uD835\uDD3E",
+  "gopf":"\uD835\uDD58",
+  "grave":"\u0060",
+  "GreaterEqual":"\u2265",
+  "GreaterEqualLess":"\u22DB",
+  "GreaterFullEqual":"\u2267",
+  "GreaterGreater":"\u2AA2",
+  "GreaterLess":"\u2277",
+  "GreaterSlantEqual":"\u2A7E",
+  "GreaterTilde":"\u2273",
+  "Gscr":"\uD835\uDCA2",
+  "gscr":"\u210A",
+  "gsim":"\u2273",
+  "gsime":"\u2A8E",
+  "gsiml":"\u2A90",
+  "GT":"\u003E",
+  "Gt":"\u226B",
+  "gt":"\u003E",
+  "gtcc":"\u2AA7",
+  "gtcir":"\u2A7A",
+  "gtdot":"\u22D7",
+  "gtlPar":"\u2995",
+  "gtquest":"\u2A7C",
+  "gtrapprox":"\u2A86",
+  "gtrarr":"\u2978",
+  "gtrdot":"\u22D7",
+  "gtreqless":"\u22DB",
+  "gtreqqless":"\u2A8C",
+  "gtrless":"\u2277",
+  "gtrsim":"\u2273",
+  "gvertneqq":"\u2269\uFE00",
+  "gvnE":"\u2269\uFE00",
+  "Hacek":"\u02C7",
+  "hairsp":"\u200A",
+  "half":"\u00BD",
+  "hamilt":"\u210B",
+  "HARDcy":"\u042A",
+  "hardcy":"\u044A",
+  "hArr":"\u21D4",
+  "harr":"\u2194",
+  "harrcir":"\u2948",
+  "harrw":"\u21AD",
+  "Hat":"\u005E",
+  "hbar":"\u210F",
+  "Hcirc":"\u0124",
+  "hcirc":"\u0125",
+  "hearts":"\u2665",
+  "heartsuit":"\u2665",
+  "hellip":"\u2026",
+  "hercon":"\u22B9",
+  "Hfr":"\u210C",
+  "hfr":"\uD835\uDD25",
+  "HilbertSpace":"\u210B",
+  "hksearow":"\u2925",
+  "hkswarow":"\u2926",
+  "hoarr":"\u21FF",
+  "homtht":"\u223B",
+  "hookleftarrow":"\u21A9",
+  "hookrightarrow":"\u21AA",
+  "Hopf":"\u210D",
+  "hopf":"\uD835\uDD59",
+  "horbar":"\u2015",
+  "HorizontalLine":"\u2500",
+  "Hscr":"\u210B",
+  "hscr":"\uD835\uDCBD",
+  "hslash":"\u210F",
+  "Hstrok":"\u0126",
+  "hstrok":"\u0127",
+  "HumpDownHump":"\u224E",
+  "HumpEqual":"\u224F",
+  "hybull":"\u2043",
+  "hyphen":"\u2010",
+  "Iacute":"\u00CD",
+  "iacute":"\u00ED",
+  "ic":"\u2063",
+  "Icirc":"\u00CE",
+  "icirc":"\u00EE",
+  "Icy":"\u0418",
+  "icy":"\u0438",
+  "Idot":"\u0130",
+  "IEcy":"\u0415",
+  "iecy":"\u0435",
+  "iexcl":"\u00A1",
+  "iff":"\u21D4",
+  "Ifr":"\u2111",
+  "ifr":"\uD835\uDD26",
+  "Igrave":"\u00CC",
+  "igrave":"\u00EC",
+  "ii":"\u2148",
+  "iiiint":"\u2A0C",
+  "iiint":"\u222D",
+  "iinfin":"\u29DC",
+  "iiota":"\u2129",
+  "IJlig":"\u0132",
+  "ijlig":"\u0133",
+  "Im":"\u2111",
+  "Imacr":"\u012A",
+  "imacr":"\u012B",
+  "image":"\u2111",
+  "ImaginaryI":"\u2148",
+  "imagline":"\u2110",
+  "imagpart":"\u2111",
+  "imath":"\u0131",
+  "imof":"\u22B7",
+  "imped":"\u01B5",
+  "Implies":"\u21D2",
+  "in":"\u2208",
+  "incare":"\u2105",
+  "infin":"\u221E",
+  "infintie":"\u29DD",
+  "inodot":"\u0131",
+  "Int":"\u222C",
+  "int":"\u222B",
+  "intcal":"\u22BA",
+  "integers":"\u2124",
+  "Integral":"\u222B",
+  "intercal":"\u22BA",
+  "Intersection":"\u22C2",
+  "intlarhk":"\u2A17",
+  "intprod":"\u2A3C",
+  "InvisibleComma":"\u2063",
+  "InvisibleTimes":"\u2062",
+  "IOcy":"\u0401",
+  "iocy":"\u0451",
+  "Iogon":"\u012E",
+  "iogon":"\u012F",
+  "Iopf":"\uD835\uDD40",
+  "iopf":"\uD835\uDD5A",
+  "Iota":"\u0399",
+  "iota":"\u03B9",
+  "iprod":"\u2A3C",
+  "iquest":"\u00BF",
+  "Iscr":"\u2110",
+  "iscr":"\uD835\uDCBE",
+  "isin":"\u2208",
+  "isindot":"\u22F5",
+  "isinE":"\u22F9",
+  "isins":"\u22F4",
+  "isinsv":"\u22F3",
+  "isinv":"\u2208",
+  "it":"\u2062",
+  "Itilde":"\u0128",
+  "itilde":"\u0129",
+  "Iukcy":"\u0406",
+  "iukcy":"\u0456",
+  "Iuml":"\u00CF",
+  "iuml":"\u00EF",
+  "Jcirc":"\u0134",
+  "jcirc":"\u0135",
+  "Jcy":"\u0419",
+  "jcy":"\u0439",
+  "Jfr":"\uD835\uDD0D",
+  "jfr":"\uD835\uDD27",
+  "jmath":"\u0237",
+  "Jopf":"\uD835\uDD41",
+  "jopf":"\uD835\uDD5B",
+  "Jscr":"\uD835\uDCA5",
+  "jscr":"\uD835\uDCBF",
+  "Jsercy":"\u0408",
+  "jsercy":"\u0458",
+  "Jukcy":"\u0404",
+  "jukcy":"\u0454",
+  "Kappa":"\u039A",
+  "kappa":"\u03BA",
+  "kappav":"\u03F0",
+  "Kcedil":"\u0136",
+  "kcedil":"\u0137",
+  "Kcy":"\u041A",
+  "kcy":"\u043A",
+  "Kfr":"\uD835\uDD0E",
+  "kfr":"\uD835\uDD28",
+  "kgreen":"\u0138",
+  "KHcy":"\u0425",
+  "khcy":"\u0445",
+  "KJcy":"\u040C",
+  "kjcy":"\u045C",
+  "Kopf":"\uD835\uDD42",
+  "kopf":"\uD835\uDD5C",
+  "Kscr":"\uD835\uDCA6",
+  "kscr":"\uD835\uDCC0",
+  "lAarr":"\u21DA",
+  "Lacute":"\u0139",
+  "lacute":"\u013A",
+  "laemptyv":"\u29B4",
+  "lagran":"\u2112",
+  "Lambda":"\u039B",
+  "lambda":"\u03BB",
+  "Lang":"\u27EA",
+  "lang":"\u27E8",
+  "langd":"\u2991",
+  "langle":"\u27E8",
+  "lap":"\u2A85",
+  "Laplacetrf":"\u2112",
+  "laquo":"\u00AB",
+  "Larr":"\u219E",
+  "lArr":"\u21D0",
+  "larr":"\u2190",
+  "larrb":"\u21E4",
+  "larrbfs":"\u291F",
+  "larrfs":"\u291D",
+  "larrhk":"\u21A9",
+  "larrlp":"\u21AB",
+  "larrpl":"\u2939",
+  "larrsim":"\u2973",
+  "larrtl":"\u21A2",
+  "lat":"\u2AAB",
+  "lAtail":"\u291B",
+  "latail":"\u2919",
+  "late":"\u2AAD",
+  "lates":"\u2AAD\uFE00",
+  "lBarr":"\u290E",
+  "lbarr":"\u290C",
+  "lbbrk":"\u2772",
+  "lbrace":"\u007B",
+  "lbrack":"\u005B",
+  "lbrke":"\u298B",
+  "lbrksld":"\u298F",
+  "lbrkslu":"\u298D",
+  "Lcaron":"\u013D",
+  "lcaron":"\u013E",
+  "Lcedil":"\u013B",
+  "lcedil":"\u013C",
+  "lceil":"\u2308",
+  "lcub":"\u007B",
+  "Lcy":"\u041B",
+  "lcy":"\u043B",
+  "ldca":"\u2936",
+  "ldquo":"\u201C",
+  "ldquor":"\u201E",
+  "ldrdhar":"\u2967",
+  "ldrushar":"\u294B",
+  "ldsh":"\u21B2",
+  "lE":"\u2266",
+  "le":"\u2264",
+  "LeftAngleBracket":"\u27E8",
+  "LeftArrow":"\u2190",
+  "Leftarrow":"\u21D0",
+  "leftarrow":"\u2190",
+  "LeftArrowBar":"\u21E4",
+  "LeftArrowRightArrow":"\u21C6",
+  "leftarrowtail":"\u21A2",
+  "LeftCeiling":"\u2308",
+  "LeftDoubleBracket":"\u27E6",
+  "LeftDownTeeVector":"\u2961",
+  "LeftDownVector":"\u21C3",
+  "LeftDownVectorBar":"\u2959",
+  "LeftFloor":"\u230A",
+  "leftharpoondown":"\u21BD",
+  "leftharpoonup":"\u21BC",
+  "leftleftarrows":"\u21C7",
+  "LeftRightArrow":"\u2194",
+  "Leftrightarrow":"\u21D4",
+  "leftrightarrow":"\u2194",
+  "leftrightarrows":"\u21C6",
+  "leftrightharpoons":"\u21CB",
+  "leftrightsquigarrow":"\u21AD",
+  "LeftRightVector":"\u294E",
+  "LeftTee":"\u22A3",
+  "LeftTeeArrow":"\u21A4",
+  "LeftTeeVector":"\u295A",
+  "leftthreetimes":"\u22CB",
+  "LeftTriangle":"\u22B2",
+  "LeftTriangleBar":"\u29CF",
+  "LeftTriangleEqual":"\u22B4",
+  "LeftUpDownVector":"\u2951",
+  "LeftUpTeeVector":"\u2960",
+  "LeftUpVector":"\u21BF",
+  "LeftUpVectorBar":"\u2958",
+  "LeftVector":"\u21BC",
+  "LeftVectorBar":"\u2952",
+  "lEg":"\u2A8B",
+  "leg":"\u22DA",
+  "leq":"\u2264",
+  "leqq":"\u2266",
+  "leqslant":"\u2A7D",
+  "les":"\u2A7D",
+  "lescc":"\u2AA8",
+  "lesdot":"\u2A7F",
+  "lesdoto":"\u2A81",
+  "lesdotor":"\u2A83",
+  "lesg":"\u22DA\uFE00",
+  "lesges":"\u2A93",
+  "lessapprox":"\u2A85",
+  "lessdot":"\u22D6",
+  "lesseqgtr":"\u22DA",
+  "lesseqqgtr":"\u2A8B",
+  "LessEqualGreater":"\u22DA",
+  "LessFullEqual":"\u2266",
+  "LessGreater":"\u2276",
+  "lessgtr":"\u2276",
+  "LessLess":"\u2AA1",
+  "lesssim":"\u2272",
+  "LessSlantEqual":"\u2A7D",
+  "LessTilde":"\u2272",
+  "lfisht":"\u297C",
+  "lfloor":"\u230A",
+  "Lfr":"\uD835\uDD0F",
+  "lfr":"\uD835\uDD29",
+  "lg":"\u2276",
+  "lgE":"\u2A91",
+  "lHar":"\u2962",
+  "lhard":"\u21BD",
+  "lharu":"\u21BC",
+  "lharul":"\u296A",
+  "lhblk":"\u2584",
+  "LJcy":"\u0409",
+  "ljcy":"\u0459",
+  "Ll":"\u22D8",
+  "ll":"\u226A",
+  "llarr":"\u21C7",
+  "llcorner":"\u231E",
+  "Lleftarrow":"\u21DA",
+  "llhard":"\u296B",
+  "lltri":"\u25FA",
+  "Lmidot":"\u013F",
+  "lmidot":"\u0140",
+  "lmoust":"\u23B0",
+  "lmoustache":"\u23B0",
+  "lnap":"\u2A89",
+  "lnapprox":"\u2A89",
+  "lnE":"\u2268",
+  "lne":"\u2A87",
+  "lneq":"\u2A87",
+  "lneqq":"\u2268",
+  "lnsim":"\u22E6",
+  "loang":"\u27EC",
+  "loarr":"\u21FD",
+  "lobrk":"\u27E6",
+  "LongLeftArrow":"\u27F5",
+  "Longleftarrow":"\u27F8",
+  "longleftarrow":"\u27F5",
+  "LongLeftRightArrow":"\u27F7",
+  "Longleftrightarrow":"\u27FA",
+  "longleftrightarrow":"\u27F7",
+  "longmapsto":"\u27FC",
+  "LongRightArrow":"\u27F6",
+  "Longrightarrow":"\u27F9",
+  "longrightarrow":"\u27F6",
+  "looparrowleft":"\u21AB",
+  "looparrowright":"\u21AC",
+  "lopar":"\u2985",
+  "Lopf":"\uD835\uDD43",
+  "lopf":"\uD835\uDD5D",
+  "loplus":"\u2A2D",
+  "lotimes":"\u2A34",
+  "lowast":"\u2217",
+  "lowbar":"\u005F",
+  "LowerLeftArrow":"\u2199",
+  "LowerRightArrow":"\u2198",
+  "loz":"\u25CA",
+  "lozenge":"\u25CA",
+  "lozf":"\u29EB",
+  "lpar":"\u0028",
+  "lparlt":"\u2993",
+  "lrarr":"\u21C6",
+  "lrcorner":"\u231F",
+  "lrhar":"\u21CB",
+  "lrhard":"\u296D",
+  "lrm":"\u200E",
+  "lrtri":"\u22BF",
+  "lsaquo":"\u2039",
+  "Lscr":"\u2112",
+  "lscr":"\uD835\uDCC1",
+  "Lsh":"\u21B0",
+  "lsh":"\u21B0",
+  "lsim":"\u2272",
+  "lsime":"\u2A8D",
+  "lsimg":"\u2A8F",
+  "lsqb":"\u005B",
+  "lsquo":"\u2018",
+  "lsquor":"\u201A",
+  "Lstrok":"\u0141",
+  "lstrok":"\u0142",
+  "LT":"\u003C",
+  "Lt":"\u226A",
+  "lt":"\u003C",
+  "ltcc":"\u2AA6",
+  "ltcir":"\u2A79",
+  "ltdot":"\u22D6",
+  "lthree":"\u22CB",
+  "ltimes":"\u22C9",
+  "ltlarr":"\u2976",
+  "ltquest":"\u2A7B",
+  "ltri":"\u25C3",
+  "ltrie":"\u22B4",
+  "ltrif":"\u25C2",
+  "ltrPar":"\u2996",
+  "lurdshar":"\u294A",
+  "luruhar":"\u2966",
+  "lvertneqq":"\u2268\uFE00",
+  "lvnE":"\u2268\uFE00",
+  "macr":"\u00AF",
+  "male":"\u2642",
+  "malt":"\u2720",
+  "maltese":"\u2720",
+  "Map":"\u2905",
+  "map":"\u21A6",
+  "mapsto":"\u21A6",
+  "mapstodown":"\u21A7",
+  "mapstoleft":"\u21A4",
+  "mapstoup":"\u21A5",
+  "marker":"\u25AE",
+  "mcomma":"\u2A29",
+  "Mcy":"\u041C",
+  "mcy":"\u043C",
+  "mdash":"\u2014",
+  "mDDot":"\u223A",
+  "measuredangle":"\u2221",
+  "MediumSpace":"\u205F",
+  "Mellintrf":"\u2133",
+  "Mfr":"\uD835\uDD10",
+  "mfr":"\uD835\uDD2A",
+  "mho":"\u2127",
+  "micro":"\u00B5",
+  "mid":"\u2223",
+  "midast":"\u002A",
+  "midcir":"\u2AF0",
+  "middot":"\u00B7",
+  "minus":"\u2212",
+  "minusb":"\u229F",
+  "minusd":"\u2238",
+  "minusdu":"\u2A2A",
+  "MinusPlus":"\u2213",
+  "mlcp":"\u2ADB",
+  "mldr":"\u2026",
+  "mnplus":"\u2213",
+  "models":"\u22A7",
+  "Mopf":"\uD835\uDD44",
+  "mopf":"\uD835\uDD5E",
+  "mp":"\u2213",
+  "Mscr":"\u2133",
+  "mscr":"\uD835\uDCC2",
+  "mstpos":"\u223E",
+  "Mu":"\u039C",
+  "mu":"\u03BC",
+  "multimap":"\u22B8",
+  "mumap":"\u22B8",
+  "nabla":"\u2207",
+  "Nacute":"\u0143",
+  "nacute":"\u0144",
+  "nang":"\u2220\u20D2",
+  "nap":"\u2249",
+  "napE":"\u2A70\u0338",
+  "napid":"\u224B\u0338",
+  "napos":"\u0149",
+  "napprox":"\u2249",
+  "natur":"\u266E",
+  "natural":"\u266E",
+  "naturals":"\u2115",
+  "nbsp":"\u00A0",
+  "nbump":"\u224E\u0338",
+  "nbumpe":"\u224F\u0338",
+  "ncap":"\u2A43",
+  "Ncaron":"\u0147",
+  "ncaron":"\u0148",
+  "Ncedil":"\u0145",
+  "ncedil":"\u0146",
+  "ncong":"\u2247",
+  "ncongdot":"\u2A6D\u0338",
+  "ncup":"\u2A42",
+  "Ncy":"\u041D",
+  "ncy":"\u043D",
+  "ndash":"\u2013",
+  "ne":"\u2260",
+  "nearhk":"\u2924",
+  "neArr":"\u21D7",
+  "nearr":"\u2197",
+  "nearrow":"\u2197",
+  "nedot":"\u2250\u0338",
+  "NegativeMediumSpace":"\u200B",
+  "NegativeThickSpace":"\u200B",
+  "NegativeThinSpace":"\u200B",
+  "NegativeVeryThinSpace":"\u200B",
+  "nequiv":"\u2262",
+  "nesear":"\u2928",
+  "nesim":"\u2242\u0338",
+  "NestedGreaterGreater":"\u226B",
+  "NestedLessLess":"\u226A",
+  "NewLine":"\u000A",
+  "nexist":"\u2204",
+  "nexists":"\u2204",
+  "Nfr":"\uD835\uDD11",
+  "nfr":"\uD835\uDD2B",
+  "ngE":"\u2267\u0338",
+  "nge":"\u2271",
+  "ngeq":"\u2271",
+  "ngeqq":"\u2267\u0338",
+  "ngeqslant":"\u2A7E\u0338",
+  "nges":"\u2A7E\u0338",
+  "nGg":"\u22D9\u0338",
+  "ngsim":"\u2275",
+  "nGt":"\u226B\u20D2",
+  "ngt":"\u226F",
+  "ngtr":"\u226F",
+  "nGtv":"\u226B\u0338",
+  "nhArr":"\u21CE",
+  "nharr":"\u21AE",
+  "nhpar":"\u2AF2",
+  "ni":"\u220B",
+  "nis":"\u22FC",
+  "nisd":"\u22FA",
+  "niv":"\u220B",
+  "NJcy":"\u040A",
+  "njcy":"\u045A",
+  "nlArr":"\u21CD",
+  "nlarr":"\u219A",
+  "nldr":"\u2025",
+  "nlE":"\u2266\u0338",
+  "nle":"\u2270",
+  "nLeftarrow":"\u21CD",
+  "nleftarrow":"\u219A",
+  "nLeftrightarrow":"\u21CE",
+  "nleftrightarrow":"\u21AE",
+  "nleq":"\u2270",
+  "nleqq":"\u2266\u0338",
+  "nleqslant":"\u2A7D\u0338",
+  "nles":"\u2A7D\u0338",
+  "nless":"\u226E",
+  "nLl":"\u22D8\u0338",
+  "nlsim":"\u2274",
+  "nLt":"\u226A\u20D2",
+  "nlt":"\u226E",
+  "nltri":"\u22EA",
+  "nltrie":"\u22EC",
+  "nLtv":"\u226A\u0338",
+  "nmid":"\u2224",
+  "NoBreak":"\u2060",
+  "NonBreakingSpace":"\u00A0",
+  "Nopf":"\u2115",
+  "nopf":"\uD835\uDD5F",
+  "Not":"\u2AEC",
+  "not":"\u00AC",
+  "NotCongruent":"\u2262",
+  "NotCupCap":"\u226D",
+  "NotDoubleVerticalBar":"\u2226",
+  "NotElement":"\u2209",
+  "NotEqual":"\u2260",
+  "NotEqualTilde":"\u2242\u0338",
+  "NotExists":"\u2204",
+  "NotGreater":"\u226F",
+  "NotGreaterEqual":"\u2271",
+  "NotGreaterFullEqual":"\u2267\u0338",
+  "NotGreaterGreater":"\u226B\u0338",
+  "NotGreaterLess":"\u2279",
+  "NotGreaterSlantEqual":"\u2A7E\u0338",
+  "NotGreaterTilde":"\u2275",
+  "NotHumpDownHump":"\u224E\u0338",
+  "NotHumpEqual":"\u224F\u0338",
+  "notin":"\u2209",
+  "notindot":"\u22F5\u0338",
+  "notinE":"\u22F9\u0338",
+  "notinva":"\u2209",
+  "notinvb":"\u22F7",
+  "notinvc":"\u22F6",
+  "NotLeftTriangle":"\u22EA",
+  "NotLeftTriangleBar":"\u29CF\u0338",
+  "NotLeftTriangleEqual":"\u22EC",
+  "NotLess":"\u226E",
+  "NotLessEqual":"\u2270",
+  "NotLessGreater":"\u2278",
+  "NotLessLess":"\u226A\u0338",
+  "NotLessSlantEqual":"\u2A7D\u0338",
+  "NotLessTilde":"\u2274",
+  "NotNestedGreaterGreater":"\u2AA2\u0338",
+  "NotNestedLessLess":"\u2AA1\u0338",
+  "notni":"\u220C",
+  "notniva":"\u220C",
+  "notnivb":"\u22FE",
+  "notnivc":"\u22FD",
+  "NotPrecedes":"\u2280",
+  "NotPrecedesEqual":"\u2AAF\u0338",
+  "NotPrecedesSlantEqual":"\u22E0",
+  "NotReverseElement":"\u220C",
+  "NotRightTriangle":"\u22EB",
+  "NotRightTriangleBar":"\u29D0\u0338",
+  "NotRightTriangleEqual":"\u22ED",
+  "NotSquareSubset":"\u228F\u0338",
+  "NotSquareSubsetEqual":"\u22E2",
+  "NotSquareSuperset":"\u2290\u0338",
+  "NotSquareSupersetEqual":"\u22E3",
+  "NotSubset":"\u2282\u20D2",
+  "NotSubsetEqual":"\u2288",
+  "NotSucceeds":"\u2281",
+  "NotSucceedsEqual":"\u2AB0\u0338",
+  "NotSucceedsSlantEqual":"\u22E1",
+  "NotSucceedsTilde":"\u227F\u0338",
+  "NotSuperset":"\u2283\u20D2",
+  "NotSupersetEqual":"\u2289",
+  "NotTilde":"\u2241",
+  "NotTildeEqual":"\u2244",
+  "NotTildeFullEqual":"\u2247",
+  "NotTildeTilde":"\u2249",
+  "NotVerticalBar":"\u2224",
+  "npar":"\u2226",
+  "nparallel":"\u2226",
+  "nparsl":"\u2AFD\u20E5",
+  "npart":"\u2202\u0338",
+  "npolint":"\u2A14",
+  "npr":"\u2280",
+  "nprcue":"\u22E0",
+  "npre":"\u2AAF\u0338",
+  "nprec":"\u2280",
+  "npreceq":"\u2AAF\u0338",
+  "nrArr":"\u21CF",
+  "nrarr":"\u219B",
+  "nrarrc":"\u2933\u0338",
+  "nrarrw":"\u219D\u0338",
+  "nRightarrow":"\u21CF",
+  "nrightarrow":"\u219B",
+  "nrtri":"\u22EB",
+  "nrtrie":"\u22ED",
+  "nsc":"\u2281",
+  "nsccue":"\u22E1",
+  "nsce":"\u2AB0\u0338",
+  "Nscr":"\uD835\uDCA9",
+  "nscr":"\uD835\uDCC3",
+  "nshortmid":"\u2224",
+  "nshortparallel":"\u2226",
+  "nsim":"\u2241",
+  "nsime":"\u2244",
+  "nsimeq":"\u2244",
+  "nsmid":"\u2224",
+  "nspar":"\u2226",
+  "nsqsube":"\u22E2",
+  "nsqsupe":"\u22E3",
+  "nsub":"\u2284",
+  "nsubE":"\u2AC5\u0338",
+  "nsube":"\u2288",
+  "nsubset":"\u2282\u20D2",
+  "nsubseteq":"\u2288",
+  "nsubseteqq":"\u2AC5\u0338",
+  "nsucc":"\u2281",
+  "nsucceq":"\u2AB0\u0338",
+  "nsup":"\u2285",
+  "nsupE":"\u2AC6\u0338",
+  "nsupe":"\u2289",
+  "nsupset":"\u2283\u20D2",
+  "nsupseteq":"\u2289",
+  "nsupseteqq":"\u2AC6\u0338",
+  "ntgl":"\u2279",
+  "Ntilde":"\u00D1",
+  "ntilde":"\u00F1",
+  "ntlg":"\u2278",
+  "ntriangleleft":"\u22EA",
+  "ntrianglelefteq":"\u22EC",
+  "ntriangleright":"\u22EB",
+  "ntrianglerighteq":"\u22ED",
+  "Nu":"\u039D",
+  "nu":"\u03BD",
+  "num":"\u0023",
+  "numero":"\u2116",
+  "numsp":"\u2007",
+  "nvap":"\u224D\u20D2",
+  "nVDash":"\u22AF",
+  "nVdash":"\u22AE",
+  "nvDash":"\u22AD",
+  "nvdash":"\u22AC",
+  "nvge":"\u2265\u20D2",
+  "nvgt":"\u003E\u20D2",
+  "nvHarr":"\u2904",
+  "nvinfin":"\u29DE",
+  "nvlArr":"\u2902",
+  "nvle":"\u2264\u20D2",
+  "nvlt":"\u003C\u20D2",
+  "nvltrie":"\u22B4\u20D2",
+  "nvrArr":"\u2903",
+  "nvrtrie":"\u22B5\u20D2",
+  "nvsim":"\u223C\u20D2",
+  "nwarhk":"\u2923",
+  "nwArr":"\u21D6",
+  "nwarr":"\u2196",
+  "nwarrow":"\u2196",
+  "nwnear":"\u2927",
+  "Oacute":"\u00D3",
+  "oacute":"\u00F3",
+  "oast":"\u229B",
+  "ocir":"\u229A",
+  "Ocirc":"\u00D4",
+  "ocirc":"\u00F4",
+  "Ocy":"\u041E",
+  "ocy":"\u043E",
+  "odash":"\u229D",
+  "Odblac":"\u0150",
+  "odblac":"\u0151",
+  "odiv":"\u2A38",
+  "odot":"\u2299",
+  "odsold":"\u29BC",
+  "OElig":"\u0152",
+  "oelig":"\u0153",
+  "ofcir":"\u29BF",
+  "Ofr":"\uD835\uDD12",
+  "ofr":"\uD835\uDD2C",
+  "ogon":"\u02DB",
+  "Ograve":"\u00D2",
+  "ograve":"\u00F2",
+  "ogt":"\u29C1",
+  "ohbar":"\u29B5",
+  "ohm":"\u03A9",
+  "oint":"\u222E",
+  "olarr":"\u21BA",
+  "olcir":"\u29BE",
+  "olcross":"\u29BB",
+  "oline":"\u203E",
+  "olt":"\u29C0",
+  "Omacr":"\u014C",
+  "omacr":"\u014D",
+  "Omega":"\u03A9",
+  "omega":"\u03C9",
+  "Omicron":"\u039F",
+  "omicron":"\u03BF",
+  "omid":"\u29B6",
+  "ominus":"\u2296",
+  "Oopf":"\uD835\uDD46",
+  "oopf":"\uD835\uDD60",
+  "opar":"\u29B7",
+  "OpenCurlyDoubleQuote":"\u201C",
+  "OpenCurlyQuote":"\u2018",
+  "operp":"\u29B9",
+  "oplus":"\u2295",
+  "Or":"\u2A54",
+  "or":"\u2228",
+  "orarr":"\u21BB",
+  "ord":"\u2A5D",
+  "order":"\u2134",
+  "orderof":"\u2134",
+  "ordf":"\u00AA",
+  "ordm":"\u00BA",
+  "origof":"\u22B6",
+  "oror":"\u2A56",
+  "orslope":"\u2A57",
+  "orv":"\u2A5B",
+  "oS":"\u24C8",
+  "Oscr":"\uD835\uDCAA",
+  "oscr":"\u2134",
+  "Oslash":"\u00D8",
+  "oslash":"\u00F8",
+  "osol":"\u2298",
+  "Otilde":"\u00D5",
+  "otilde":"\u00F5",
+  "Otimes":"\u2A37",
+  "otimes":"\u2297",
+  "otimesas":"\u2A36",
+  "Ouml":"\u00D6",
+  "ouml":"\u00F6",
+  "ovbar":"\u233D",
+  "OverBar":"\u203E",
+  "OverBrace":"\u23DE",
+  "OverBracket":"\u23B4",
+  "OverParenthesis":"\u23DC",
+  "par":"\u2225",
+  "para":"\u00B6",
+  "parallel":"\u2225",
+  "parsim":"\u2AF3",
+  "parsl":"\u2AFD",
+  "part":"\u2202",
+  "PartialD":"\u2202",
+  "Pcy":"\u041F",
+  "pcy":"\u043F",
+  "percnt":"\u0025",
+  "period":"\u002E",
+  "permil":"\u2030",
+  "perp":"\u22A5",
+  "pertenk":"\u2031",
+  "Pfr":"\uD835\uDD13",
+  "pfr":"\uD835\uDD2D",
+  "Phi":"\u03A6",
+  "phi":"\u03C6",
+  "phiv":"\u03D5",
+  "phmmat":"\u2133",
+  "phone":"\u260E",
+  "Pi":"\u03A0",
+  "pi":"\u03C0",
+  "pitchfork":"\u22D4",
+  "piv":"\u03D6",
+  "planck":"\u210F",
+  "planckh":"\u210E",
+  "plankv":"\u210F",
+  "plus":"\u002B",
+  "plusacir":"\u2A23",
+  "plusb":"\u229E",
+  "pluscir":"\u2A22",
+  "plusdo":"\u2214",
+  "plusdu":"\u2A25",
+  "pluse":"\u2A72",
+  "PlusMinus":"\u00B1",
+  "plusmn":"\u00B1",
+  "plussim":"\u2A26",
+  "plustwo":"\u2A27",
+  "pm":"\u00B1",
+  "Poincareplane":"\u210C",
+  "pointint":"\u2A15",
+  "Popf":"\u2119",
+  "popf":"\uD835\uDD61",
+  "pound":"\u00A3",
+  "Pr":"\u2ABB",
+  "pr":"\u227A",
+  "prap":"\u2AB7",
+  "prcue":"\u227C",
+  "prE":"\u2AB3",
+  "pre":"\u2AAF",
+  "prec":"\u227A",
+  "precapprox":"\u2AB7",
+  "preccurlyeq":"\u227C",
+  "Precedes":"\u227A",
+  "PrecedesEqual":"\u2AAF",
+  "PrecedesSlantEqual":"\u227C",
+  "PrecedesTilde":"\u227E",
+  "preceq":"\u2AAF",
+  "precnapprox":"\u2AB9",
+  "precneqq":"\u2AB5",
+  "precnsim":"\u22E8",
+  "precsim":"\u227E",
+  "Prime":"\u2033",
+  "prime":"\u2032",
+  "primes":"\u2119",
+  "prnap":"\u2AB9",
+  "prnE":"\u2AB5",
+  "prnsim":"\u22E8",
+  "prod":"\u220F",
+  "Product":"\u220F",
+  "profalar":"\u232E",
+  "profline":"\u2312",
+  "profsurf":"\u2313",
+  "prop":"\u221D",
+  "Proportion":"\u2237",
+  "Proportional":"\u221D",
+  "propto":"\u221D",
+  "prsim":"\u227E",
+  "prurel":"\u22B0",
+  "Pscr":"\uD835\uDCAB",
+  "pscr":"\uD835\uDCC5",
+  "Psi":"\u03A8",
+  "psi":"\u03C8",
+  "puncsp":"\u2008",
+  "Qfr":"\uD835\uDD14",
+  "qfr":"\uD835\uDD2E",
+  "qint":"\u2A0C",
+  "Qopf":"\u211A",
+  "qopf":"\uD835\uDD62",
+  "qprime":"\u2057",
+  "Qscr":"\uD835\uDCAC",
+  "qscr":"\uD835\uDCC6",
+  "quaternions":"\u210D",
+  "quatint":"\u2A16",
+  "quest":"\u003F",
+  "questeq":"\u225F",
+  "QUOT":"\u0022",
+  "quot":"\u0022",
+  "rAarr":"\u21DB",
+  "race":"\u223D\u0331",
+  "Racute":"\u0154",
+  "racute":"\u0155",
+  "radic":"\u221A",
+  "raemptyv":"\u29B3",
+  "Rang":"\u27EB",
+  "rang":"\u27E9",
+  "rangd":"\u2992",
+  "range":"\u29A5",
+  "rangle":"\u27E9",
+  "raquo":"\u00BB",
+  "Rarr":"\u21A0",
+  "rArr":"\u21D2",
+  "rarr":"\u2192",
+  "rarrap":"\u2975",
+  "rarrb":"\u21E5",
+  "rarrbfs":"\u2920",
+  "rarrc":"\u2933",
+  "rarrfs":"\u291E",
+  "rarrhk":"\u21AA",
+  "rarrlp":"\u21AC",
+  "rarrpl":"\u2945",
+  "rarrsim":"\u2974",
+  "Rarrtl":"\u2916",
+  "rarrtl":"\u21A3",
+  "rarrw":"\u219D",
+  "rAtail":"\u291C",
+  "ratail":"\u291A",
+  "ratio":"\u2236",
+  "rationals":"\u211A",
+  "RBarr":"\u2910",
+  "rBarr":"\u290F",
+  "rbarr":"\u290D",
+  "rbbrk":"\u2773",
+  "rbrace":"\u007D",
+  "rbrack":"\u005D",
+  "rbrke":"\u298C",
+  "rbrksld":"\u298E",
+  "rbrkslu":"\u2990",
+  "Rcaron":"\u0158",
+  "rcaron":"\u0159",
+  "Rcedil":"\u0156",
+  "rcedil":"\u0157",
+  "rceil":"\u2309",
+  "rcub":"\u007D",
+  "Rcy":"\u0420",
+  "rcy":"\u0440",
+  "rdca":"\u2937",
+  "rdldhar":"\u2969",
+  "rdquo":"\u201D",
+  "rdquor":"\u201D",
+  "rdsh":"\u21B3",
+  "Re":"\u211C",
+  "real":"\u211C",
+  "realine":"\u211B",
+  "realpart":"\u211C",
+  "reals":"\u211D",
+  "rect":"\u25AD",
+  "REG":"\u00AE",
+  "reg":"\u00AE",
+  "ReverseElement":"\u220B",
+  "ReverseEquilibrium":"\u21CB",
+  "ReverseUpEquilibrium":"\u296F",
+  "rfisht":"\u297D",
+  "rfloor":"\u230B",
+  "Rfr":"\u211C",
+  "rfr":"\uD835\uDD2F",
+  "rHar":"\u2964",
+  "rhard":"\u21C1",
+  "rharu":"\u21C0",
+  "rharul":"\u296C",
+  "Rho":"\u03A1",
+  "rho":"\u03C1",
+  "rhov":"\u03F1",
+  "RightAngleBracket":"\u27E9",
+  "RightArrow":"\u2192",
+  "Rightarrow":"\u21D2",
+  "rightarrow":"\u2192",
+  "RightArrowBar":"\u21E5",
+  "RightArrowLeftArrow":"\u21C4",
+  "rightarrowtail":"\u21A3",
+  "RightCeiling":"\u2309",
+  "RightDoubleBracket":"\u27E7",
+  "RightDownTeeVector":"\u295D",
+  "RightDownVector":"\u21C2",
+  "RightDownVectorBar":"\u2955",
+  "RightFloor":"\u230B",
+  "rightharpoondown":"\u21C1",
+  "rightharpoonup":"\u21C0",
+  "rightleftarrows":"\u21C4",
+  "rightleftharpoons":"\u21CC",
+  "rightrightarrows":"\u21C9",
+  "rightsquigarrow":"\u219D",
+  "RightTee":"\u22A2",
+  "RightTeeArrow":"\u21A6",
+  "RightTeeVector":"\u295B",
+  "rightthreetimes":"\u22CC",
+  "RightTriangle":"\u22B3",
+  "RightTriangleBar":"\u29D0",
+  "RightTriangleEqual":"\u22B5",
+  "RightUpDownVector":"\u294F",
+  "RightUpTeeVector":"\u295C",
+  "RightUpVector":"\u21BE",
+  "RightUpVectorBar":"\u2954",
+  "RightVector":"\u21C0",
+  "RightVectorBar":"\u2953",
+  "ring":"\u02DA",
+  "risingdotseq":"\u2253",
+  "rlarr":"\u21C4",
+  "rlhar":"\u21CC",
+  "rlm":"\u200F",
+  "rmoust":"\u23B1",
+  "rmoustache":"\u23B1",
+  "rnmid":"\u2AEE",
+  "roang":"\u27ED",
+  "roarr":"\u21FE",
+  "robrk":"\u27E7",
+  "ropar":"\u2986",
+  "Ropf":"\u211D",
+  "ropf":"\uD835\uDD63",
+  "roplus":"\u2A2E",
+  "rotimes":"\u2A35",
+  "RoundImplies":"\u2970",
+  "rpar":"\u0029",
+  "rpargt":"\u2994",
+  "rppolint":"\u2A12",
+  "rrarr":"\u21C9",
+  "Rrightarrow":"\u21DB",
+  "rsaquo":"\u203A",
+  "Rscr":"\u211B",
+  "rscr":"\uD835\uDCC7",
+  "Rsh":"\u21B1",
+  "rsh":"\u21B1",
+  "rsqb":"\u005D",
+  "rsquo":"\u2019",
+  "rsquor":"\u2019",
+  "rthree":"\u22CC",
+  "rtimes":"\u22CA",
+  "rtri":"\u25B9",
+  "rtrie":"\u22B5",
+  "rtrif":"\u25B8",
+  "rtriltri":"\u29CE",
+  "RuleDelayed":"\u29F4",
+  "ruluhar":"\u2968",
+  "rx":"\u211E",
+  "Sacute":"\u015A",
+  "sacute":"\u015B",
+  "sbquo":"\u201A",
+  "Sc":"\u2ABC",
+  "sc":"\u227B",
+  "scap":"\u2AB8",
+  "Scaron":"\u0160",
+  "scaron":"\u0161",
+  "sccue":"\u227D",
+  "scE":"\u2AB4",
+  "sce":"\u2AB0",
+  "Scedil":"\u015E",
+  "scedil":"\u015F",
+  "Scirc":"\u015C",
+  "scirc":"\u015D",
+  "scnap":"\u2ABA",
+  "scnE":"\u2AB6",
+  "scnsim":"\u22E9",
+  "scpolint":"\u2A13",
+  "scsim":"\u227F",
+  "Scy":"\u0421",
+  "scy":"\u0441",
+  "sdot":"\u22C5",
+  "sdotb":"\u22A1",
+  "sdote":"\u2A66",
+  "searhk":"\u2925",
+  "seArr":"\u21D8",
+  "searr":"\u2198",
+  "searrow":"\u2198",
+  "sect":"\u00A7",
+  "semi":"\u003B",
+  "seswar":"\u2929",
+  "setminus":"\u2216",
+  "setmn":"\u2216",
+  "sext":"\u2736",
+  "Sfr":"\uD835\uDD16",
+  "sfr":"\uD835\uDD30",
+  "sfrown":"\u2322",
+  "sharp":"\u266F",
+  "SHCHcy":"\u0429",
+  "shchcy":"\u0449",
+  "SHcy":"\u0428",
+  "shcy":"\u0448",
+  "ShortDownArrow":"\u2193",
+  "ShortLeftArrow":"\u2190",
+  "shortmid":"\u2223",
+  "shortparallel":"\u2225",
+  "ShortRightArrow":"\u2192",
+  "ShortUpArrow":"\u2191",
+  "shy":"\u00AD",
+  "Sigma":"\u03A3",
+  "sigma":"\u03C3",
+  "sigmaf":"\u03C2",
+  "sigmav":"\u03C2",
+  "sim":"\u223C",
+  "simdot":"\u2A6A",
+  "sime":"\u2243",
+  "simeq":"\u2243",
+  "simg":"\u2A9E",
+  "simgE":"\u2AA0",
+  "siml":"\u2A9D",
+  "simlE":"\u2A9F",
+  "simne":"\u2246",
+  "simplus":"\u2A24",
+  "simrarr":"\u2972",
+  "slarr":"\u2190",
+  "SmallCircle":"\u2218",
+  "smallsetminus":"\u2216",
+  "smashp":"\u2A33",
+  "smeparsl":"\u29E4",
+  "smid":"\u2223",
+  "smile":"\u2323",
+  "smt":"\u2AAA",
+  "smte":"\u2AAC",
+  "smtes":"\u2AAC\uFE00",
+  "SOFTcy":"\u042C",
+  "softcy":"\u044C",
+  "sol":"\u002F",
+  "solb":"\u29C4",
+  "solbar":"\u233F",
+  "Sopf":"\uD835\uDD4A",
+  "sopf":"\uD835\uDD64",
+  "spades":"\u2660",
+  "spadesuit":"\u2660",
+  "spar":"\u2225",
+  "sqcap":"\u2293",
+  "sqcaps":"\u2293\uFE00",
+  "sqcup":"\u2294",
+  "sqcups":"\u2294\uFE00",
+  "Sqrt":"\u221A",
+  "sqsub":"\u228F",
+  "sqsube":"\u2291",
+  "sqsubset":"\u228F",
+  "sqsubseteq":"\u2291",
+  "sqsup":"\u2290",
+  "sqsupe":"\u2292",
+  "sqsupset":"\u2290",
+  "sqsupseteq":"\u2292",
+  "squ":"\u25A1",
+  "Square":"\u25A1",
+  "square":"\u25A1",
+  "SquareIntersection":"\u2293",
+  "SquareSubset":"\u228F",
+  "SquareSubsetEqual":"\u2291",
+  "SquareSuperset":"\u2290",
+  "SquareSupersetEqual":"\u2292",
+  "SquareUnion":"\u2294",
+  "squarf":"\u25AA",
+  "squf":"\u25AA",
+  "srarr":"\u2192",
+  "Sscr":"\uD835\uDCAE",
+  "sscr":"\uD835\uDCC8",
+  "ssetmn":"\u2216",
+  "ssmile":"\u2323",
+  "sstarf":"\u22C6",
+  "Star":"\u22C6",
+  "star":"\u2606",
+  "starf":"\u2605",
+  "straightepsilon":"\u03F5",
+  "straightphi":"\u03D5",
+  "strns":"\u00AF",
+  "Sub":"\u22D0",
+  "sub":"\u2282",
+  "subdot":"\u2ABD",
+  "subE":"\u2AC5",
+  "sube":"\u2286",
+  "subedot":"\u2AC3",
+  "submult":"\u2AC1",
+  "subnE":"\u2ACB",
+  "subne":"\u228A",
+  "subplus":"\u2ABF",
+  "subrarr":"\u2979",
+  "Subset":"\u22D0",
+  "subset":"\u2282",
+  "subseteq":"\u2286",
+  "subseteqq":"\u2AC5",
+  "SubsetEqual":"\u2286",
+  "subsetneq":"\u228A",
+  "subsetneqq":"\u2ACB",
+  "subsim":"\u2AC7",
+  "subsub":"\u2AD5",
+  "subsup":"\u2AD3",
+  "succ":"\u227B",
+  "succapprox":"\u2AB8",
+  "succcurlyeq":"\u227D",
+  "Succeeds":"\u227B",
+  "SucceedsEqual":"\u2AB0",
+  "SucceedsSlantEqual":"\u227D",
+  "SucceedsTilde":"\u227F",
+  "succeq":"\u2AB0",
+  "succnapprox":"\u2ABA",
+  "succneqq":"\u2AB6",
+  "succnsim":"\u22E9",
+  "succsim":"\u227F",
+  "SuchThat":"\u220B",
+  "Sum":"\u2211",
+  "sum":"\u2211",
+  "sung":"\u266A",
+  "Sup":"\u22D1",
+  "sup":"\u2283",
+  "sup1":"\u00B9",
+  "sup2":"\u00B2",
+  "sup3":"\u00B3",
+  "supdot":"\u2ABE",
+  "supdsub":"\u2AD8",
+  "supE":"\u2AC6",
+  "supe":"\u2287",
+  "supedot":"\u2AC4",
+  "Superset":"\u2283",
+  "SupersetEqual":"\u2287",
+  "suphsol":"\u27C9",
+  "suphsub":"\u2AD7",
+  "suplarr":"\u297B",
+  "supmult":"\u2AC2",
+  "supnE":"\u2ACC",
+  "supne":"\u228B",
+  "supplus":"\u2AC0",
+  "Supset":"\u22D1",
+  "supset":"\u2283",
+  "supseteq":"\u2287",
+  "supseteqq":"\u2AC6",
+  "supsetneq":"\u228B",
+  "supsetneqq":"\u2ACC",
+  "supsim":"\u2AC8",
+  "supsub":"\u2AD4",
+  "supsup":"\u2AD6",
+  "swarhk":"\u2926",
+  "swArr":"\u21D9",
+  "swarr":"\u2199",
+  "swarrow":"\u2199",
+  "swnwar":"\u292A",
+  "szlig":"\u00DF",
+  "Tab":"\u0009",
+  "target":"\u2316",
+  "Tau":"\u03A4",
+  "tau":"\u03C4",
+  "tbrk":"\u23B4",
+  "Tcaron":"\u0164",
+  "tcaron":"\u0165",
+  "Tcedil":"\u0162",
+  "tcedil":"\u0163",
+  "Tcy":"\u0422",
+  "tcy":"\u0442",
+  "tdot":"\u20DB",
+  "telrec":"\u2315",
+  "Tfr":"\uD835\uDD17",
+  "tfr":"\uD835\uDD31",
+  "there4":"\u2234",
+  "Therefore":"\u2234",
+  "therefore":"\u2234",
+  "Theta":"\u0398",
+  "theta":"\u03B8",
+  "thetasym":"\u03D1",
+  "thetav":"\u03D1",
+  "thickapprox":"\u2248",
+  "thicksim":"\u223C",
+  "ThickSpace":"\u205F\u200A",
+  "thinsp":"\u2009",
+  "ThinSpace":"\u2009",
+  "thkap":"\u2248",
+  "thksim":"\u223C",
+  "THORN":"\u00DE",
+  "thorn":"\u00FE",
+  "Tilde":"\u223C",
+  "tilde":"\u02DC",
+  "TildeEqual":"\u2243",
+  "TildeFullEqual":"\u2245",
+  "TildeTilde":"\u2248",
+  "times":"\u00D7",
+  "timesb":"\u22A0",
+  "timesbar":"\u2A31",
+  "timesd":"\u2A30",
+  "tint":"\u222D",
+  "toea":"\u2928",
+  "top":"\u22A4",
+  "topbot":"\u2336",
+  "topcir":"\u2AF1",
+  "Topf":"\uD835\uDD4B",
+  "topf":"\uD835\uDD65",
+  "topfork":"\u2ADA",
+  "tosa":"\u2929",
+  "tprime":"\u2034",
+  "TRADE":"\u2122",
+  "trade":"\u2122",
+  "triangle":"\u25B5",
+  "triangledown":"\u25BF",
+  "triangleleft":"\u25C3",
+  "trianglelefteq":"\u22B4",
+  "triangleq":"\u225C",
+  "triangleright":"\u25B9",
+  "trianglerighteq":"\u22B5",
+  "tridot":"\u25EC",
+  "trie":"\u225C",
+  "triminus":"\u2A3A",
+  "TripleDot":"\u20DB",
+  "triplus":"\u2A39",
+  "trisb":"\u29CD",
+  "tritime":"\u2A3B",
+  "trpezium":"\u23E2",
+  "Tscr":"\uD835\uDCAF",
+  "tscr":"\uD835\uDCC9",
+  "TScy":"\u0426",
+  "tscy":"\u0446",
+  "TSHcy":"\u040B",
+  "tshcy":"\u045B",
+  "Tstrok":"\u0166",
+  "tstrok":"\u0167",
+  "twixt":"\u226C",
+  "twoheadleftarrow":"\u219E",
+  "twoheadrightarrow":"\u21A0",
+  "Uacute":"\u00DA",
+  "uacute":"\u00FA",
+  "Uarr":"\u219F",
+  "uArr":"\u21D1",
+  "uarr":"\u2191",
+  "Uarrocir":"\u2949",
+  "Ubrcy":"\u040E",
+  "ubrcy":"\u045E",
+  "Ubreve":"\u016C",
+  "ubreve":"\u016D",
+  "Ucirc":"\u00DB",
+  "ucirc":"\u00FB",
+  "Ucy":"\u0423",
+  "ucy":"\u0443",
+  "udarr":"\u21C5",
+  "Udblac":"\u0170",
+  "udblac":"\u0171",
+  "udhar":"\u296E",
+  "ufisht":"\u297E",
+  "Ufr":"\uD835\uDD18",
+  "ufr":"\uD835\uDD32",
+  "Ugrave":"\u00D9",
+  "ugrave":"\u00F9",
+  "uHar":"\u2963",
+  "uharl":"\u21BF",
+  "uharr":"\u21BE",
+  "uhblk":"\u2580",
+  "ulcorn":"\u231C",
+  "ulcorner":"\u231C",
+  "ulcrop":"\u230F",
+  "ultri":"\u25F8",
+  "Umacr":"\u016A",
+  "umacr":"\u016B",
+  "uml":"\u00A8",
+  "UnderBar":"\u005F",
+  "UnderBrace":"\u23DF",
+  "UnderBracket":"\u23B5",
+  "UnderParenthesis":"\u23DD",
+  "Union":"\u22C3",
+  "UnionPlus":"\u228E",
+  "Uogon":"\u0172",
+  "uogon":"\u0173",
+  "Uopf":"\uD835\uDD4C",
+  "uopf":"\uD835\uDD66",
+  "UpArrow":"\u2191",
+  "Uparrow":"\u21D1",
+  "uparrow":"\u2191",
+  "UpArrowBar":"\u2912",
+  "UpArrowDownArrow":"\u21C5",
+  "UpDownArrow":"\u2195",
+  "Updownarrow":"\u21D5",
+  "updownarrow":"\u2195",
+  "UpEquilibrium":"\u296E",
+  "upharpoonleft":"\u21BF",
+  "upharpoonright":"\u21BE",
+  "uplus":"\u228E",
+  "UpperLeftArrow":"\u2196",
+  "UpperRightArrow":"\u2197",
+  "Upsi":"\u03D2",
+  "upsi":"\u03C5",
+  "upsih":"\u03D2",
+  "Upsilon":"\u03A5",
+  "upsilon":"\u03C5",
+  "UpTee":"\u22A5",
+  "UpTeeArrow":"\u21A5",
+  "upuparrows":"\u21C8",
+  "urcorn":"\u231D",
+  "urcorner":"\u231D",
+  "urcrop":"\u230E",
+  "Uring":"\u016E",
+  "uring":"\u016F",
+  "urtri":"\u25F9",
+  "Uscr":"\uD835\uDCB0",
+  "uscr":"\uD835\uDCCA",
+  "utdot":"\u22F0",
+  "Utilde":"\u0168",
+  "utilde":"\u0169",
+  "utri":"\u25B5",
+  "utrif":"\u25B4",
+  "uuarr":"\u21C8",
+  "Uuml":"\u00DC",
+  "uuml":"\u00FC",
+  "uwangle":"\u29A7",
+  "vangrt":"\u299C",
+  "varepsilon":"\u03F5",
+  "varkappa":"\u03F0",
+  "varnothing":"\u2205",
+  "varphi":"\u03D5",
+  "varpi":"\u03D6",
+  "varpropto":"\u221D",
+  "vArr":"\u21D5",
+  "varr":"\u2195",
+  "varrho":"\u03F1",
+  "varsigma":"\u03C2",
+  "varsubsetneq":"\u228A\uFE00",
+  "varsubsetneqq":"\u2ACB\uFE00",
+  "varsupsetneq":"\u228B\uFE00",
+  "varsupsetneqq":"\u2ACC\uFE00",
+  "vartheta":"\u03D1",
+  "vartriangleleft":"\u22B2",
+  "vartriangleright":"\u22B3",
+  "Vbar":"\u2AEB",
+  "vBar":"\u2AE8",
+  "vBarv":"\u2AE9",
+  "Vcy":"\u0412",
+  "vcy":"\u0432",
+  "VDash":"\u22AB",
+  "Vdash":"\u22A9",
+  "vDash":"\u22A8",
+  "vdash":"\u22A2",
+  "Vdashl":"\u2AE6",
+  "Vee":"\u22C1",
+  "vee":"\u2228",
+  "veebar":"\u22BB",
+  "veeeq":"\u225A",
+  "vellip":"\u22EE",
+  "Verbar":"\u2016",
+  "verbar":"\u007C",
+  "Vert":"\u2016",
+  "vert":"\u007C",
+  "VerticalBar":"\u2223",
+  "VerticalLine":"\u007C",
+  "VerticalSeparator":"\u2758",
+  "VerticalTilde":"\u2240",
+  "VeryThinSpace":"\u200A",
+  "Vfr":"\uD835\uDD19",
+  "vfr":"\uD835\uDD33",
+  "vltri":"\u22B2",
+  "vnsub":"\u2282\u20D2",
+  "vnsup":"\u2283\u20D2",
+  "Vopf":"\uD835\uDD4D",
+  "vopf":"\uD835\uDD67",
+  "vprop":"\u221D",
+  "vrtri":"\u22B3",
+  "Vscr":"\uD835\uDCB1",
+  "vscr":"\uD835\uDCCB",
+  "vsubnE":"\u2ACB\uFE00",
+  "vsubne":"\u228A\uFE00",
+  "vsupnE":"\u2ACC\uFE00",
+  "vsupne":"\u228B\uFE00",
+  "Vvdash":"\u22AA",
+  "vzigzag":"\u299A",
+  "Wcirc":"\u0174",
+  "wcirc":"\u0175",
+  "wedbar":"\u2A5F",
+  "Wedge":"\u22C0",
+  "wedge":"\u2227",
+  "wedgeq":"\u2259",
+  "weierp":"\u2118",
+  "Wfr":"\uD835\uDD1A",
+  "wfr":"\uD835\uDD34",
+  "Wopf":"\uD835\uDD4E",
+  "wopf":"\uD835\uDD68",
+  "wp":"\u2118",
+  "wr":"\u2240",
+  "wreath":"\u2240",
+  "Wscr":"\uD835\uDCB2",
+  "wscr":"\uD835\uDCCC",
+  "xcap":"\u22C2",
+  "xcirc":"\u25EF",
+  "xcup":"\u22C3",
+  "xdtri":"\u25BD",
+  "Xfr":"\uD835\uDD1B",
+  "xfr":"\uD835\uDD35",
+  "xhArr":"\u27FA",
+  "xharr":"\u27F7",
+  "Xi":"\u039E",
+  "xi":"\u03BE",
+  "xlArr":"\u27F8",
+  "xlarr":"\u27F5",
+  "xmap":"\u27FC",
+  "xnis":"\u22FB",
+  "xodot":"\u2A00",
+  "Xopf":"\uD835\uDD4F",
+  "xopf":"\uD835\uDD69",
+  "xoplus":"\u2A01",
+  "xotime":"\u2A02",
+  "xrArr":"\u27F9",
+  "xrarr":"\u27F6",
+  "Xscr":"\uD835\uDCB3",
+  "xscr":"\uD835\uDCCD",
+  "xsqcup":"\u2A06",
+  "xuplus":"\u2A04",
+  "xutri":"\u25B3",
+  "xvee":"\u22C1",
+  "xwedge":"\u22C0",
+  "Yacute":"\u00DD",
+  "yacute":"\u00FD",
+  "YAcy":"\u042F",
+  "yacy":"\u044F",
+  "Ycirc":"\u0176",
+  "ycirc":"\u0177",
+  "Ycy":"\u042B",
+  "ycy":"\u044B",
+  "yen":"\u00A5",
+  "Yfr":"\uD835\uDD1C",
+  "yfr":"\uD835\uDD36",
+  "YIcy":"\u0407",
+  "yicy":"\u0457",
+  "Yopf":"\uD835\uDD50",
+  "yopf":"\uD835\uDD6A",
+  "Yscr":"\uD835\uDCB4",
+  "yscr":"\uD835\uDCCE",
+  "YUcy":"\u042E",
+  "yucy":"\u044E",
+  "Yuml":"\u0178",
+  "yuml":"\u00FF",
+  "Zacute":"\u0179",
+  "zacute":"\u017A",
+  "Zcaron":"\u017D",
+  "zcaron":"\u017E",
+  "Zcy":"\u0417",
+  "zcy":"\u0437",
+  "Zdot":"\u017B",
+  "zdot":"\u017C",
+  "zeetrf":"\u2128",
+  "ZeroWidthSpace":"\u200B",
+  "Zeta":"\u0396",
+  "zeta":"\u03B6",
+  "Zfr":"\u2128",
+  "zfr":"\uD835\uDD37",
+  "ZHcy":"\u0416",
+  "zhcy":"\u0436",
+  "zigrarr":"\u21DD",
+  "Zopf":"\u2124",
+  "zopf":"\uD835\uDD6B",
+  "Zscr":"\uD835\uDCB5",
+  "zscr":"\uD835\uDCCF",
+  "zwj":"\u200D",
+  "zwnj":"\u200C"
+};
+
+
+/***/ }),
+/* 111 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-module.exports = __webpack_require__(141);
+var replaceEntities = __webpack_require__(7).replaceEntities;
+
+module.exports = function normalizeLink(url) {
+  var normalized = replaceEntities(url);
+  // We shouldn't care about the result of malformed URIs,
+  // and should not throw an exception.
+  try {
+    normalized = decodeURI(normalized);
+  } catch (err) {}
+  return encodeURI(normalized);
+};
 
 
 /***/ }),
-/* 89 */
+/* 112 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-module.exports = __webpack_require__(20);
+module.exports = function normalizeReference(str) {
+  // use .toUpperCase() instead of .toLowerCase()
+  // here to avoid a conflict with Object.prototype
+  // members (most notably, `__proto__`)
+  return str.trim().replace(/\s+/g, ' ').toUpperCase();
+};
 
 
 /***/ }),
-/* 90 */
+/* 113 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var utils = __webpack_require__(8);
-var bind = __webpack_require__(56);
-var Axios = __webpack_require__(92);
-var defaults = __webpack_require__(33);
+
+var normalizeLink = __webpack_require__(111);
+var unescapeMd    = __webpack_require__(7).unescapeMd;
+
+/**
+ * Parse link destination
+ *
+ *   - on success it returns a string and updates state.pos;
+ *   - on failure it returns null
+ *
+ * @param  {Object} state
+ * @param  {Number} pos
+ * @api private
+ */
+
+module.exports = function parseLinkDestination(state, pos) {
+  var code, level, link,
+      start = pos,
+      max = state.posMax;
+
+  if (state.src.charCodeAt(pos) === 0x3C /* < */) {
+    pos++;
+    while (pos < max) {
+      code = state.src.charCodeAt(pos);
+      if (code === 0x0A /* \n */) { return false; }
+      if (code === 0x3E /* > */) {
+        link = normalizeLink(unescapeMd(state.src.slice(start + 1, pos)));
+        if (!state.parser.validateLink(link)) { return false; }
+        state.pos = pos + 1;
+        state.linkContent = link;
+        return true;
+      }
+      if (code === 0x5C /* \ */ && pos + 1 < max) {
+        pos += 2;
+        continue;
+      }
+
+      pos++;
+    }
+
+    // no closing '>'
+    return false;
+  }
+
+  // this should be ... } else { ... branch
+
+  level = 0;
+  while (pos < max) {
+    code = state.src.charCodeAt(pos);
+
+    if (code === 0x20) { break; }
+
+    if (code > 0x08 && code < 0x0e) { break; }
+
+    if (code === 0x5C /* \ */ && pos + 1 < max) {
+      pos += 2;
+      continue;
+    }
+
+    if (code === 0x28 /* ( */) {
+      level++;
+      if (level > 1) { break; }
+    }
+
+    if (code === 0x29 /* ) */) {
+      level--;
+      if (level < 0) { break; }
+    }
+
+    pos++;
+  }
+
+  if (start === pos) { return false; }
+
+  link = unescapeMd(state.src.slice(start, pos));
+  if (!state.parser.validateLink(link)) { return false; }
+
+  state.linkContent = link;
+  state.pos = pos;
+  return true;
+};
+
+
+/***/ }),
+/* 114 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+
+var unescapeMd = __webpack_require__(7).unescapeMd;
+
+/**
+ * Parse link title
+ *
+ *   - on success it returns a string and updates state.pos;
+ *   - on failure it returns null
+ *
+ * @param  {Object} state
+ * @param  {Number} pos
+ * @api private
+ */
+
+module.exports = function parseLinkTitle(state, pos) {
+  var code,
+      start = pos,
+      max = state.posMax,
+      marker = state.src.charCodeAt(pos);
+
+  if (marker !== 0x22 /* " */ && marker !== 0x27 /* ' */ && marker !== 0x28 /* ( */) { return false; }
+
+  pos++;
+
+  // if opening marker is "(", switch it to closing marker ")"
+  if (marker === 0x28) { marker = 0x29; }
+
+  while (pos < max) {
+    code = state.src.charCodeAt(pos);
+    if (code === marker) {
+      state.pos = pos + 1;
+      state.linkContent = unescapeMd(state.src.slice(start + 1, pos));
+      return true;
+    }
+    if (code === 0x5C /* \ */ && pos + 1 < max) {
+      pos += 2;
+      continue;
+    }
+
+    pos++;
+  }
+
+  return false;
+};
+
+
+/***/ }),
+/* 115 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = __webpack_require__(9);
+
+var _react2 = _interopRequireDefault(_react);
+
+var _redux = __webpack_require__(108);
+
+var _reactRedux = __webpack_require__(34);
+
+var _AppBody = __webpack_require__(136);
+
+var _AppBody2 = _interopRequireDefault(_AppBody);
+
+var _app = __webpack_require__(139);
+
+var _app2 = _interopRequireDefault(_app);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var App = function (_Component) {
+  _inherits(App, _Component);
+
+  function App(props) {
+    _classCallCheck(this, App);
+
+    var _this = _possibleConstructorReturn(this, (App.__proto__ || Object.getPrototypeOf(App)).call(this, props));
+
+    _this.store = (0, _redux.createStore)(_app2.default);
+    return _this;
+  }
+
+  _createClass(App, [{
+    key: 'render',
+    value: function render() {
+      return _react2.default.createElement(
+        _reactRedux.Provider,
+        { store: this.store },
+        _react2.default.createElement(_AppBody2.default, this.props)
+      );
+    }
+  }]);
+
+  return App;
+}(_react.Component);
+
+exports.default = App;
+
+/***/ }),
+/* 116 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;(function (root, factory) {
+  if (true) {
+    // AMD. Register as an anonymous module unless amdModuleId is set
+    !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = function () {
+      return (root['Autolinker'] = factory());
+    }.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__),
+				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+  } else if (typeof exports === 'object') {
+    // Node. Does not work with strict CommonJS, but
+    // only CommonJS-like environments that support module.exports,
+    // like Node.
+    module.exports = factory();
+  } else {
+    root['Autolinker'] = factory();
+  }
+}(this, function () {
+
+/*!
+ * Autolinker.js
+ * 0.15.3
+ *
+ * Copyright(c) 2015 Gregory Jacobs <greg@greg-jacobs.com>
+ * MIT Licensed. http://www.opensource.org/licenses/mit-license.php
+ *
+ * https://github.com/gregjacobs/Autolinker.js
+ */
+/**
+ * @class Autolinker
+ * @extends Object
+ * 
+ * Utility class used to process a given string of text, and wrap the URLs, email addresses, and Twitter handles in 
+ * the appropriate anchor (&lt;a&gt;) tags to turn them into links.
+ * 
+ * Any of the configuration options may be provided in an Object (map) provided to the Autolinker constructor, which
+ * will configure how the {@link #link link()} method will process the links.
+ * 
+ * For example:
+ * 
+ *     var autolinker = new Autolinker( {
+ *         newWindow : false,
+ *         truncate  : 30
+ *     } );
+ *     
+ *     var html = autolinker.link( "Joe went to www.yahoo.com" );
+ *     // produces: 'Joe went to <a href="http://www.yahoo.com">yahoo.com</a>'
+ * 
+ * 
+ * The {@link #static-link static link()} method may also be used to inline options into a single call, which may
+ * be more convenient for one-off uses. For example:
+ * 
+ *     var html = Autolinker.link( "Joe went to www.yahoo.com", {
+ *         newWindow : false,
+ *         truncate  : 30
+ *     } );
+ *     // produces: 'Joe went to <a href="http://www.yahoo.com">yahoo.com</a>'
+ * 
+ * 
+ * ## Custom Replacements of Links
+ * 
+ * If the configuration options do not provide enough flexibility, a {@link #replaceFn} may be provided to fully customize
+ * the output of Autolinker. This function is called once for each URL/Email/Twitter handle match that is encountered.
+ * 
+ * For example:
+ * 
+ *     var input = "...";  // string with URLs, Email Addresses, and Twitter Handles
+ *     
+ *     var linkedText = Autolinker.link( input, {
+ *         replaceFn : function( autolinker, match ) {
+ *             console.log( "href = ", match.getAnchorHref() );
+ *             console.log( "text = ", match.getAnchorText() );
+ *         
+ *             switch( match.getType() ) {
+ *                 case 'url' : 
+ *                     console.log( "url: ", match.getUrl() );
+ *                     
+ *                     if( match.getUrl().indexOf( 'mysite.com' ) === -1 ) {
+ *                         var tag = autolinker.getTagBuilder().build( match );  // returns an `Autolinker.HtmlTag` instance, which provides mutator methods for easy changes
+ *                         tag.setAttr( 'rel', 'nofollow' );
+ *                         tag.addClass( 'external-link' );
+ *                         
+ *                         return tag;
+ *                         
+ *                     } else {
+ *                         return true;  // let Autolinker perform its normal anchor tag replacement
+ *                     }
+ *                     
+ *                 case 'email' :
+ *                     var email = match.getEmail();
+ *                     console.log( "email: ", email );
+ *                     
+ *                     if( email === "my@own.address" ) {
+ *                         return false;  // don't auto-link this particular email address; leave as-is
+ *                     } else {
+ *                         return;  // no return value will have Autolinker perform its normal anchor tag replacement (same as returning `true`)
+ *                     }
+ *                 
+ *                 case 'twitter' :
+ *                     var twitterHandle = match.getTwitterHandle();
+ *                     console.log( twitterHandle );
+ *                     
+ *                     return '<a href="http://newplace.to.link.twitter.handles.to/">' + twitterHandle + '</a>';
+ *             }
+ *         }
+ *     } );
+ * 
+ * 
+ * The function may return the following values:
+ * 
+ * - `true` (Boolean): Allow Autolinker to replace the match as it normally would.
+ * - `false` (Boolean): Do not replace the current match at all - leave as-is.
+ * - Any String: If a string is returned from the function, the string will be used directly as the replacement HTML for
+ *   the match.
+ * - An {@link Autolinker.HtmlTag} instance, which can be used to build/modify an HTML tag before writing out its HTML text.
+ * 
+ * @constructor
+ * @param {Object} [config] The configuration options for the Autolinker instance, specified in an Object (map).
+ */
+var Autolinker = function( cfg ) {
+	Autolinker.Util.assign( this, cfg );  // assign the properties of `cfg` onto the Autolinker instance. Prototype properties will be used for missing configs.
+};
+
+
+Autolinker.prototype = {
+	constructor : Autolinker,  // fix constructor property
+	
+	/**
+	 * @cfg {Boolean} urls
+	 * 
+	 * `true` if miscellaneous URLs should be automatically linked, `false` if they should not be.
+	 */
+	urls : true,
+	
+	/**
+	 * @cfg {Boolean} email
+	 * 
+	 * `true` if email addresses should be automatically linked, `false` if they should not be.
+	 */
+	email : true,
+	
+	/**
+	 * @cfg {Boolean} twitter
+	 * 
+	 * `true` if Twitter handles ("@example") should be automatically linked, `false` if they should not be.
+	 */
+	twitter : true,
+	
+	/**
+	 * @cfg {Boolean} newWindow
+	 * 
+	 * `true` if the links should open in a new window, `false` otherwise.
+	 */
+	newWindow : true,
+	
+	/**
+	 * @cfg {Boolean} stripPrefix
+	 * 
+	 * `true` if 'http://' or 'https://' and/or the 'www.' should be stripped from the beginning of URL links' text, 
+	 * `false` otherwise.
+	 */
+	stripPrefix : true,
+	
+	/**
+	 * @cfg {Number} truncate
+	 * 
+	 * A number for how many characters long URLs/emails/twitter handles should be truncated to inside the text of 
+	 * a link. If the URL/email/twitter is over this number of characters, it will be truncated to this length by 
+	 * adding a two period ellipsis ('..') to the end of the string.
+	 * 
+	 * For example: A url like 'http://www.yahoo.com/some/long/path/to/a/file' truncated to 25 characters might look
+	 * something like this: 'yahoo.com/some/long/pat..'
+	 */
+	truncate : undefined,
+	
+	/**
+	 * @cfg {String} className
+	 * 
+	 * A CSS class name to add to the generated links. This class will be added to all links, as well as this class
+	 * plus url/email/twitter suffixes for styling url/email/twitter links differently.
+	 * 
+	 * For example, if this config is provided as "myLink", then:
+	 * 
+	 * - URL links will have the CSS classes: "myLink myLink-url"
+	 * - Email links will have the CSS classes: "myLink myLink-email", and
+	 * - Twitter links will have the CSS classes: "myLink myLink-twitter"
+	 */
+	className : "",
+	
+	/**
+	 * @cfg {Function} replaceFn
+	 * 
+	 * A function to individually process each URL/Email/Twitter match found in the input string.
+	 * 
+	 * See the class's description for usage.
+	 * 
+	 * This function is called with the following parameters:
+	 * 
+	 * @cfg {Autolinker} replaceFn.autolinker The Autolinker instance, which may be used to retrieve child objects from (such
+	 *   as the instance's {@link #getTagBuilder tag builder}).
+	 * @cfg {Autolinker.match.Match} replaceFn.match The Match instance which can be used to retrieve information about the
+	 *   {@link Autolinker.match.Url URL}/{@link Autolinker.match.Email email}/{@link Autolinker.match.Twitter Twitter}
+	 *   match that the `replaceFn` is currently processing.
+	 */
+	
+	
+	/**
+	 * @private
+	 * @property {Autolinker.htmlParser.HtmlParser} htmlParser
+	 * 
+	 * The HtmlParser instance used to skip over HTML tags, while finding text nodes to process. This is lazily instantiated
+	 * in the {@link #getHtmlParser} method.
+	 */
+	htmlParser : undefined,
+	
+	/**
+	 * @private
+	 * @property {Autolinker.matchParser.MatchParser} matchParser
+	 * 
+	 * The MatchParser instance used to find URL/email/Twitter matches in the text nodes of an input string passed to
+	 * {@link #link}. This is lazily instantiated in the {@link #getMatchParser} method.
+	 */
+	matchParser : undefined,
+	
+	/**
+	 * @private
+	 * @property {Autolinker.AnchorTagBuilder} tagBuilder
+	 * 
+	 * The AnchorTagBuilder instance used to build the URL/email/Twitter replacement anchor tags. This is lazily instantiated
+	 * in the {@link #getTagBuilder} method.
+	 */
+	tagBuilder : undefined,
+	
+	
+	/**
+	 * Automatically links URLs, email addresses, and Twitter handles found in the given chunk of HTML. 
+	 * Does not link URLs found within HTML tags.
+	 * 
+	 * For instance, if given the text: `You should go to http://www.yahoo.com`, then the result
+	 * will be `You should go to &lt;a href="http://www.yahoo.com"&gt;http://www.yahoo.com&lt;/a&gt;`
+	 * 
+	 * This method finds the text around any HTML elements in the input `textOrHtml`, which will be the text that is processed.
+	 * Any original HTML elements will be left as-is, as well as the text that is already wrapped in anchor (&lt;a&gt;) tags.
+	 * 
+	 * @param {String} textOrHtml The HTML or text to link URLs, email addresses, and Twitter handles within (depending on if
+	 *   the {@link #urls}, {@link #email}, and {@link #twitter} options are enabled).
+	 * @return {String} The HTML, with URLs/emails/Twitter handles automatically linked.
+	 */
+	link : function( textOrHtml ) {
+		var htmlParser = this.getHtmlParser(),
+		    htmlNodes = htmlParser.parse( textOrHtml ),
+		    anchorTagStackCount = 0,  // used to only process text around anchor tags, and any inner text/html they may have
+		    resultHtml = [];
+		
+		for( var i = 0, len = htmlNodes.length; i < len; i++ ) {
+			var node = htmlNodes[ i ],
+			    nodeType = node.getType(),
+			    nodeText = node.getText();
+			
+			if( nodeType === 'element' ) {
+				// Process HTML nodes in the input `textOrHtml`
+				if( node.getTagName() === 'a' ) {
+					if( !node.isClosing() ) {  // it's the start <a> tag
+						anchorTagStackCount++;
+					} else {   // it's the end </a> tag
+						anchorTagStackCount = Math.max( anchorTagStackCount - 1, 0 );  // attempt to handle extraneous </a> tags by making sure the stack count never goes below 0
+					}
+				}
+				resultHtml.push( nodeText );  // now add the text of the tag itself verbatim
+				
+			} else if( nodeType === 'entity' ) {
+				resultHtml.push( nodeText );  // append HTML entity nodes (such as '&nbsp;') verbatim
+				
+			} else {
+				// Process text nodes in the input `textOrHtml`
+				if( anchorTagStackCount === 0 ) {
+					// If we're not within an <a> tag, process the text node to linkify
+					var linkifiedStr = this.linkifyStr( nodeText );
+					resultHtml.push( linkifiedStr );
+					
+				} else {
+					// `text` is within an <a> tag, simply append the text - we do not want to autolink anything 
+					// already within an <a>...</a> tag
+					resultHtml.push( nodeText );
+				}
+			}
+		}
+		
+		return resultHtml.join( "" );
+	},
+	
+	
+	/**
+	 * Process the text that lies in between HTML tags, performing the anchor tag replacements for matched 
+	 * URLs/emails/Twitter handles, and returns the string with the replacements made. 
+	 * 
+	 * This method does the actual wrapping of URLs/emails/Twitter handles with anchor tags.
+	 * 
+	 * @private
+	 * @param {String} str The string of text to auto-link.
+	 * @return {String} The text with anchor tags auto-filled.
+	 */
+	linkifyStr : function( str ) {
+		return this.getMatchParser().replace( str, this.createMatchReturnVal, this );
+	},
+	
+	
+	/**
+	 * Creates the return string value for a given match in the input string, for the {@link #processTextNode} method.
+	 * 
+	 * This method handles the {@link #replaceFn}, if one was provided.
+	 * 
+	 * @private
+	 * @param {Autolinker.match.Match} match The Match object that represents the match.
+	 * @return {String} The string that the `match` should be replaced with. This is usually the anchor tag string, but
+	 *   may be the `matchStr` itself if the match is not to be replaced.
+	 */
+	createMatchReturnVal : function( match ) {
+		// Handle a custom `replaceFn` being provided
+		var replaceFnResult;
+		if( this.replaceFn ) {
+			replaceFnResult = this.replaceFn.call( this, this, match );  // Autolinker instance is the context, and the first arg
+		}
+		
+		if( typeof replaceFnResult === 'string' ) {
+			return replaceFnResult;  // `replaceFn` returned a string, use that
+			
+		} else if( replaceFnResult === false ) {
+			return match.getMatchedText();  // no replacement for the match
+			
+		} else if( replaceFnResult instanceof Autolinker.HtmlTag ) {
+			return replaceFnResult.toString();
+		
+		} else {  // replaceFnResult === true, or no/unknown return value from function
+			// Perform Autolinker's default anchor tag generation
+			var tagBuilder = this.getTagBuilder(),
+			    anchorTag = tagBuilder.build( match );  // returns an Autolinker.HtmlTag instance
+			
+			return anchorTag.toString();
+		}
+	},
+	
+	
+	/**
+	 * Lazily instantiates and returns the {@link #htmlParser} instance for this Autolinker instance.
+	 * 
+	 * @protected
+	 * @return {Autolinker.htmlParser.HtmlParser}
+	 */
+	getHtmlParser : function() {
+		var htmlParser = this.htmlParser;
+		
+		if( !htmlParser ) {
+			htmlParser = this.htmlParser = new Autolinker.htmlParser.HtmlParser();
+		}
+		
+		return htmlParser;
+	},
+	
+	
+	/**
+	 * Lazily instantiates and returns the {@link #matchParser} instance for this Autolinker instance.
+	 * 
+	 * @protected
+	 * @return {Autolinker.matchParser.MatchParser}
+	 */
+	getMatchParser : function() {
+		var matchParser = this.matchParser;
+		
+		if( !matchParser ) {
+			matchParser = this.matchParser = new Autolinker.matchParser.MatchParser( {
+				urls : this.urls,
+				email : this.email,
+				twitter : this.twitter,
+				stripPrefix : this.stripPrefix
+			} );
+		}
+		
+		return matchParser;
+	},
+	
+	
+	/**
+	 * Returns the {@link #tagBuilder} instance for this Autolinker instance, lazily instantiating it
+	 * if it does not yet exist.
+	 * 
+	 * This method may be used in a {@link #replaceFn} to generate the {@link Autolinker.HtmlTag HtmlTag} instance that 
+	 * Autolinker would normally generate, and then allow for modifications before returning it. For example:
+	 * 
+	 *     var html = Autolinker.link( "Test google.com", {
+	 *         replaceFn : function( autolinker, match ) {
+	 *             var tag = autolinker.getTagBuilder().build( match );  // returns an {@link Autolinker.HtmlTag} instance
+	 *             tag.setAttr( 'rel', 'nofollow' );
+	 *             
+	 *             return tag;
+	 *         }
+	 *     } );
+	 *     
+	 *     // generated html:
+	 *     //   Test <a href="http://google.com" target="_blank" rel="nofollow">google.com</a>
+	 * 
+	 * @return {Autolinker.AnchorTagBuilder}
+	 */
+	getTagBuilder : function() {
+		var tagBuilder = this.tagBuilder;
+		
+		if( !tagBuilder ) {
+			tagBuilder = this.tagBuilder = new Autolinker.AnchorTagBuilder( {
+				newWindow   : this.newWindow,
+				truncate    : this.truncate,
+				className   : this.className
+			} );
+		}
+		
+		return tagBuilder;
+	}
+
+};
+
+
+/**
+ * Automatically links URLs, email addresses, and Twitter handles found in the given chunk of HTML. 
+ * Does not link URLs found within HTML tags.
+ * 
+ * For instance, if given the text: `You should go to http://www.yahoo.com`, then the result
+ * will be `You should go to &lt;a href="http://www.yahoo.com"&gt;http://www.yahoo.com&lt;/a&gt;`
+ * 
+ * Example:
+ * 
+ *     var linkedText = Autolinker.link( "Go to google.com", { newWindow: false } );
+ *     // Produces: "Go to <a href="http://google.com">google.com</a>"
+ * 
+ * @static
+ * @param {String} textOrHtml The HTML or text to find URLs, email addresses, and Twitter handles within (depending on if
+ *   the {@link #urls}, {@link #email}, and {@link #twitter} options are enabled).
+ * @param {Object} [options] Any of the configuration options for the Autolinker class, specified in an Object (map).
+ *   See the class description for an example call.
+ * @return {String} The HTML text, with URLs automatically linked
+ */
+Autolinker.link = function( textOrHtml, options ) {
+	var autolinker = new Autolinker( options );
+	return autolinker.link( textOrHtml );
+};
+
+
+// Autolinker Namespaces
+Autolinker.match = {};
+Autolinker.htmlParser = {};
+Autolinker.matchParser = {};
+/*global Autolinker */
+/*jshint eqnull:true, boss:true */
+/**
+ * @class Autolinker.Util
+ * @singleton
+ * 
+ * A few utility methods for Autolinker.
+ */
+Autolinker.Util = {
+	
+	/**
+	 * @property {Function} abstractMethod
+	 * 
+	 * A function object which represents an abstract method.
+	 */
+	abstractMethod : function() { throw "abstract"; },
+	
+	
+	/**
+	 * Assigns (shallow copies) the properties of `src` onto `dest`.
+	 * 
+	 * @param {Object} dest The destination object.
+	 * @param {Object} src The source object.
+	 * @return {Object} The destination object (`dest`)
+	 */
+	assign : function( dest, src ) {
+		for( var prop in src ) {
+			if( src.hasOwnProperty( prop ) ) {
+				dest[ prop ] = src[ prop ];
+			}
+		}
+		
+		return dest;
+	},
+	
+	
+	/**
+	 * Extends `superclass` to create a new subclass, adding the `protoProps` to the new subclass's prototype.
+	 * 
+	 * @param {Function} superclass The constructor function for the superclass.
+	 * @param {Object} protoProps The methods/properties to add to the subclass's prototype. This may contain the
+	 *   special property `constructor`, which will be used as the new subclass's constructor function.
+	 * @return {Function} The new subclass function.
+	 */
+	extend : function( superclass, protoProps ) {
+		var superclassProto = superclass.prototype;
+		
+		var F = function() {};
+		F.prototype = superclassProto;
+		
+		var subclass;
+		if( protoProps.hasOwnProperty( 'constructor' ) ) {
+			subclass = protoProps.constructor;
+		} else {
+			subclass = function() { superclassProto.constructor.apply( this, arguments ); };
+		}
+		
+		var subclassProto = subclass.prototype = new F();  // set up prototype chain
+		subclassProto.constructor = subclass;  // fix constructor property
+		subclassProto.superclass = superclassProto;
+		
+		delete protoProps.constructor;  // don't re-assign constructor property to the prototype, since a new function may have been created (`subclass`), which is now already there
+		Autolinker.Util.assign( subclassProto, protoProps );
+		
+		return subclass;
+	},
+	
+	
+	/**
+	 * Truncates the `str` at `len - ellipsisChars.length`, and adds the `ellipsisChars` to the
+	 * end of the string (by default, two periods: '..'). If the `str` length does not exceed 
+	 * `len`, the string will be returned unchanged.
+	 * 
+	 * @param {String} str The string to truncate and add an ellipsis to.
+	 * @param {Number} truncateLen The length to truncate the string at.
+	 * @param {String} [ellipsisChars=..] The ellipsis character(s) to add to the end of `str`
+	 *   when truncated. Defaults to '..'
+	 */
+	ellipsis : function( str, truncateLen, ellipsisChars ) {
+		if( str.length > truncateLen ) {
+			ellipsisChars = ( ellipsisChars == null ) ? '..' : ellipsisChars;
+			str = str.substring( 0, truncateLen - ellipsisChars.length ) + ellipsisChars;
+		}
+		return str;
+	},
+	
+	
+	/**
+	 * Supports `Array.prototype.indexOf()` functionality for old IE (IE8 and below).
+	 * 
+	 * @param {Array} arr The array to find an element of.
+	 * @param {*} element The element to find in the array, and return the index of.
+	 * @return {Number} The index of the `element`, or -1 if it was not found.
+	 */
+	indexOf : function( arr, element ) {
+		if( Array.prototype.indexOf ) {
+			return arr.indexOf( element );
+			
+		} else {
+			for( var i = 0, len = arr.length; i < len; i++ ) {
+				if( arr[ i ] === element ) return i;
+			}
+			return -1;
+		}
+	},
+	
+	
+	
+	/**
+	 * Performs the functionality of what modern browsers do when `String.prototype.split()` is called
+	 * with a regular expression that contains capturing parenthesis.
+	 * 
+	 * For example:
+	 * 
+	 *     // Modern browsers: 
+	 *     "a,b,c".split( /(,)/ );  // --> [ 'a', ',', 'b', ',', 'c' ]
+	 *     
+	 *     // Old IE (including IE8):
+	 *     "a,b,c".split( /(,)/ );  // --> [ 'a', 'b', 'c' ]
+	 *     
+	 * This method emulates the functionality of modern browsers for the old IE case.
+	 * 
+	 * @param {String} str The string to split.
+	 * @param {RegExp} splitRegex The regular expression to split the input `str` on. The splitting
+	 *   character(s) will be spliced into the array, as in the "modern browsers" example in the 
+	 *   description of this method. 
+	 *   Note #1: the supplied regular expression **must** have the 'g' flag specified.
+	 *   Note #2: for simplicity's sake, the regular expression does not need 
+	 *   to contain capturing parenthesis - it will be assumed that any match has them.
+	 * @return {String[]} The split array of strings, with the splitting character(s) included.
+	 */
+	splitAndCapture : function( str, splitRegex ) {
+		if( !splitRegex.global ) throw new Error( "`splitRegex` must have the 'g' flag set" );
+		
+		var result = [],
+		    lastIdx = 0,
+		    match;
+		
+		while( match = splitRegex.exec( str ) ) {
+			result.push( str.substring( lastIdx, match.index ) );
+			result.push( match[ 0 ] );  // push the splitting char(s)
+			
+			lastIdx = match.index + match[ 0 ].length;
+		}
+		result.push( str.substring( lastIdx ) );
+		
+		return result;
+	}
+	
+};
+/*global Autolinker */
+/*jshint boss:true */
+/**
+ * @class Autolinker.HtmlTag
+ * @extends Object
+ * 
+ * Represents an HTML tag, which can be used to easily build/modify HTML tags programmatically.
+ * 
+ * Autolinker uses this abstraction to create HTML tags, and then write them out as strings. You may also use
+ * this class in your code, especially within a {@link Autolinker#replaceFn replaceFn}.
+ * 
+ * ## Examples
+ * 
+ * Example instantiation:
+ * 
+ *     var tag = new Autolinker.HtmlTag( {
+ *         tagName : 'a',
+ *         attrs   : { 'href': 'http://google.com', 'class': 'external-link' },
+ *         innerHtml : 'Google'
+ *     } );
+ *     
+ *     tag.toString();  // <a href="http://google.com" class="external-link">Google</a>
+ *     
+ *     // Individual accessor methods
+ *     tag.getTagName();                 // 'a'
+ *     tag.getAttr( 'href' );            // 'http://google.com'
+ *     tag.hasClass( 'external-link' );  // true
+ * 
+ * 
+ * Using mutator methods (which may be used in combination with instantiation config properties):
+ * 
+ *     var tag = new Autolinker.HtmlTag();
+ *     tag.setTagName( 'a' );
+ *     tag.setAttr( 'href', 'http://google.com' );
+ *     tag.addClass( 'external-link' );
+ *     tag.setInnerHtml( 'Google' );
+ *     
+ *     tag.getTagName();                 // 'a'
+ *     tag.getAttr( 'href' );            // 'http://google.com'
+ *     tag.hasClass( 'external-link' );  // true
+ *     
+ *     tag.toString();  // <a href="http://google.com" class="external-link">Google</a>
+ *     
+ * 
+ * ## Example use within a {@link Autolinker#replaceFn replaceFn}
+ * 
+ *     var html = Autolinker.link( "Test google.com", {
+ *         replaceFn : function( autolinker, match ) {
+ *             var tag = autolinker.getTagBuilder().build( match );  // returns an {@link Autolinker.HtmlTag} instance, configured with the Match's href and anchor text
+ *             tag.setAttr( 'rel', 'nofollow' );
+ *             
+ *             return tag;
+ *         }
+ *     } );
+ *     
+ *     // generated html:
+ *     //   Test <a href="http://google.com" target="_blank" rel="nofollow">google.com</a>
+ *     
+ *     
+ * ## Example use with a new tag for the replacement
+ * 
+ *     var html = Autolinker.link( "Test google.com", {
+ *         replaceFn : function( autolinker, match ) {
+ *             var tag = new Autolinker.HtmlTag( {
+ *                 tagName : 'button',
+ *                 attrs   : { 'title': 'Load URL: ' + match.getAnchorHref() },
+ *                 innerHtml : 'Load URL: ' + match.getAnchorText()
+ *             } );
+ *             
+ *             return tag;
+ *         }
+ *     } );
+ *     
+ *     // generated html:
+ *     //   Test <button title="Load URL: http://google.com">Load URL: google.com</button>
+ */
+Autolinker.HtmlTag = Autolinker.Util.extend( Object, {
+	
+	/**
+	 * @cfg {String} tagName
+	 * 
+	 * The tag name. Ex: 'a', 'button', etc.
+	 * 
+	 * Not required at instantiation time, but should be set using {@link #setTagName} before {@link #toString}
+	 * is executed.
+	 */
+	
+	/**
+	 * @cfg {Object.<String, String>} attrs
+	 * 
+	 * An key/value Object (map) of attributes to create the tag with. The keys are the attribute names, and the
+	 * values are the attribute values.
+	 */
+	
+	/**
+	 * @cfg {String} innerHtml
+	 * 
+	 * The inner HTML for the tag. 
+	 * 
+	 * Note the camel case name on `innerHtml`. Acronyms are camelCased in this utility (such as not to run into the acronym 
+	 * naming inconsistency that the DOM developers created with `XMLHttpRequest`). You may alternatively use {@link #innerHTML}
+	 * if you prefer, but this one is recommended.
+	 */
+	
+	/**
+	 * @cfg {String} innerHTML
+	 * 
+	 * Alias of {@link #innerHtml}, accepted for consistency with the browser DOM api, but prefer the camelCased version
+	 * for acronym names.
+	 */
+	
+	
+	/**
+	 * @protected
+	 * @property {RegExp} whitespaceRegex
+	 * 
+	 * Regular expression used to match whitespace in a string of CSS classes.
+	 */
+	whitespaceRegex : /\s+/,
+	
+	
+	/**
+	 * @constructor
+	 * @param {Object} [cfg] The configuration properties for this class, in an Object (map)
+	 */
+	constructor : function( cfg ) {
+		Autolinker.Util.assign( this, cfg );
+		
+		this.innerHtml = this.innerHtml || this.innerHTML;  // accept either the camelCased form or the fully capitalized acronym
+	},
+	
+	
+	/**
+	 * Sets the tag name that will be used to generate the tag with.
+	 * 
+	 * @param {String} tagName
+	 * @return {Autolinker.HtmlTag} This HtmlTag instance, so that method calls may be chained.
+	 */
+	setTagName : function( tagName ) {
+		this.tagName = tagName;
+		return this;
+	},
+	
+	
+	/**
+	 * Retrieves the tag name.
+	 * 
+	 * @return {String}
+	 */
+	getTagName : function() {
+		return this.tagName || "";
+	},
+	
+	
+	/**
+	 * Sets an attribute on the HtmlTag.
+	 * 
+	 * @param {String} attrName The attribute name to set.
+	 * @param {String} attrValue The attribute value to set.
+	 * @return {Autolinker.HtmlTag} This HtmlTag instance, so that method calls may be chained.
+	 */
+	setAttr : function( attrName, attrValue ) {
+		var tagAttrs = this.getAttrs();
+		tagAttrs[ attrName ] = attrValue;
+		
+		return this;
+	},
+	
+	
+	/**
+	 * Retrieves an attribute from the HtmlTag. If the attribute does not exist, returns `undefined`.
+	 * 
+	 * @param {String} name The attribute name to retrieve.
+	 * @return {String} The attribute's value, or `undefined` if it does not exist on the HtmlTag.
+	 */
+	getAttr : function( attrName ) {
+		return this.getAttrs()[ attrName ];
+	},
+	
+	
+	/**
+	 * Sets one or more attributes on the HtmlTag.
+	 * 
+	 * @param {Object.<String, String>} attrs A key/value Object (map) of the attributes to set.
+	 * @return {Autolinker.HtmlTag} This HtmlTag instance, so that method calls may be chained.
+	 */
+	setAttrs : function( attrs ) {
+		var tagAttrs = this.getAttrs();
+		Autolinker.Util.assign( tagAttrs, attrs );
+		
+		return this;
+	},
+	
+	
+	/**
+	 * Retrieves the attributes Object (map) for the HtmlTag.
+	 * 
+	 * @return {Object.<String, String>} A key/value object of the attributes for the HtmlTag.
+	 */
+	getAttrs : function() {
+		return this.attrs || ( this.attrs = {} );
+	},
+	
+	
+	/**
+	 * Sets the provided `cssClass`, overwriting any current CSS classes on the HtmlTag.
+	 * 
+	 * @param {String} cssClass One or more space-separated CSS classes to set (overwrite).
+	 * @return {Autolinker.HtmlTag} This HtmlTag instance, so that method calls may be chained.
+	 */
+	setClass : function( cssClass ) {
+		return this.setAttr( 'class', cssClass );
+	},
+	
+	
+	/**
+	 * Convenience method to add one or more CSS classes to the HtmlTag. Will not add duplicate CSS classes.
+	 * 
+	 * @param {String} cssClass One or more space-separated CSS classes to add.
+	 * @return {Autolinker.HtmlTag} This HtmlTag instance, so that method calls may be chained.
+	 */
+	addClass : function( cssClass ) {
+		var classAttr = this.getClass(),
+		    whitespaceRegex = this.whitespaceRegex,
+		    indexOf = Autolinker.Util.indexOf,  // to support IE8 and below
+		    classes = ( !classAttr ) ? [] : classAttr.split( whitespaceRegex ),
+		    newClasses = cssClass.split( whitespaceRegex ),
+		    newClass;
+		
+		while( newClass = newClasses.shift() ) {
+			if( indexOf( classes, newClass ) === -1 ) {
+				classes.push( newClass );
+			}
+		}
+		
+		this.getAttrs()[ 'class' ] = classes.join( " " );
+		return this;
+	},
+	
+	
+	/**
+	 * Convenience method to remove one or more CSS classes from the HtmlTag.
+	 * 
+	 * @param {String} cssClass One or more space-separated CSS classes to remove.
+	 * @return {Autolinker.HtmlTag} This HtmlTag instance, so that method calls may be chained.
+	 */
+	removeClass : function( cssClass ) {
+		var classAttr = this.getClass(),
+		    whitespaceRegex = this.whitespaceRegex,
+		    indexOf = Autolinker.Util.indexOf,  // to support IE8 and below
+		    classes = ( !classAttr ) ? [] : classAttr.split( whitespaceRegex ),
+		    removeClasses = cssClass.split( whitespaceRegex ),
+		    removeClass;
+		
+		while( classes.length && ( removeClass = removeClasses.shift() ) ) {
+			var idx = indexOf( classes, removeClass );
+			if( idx !== -1 ) {
+				classes.splice( idx, 1 );
+			}
+		}
+		
+		this.getAttrs()[ 'class' ] = classes.join( " " );
+		return this;
+	},
+	
+	
+	/**
+	 * Convenience method to retrieve the CSS class(es) for the HtmlTag, which will each be separated by spaces when
+	 * there are multiple.
+	 * 
+	 * @return {String}
+	 */
+	getClass : function() {
+		return this.getAttrs()[ 'class' ] || "";
+	},
+	
+	
+	/**
+	 * Convenience method to check if the tag has a CSS class or not.
+	 * 
+	 * @param {String} cssClass The CSS class to check for.
+	 * @return {Boolean} `true` if the HtmlTag has the CSS class, `false` otherwise.
+	 */
+	hasClass : function( cssClass ) {
+		return ( ' ' + this.getClass() + ' ' ).indexOf( ' ' + cssClass + ' ' ) !== -1;
+	},
+	
+	
+	/**
+	 * Sets the inner HTML for the tag.
+	 * 
+	 * @param {String} html The inner HTML to set.
+	 * @return {Autolinker.HtmlTag} This HtmlTag instance, so that method calls may be chained.
+	 */
+	setInnerHtml : function( html ) {
+		this.innerHtml = html;
+		
+		return this;
+	},
+	
+	
+	/**
+	 * Retrieves the inner HTML for the tag.
+	 * 
+	 * @return {String}
+	 */
+	getInnerHtml : function() {
+		return this.innerHtml || "";
+	},
+	
+	
+	/**
+	 * Override of superclass method used to generate the HTML string for the tag.
+	 * 
+	 * @return {String}
+	 */
+	toString : function() {
+		var tagName = this.getTagName(),
+		    attrsStr = this.buildAttrsStr();
+		
+		attrsStr = ( attrsStr ) ? ' ' + attrsStr : '';  // prepend a space if there are actually attributes
+		
+		return [ '<', tagName, attrsStr, '>', this.getInnerHtml(), '</', tagName, '>' ].join( "" );
+	},
+	
+	
+	/**
+	 * Support method for {@link #toString}, returns the string space-separated key="value" pairs, used to populate 
+	 * the stringified HtmlTag.
+	 * 
+	 * @protected
+	 * @return {String} Example return: `attr1="value1" attr2="value2"`
+	 */
+	buildAttrsStr : function() {
+		if( !this.attrs ) return "";  // no `attrs` Object (map) has been set, return empty string
+		
+		var attrs = this.getAttrs(),
+		    attrsArr = [];
+		
+		for( var prop in attrs ) {
+			if( attrs.hasOwnProperty( prop ) ) {
+				attrsArr.push( prop + '="' + attrs[ prop ] + '"' );
+			}
+		}
+		return attrsArr.join( " " );
+	}
+	
+} );
+/*global Autolinker */
+/*jshint sub:true */
+/**
+ * @protected
+ * @class Autolinker.AnchorTagBuilder
+ * @extends Object
+ * 
+ * Builds anchor (&lt;a&gt;) tags for the Autolinker utility when a match is found.
+ * 
+ * Normally this class is instantiated, configured, and used internally by an {@link Autolinker} instance, but may 
+ * actually be retrieved in a {@link Autolinker#replaceFn replaceFn} to create {@link Autolinker.HtmlTag HtmlTag} instances
+ * which may be modified before returning from the {@link Autolinker#replaceFn replaceFn}. For example:
+ * 
+ *     var html = Autolinker.link( "Test google.com", {
+ *         replaceFn : function( autolinker, match ) {
+ *             var tag = autolinker.getTagBuilder().build( match );  // returns an {@link Autolinker.HtmlTag} instance
+ *             tag.setAttr( 'rel', 'nofollow' );
+ *             
+ *             return tag;
+ *         }
+ *     } );
+ *     
+ *     // generated html:
+ *     //   Test <a href="http://google.com" target="_blank" rel="nofollow">google.com</a>
+ */
+Autolinker.AnchorTagBuilder = Autolinker.Util.extend( Object, {
+	
+	/**
+	 * @cfg {Boolean} newWindow
+	 * @inheritdoc Autolinker#newWindow
+	 */
+	
+	/**
+	 * @cfg {Number} truncate
+	 * @inheritdoc Autolinker#truncate
+	 */
+	
+	/**
+	 * @cfg {String} className
+	 * @inheritdoc Autolinker#className
+	 */
+	
+	
+	/**
+	 * @constructor
+	 * @param {Object} [cfg] The configuration options for the AnchorTagBuilder instance, specified in an Object (map).
+	 */
+	constructor : function( cfg ) {
+		Autolinker.Util.assign( this, cfg );
+	},
+	
+	
+	/**
+	 * Generates the actual anchor (&lt;a&gt;) tag to use in place of the matched URL/email/Twitter text,
+	 * via its `match` object.
+	 * 
+	 * @param {Autolinker.match.Match} match The Match instance to generate an anchor tag from.
+	 * @return {Autolinker.HtmlTag} The HtmlTag instance for the anchor tag.
+	 */
+	build : function( match ) {
+		var tag = new Autolinker.HtmlTag( {
+			tagName   : 'a',
+			attrs     : this.createAttrs( match.getType(), match.getAnchorHref() ),
+			innerHtml : this.processAnchorText( match.getAnchorText() )
+		} );
+		
+		return tag;
+	},
+	
+	
+	/**
+	 * Creates the Object (map) of the HTML attributes for the anchor (&lt;a&gt;) tag being generated.
+	 * 
+	 * @protected
+	 * @param {"url"/"email"/"twitter"} matchType The type of match that an anchor tag is being generated for.
+	 * @param {String} href The href for the anchor tag.
+	 * @return {Object} A key/value Object (map) of the anchor tag's attributes. 
+	 */
+	createAttrs : function( matchType, anchorHref ) {
+		var attrs = {
+			'href' : anchorHref  // we'll always have the `href` attribute
+		};
+		
+		var cssClass = this.createCssClass( matchType );
+		if( cssClass ) {
+			attrs[ 'class' ] = cssClass;
+		}
+		if( this.newWindow ) {
+			attrs[ 'target' ] = "_blank";
+		}
+		
+		return attrs;
+	},
+	
+	
+	/**
+	 * Creates the CSS class that will be used for a given anchor tag, based on the `matchType` and the {@link #className}
+	 * config.
+	 * 
+	 * @private
+	 * @param {"url"/"email"/"twitter"} matchType The type of match that an anchor tag is being generated for.
+	 * @return {String} The CSS class string for the link. Example return: "myLink myLink-url". If no {@link #className}
+	 *   was configured, returns an empty string.
+	 */
+	createCssClass : function( matchType ) {
+		var className = this.className;
+		
+		if( !className ) 
+			return "";
+		else
+			return className + " " + className + "-" + matchType;  // ex: "myLink myLink-url", "myLink myLink-email", or "myLink myLink-twitter"
+	},
+	
+	
+	/**
+	 * Processes the `anchorText` by truncating the text according to the {@link #truncate} config.
+	 * 
+	 * @private
+	 * @param {String} anchorText The anchor tag's text (i.e. what will be displayed).
+	 * @return {String} The processed `anchorText`.
+	 */
+	processAnchorText : function( anchorText ) {
+		anchorText = this.doTruncate( anchorText );
+		
+		return anchorText;
+	},
+	
+	
+	/**
+	 * Performs the truncation of the `anchorText`, if the `anchorText` is longer than the {@link #truncate} option.
+	 * Truncates the text to 2 characters fewer than the {@link #truncate} option, and adds ".." to the end.
+	 * 
+	 * @private
+	 * @param {String} text The anchor tag's text (i.e. what will be displayed).
+	 * @return {String} The truncated anchor text.
+	 */
+	doTruncate : function( anchorText ) {
+		return Autolinker.Util.ellipsis( anchorText, this.truncate || Number.POSITIVE_INFINITY );
+	}
+	
+} );
+/*global Autolinker */
+/**
+ * @private
+ * @class Autolinker.htmlParser.HtmlParser
+ * @extends Object
+ * 
+ * An HTML parser implementation which simply walks an HTML string and returns an array of 
+ * {@link Autolinker.htmlParser.HtmlNode HtmlNodes} that represent the basic HTML structure of the input string.
+ * 
+ * Autolinker uses this to only link URLs/emails/Twitter handles within text nodes, effectively ignoring / "walking
+ * around" HTML tags.
+ */
+Autolinker.htmlParser.HtmlParser = Autolinker.Util.extend( Object, {
+	
+	/**
+	 * @private
+	 * @property {RegExp} htmlRegex
+	 * 
+	 * The regular expression used to pull out HTML tags from a string. Handles namespaced HTML tags and
+	 * attribute names, as specified by http://www.w3.org/TR/html-markup/syntax.html.
+	 * 
+	 * Capturing groups:
+	 * 
+	 * 1. The "!DOCTYPE" tag name, if a tag is a &lt;!DOCTYPE&gt; tag.
+	 * 2. If it is an end tag, this group will have the '/'.
+	 * 3. The tag name for all tags (other than the &lt;!DOCTYPE&gt; tag)
+	 */
+	htmlRegex : (function() {
+		var tagNameRegex = /[0-9a-zA-Z][0-9a-zA-Z:]*/,
+		    attrNameRegex = /[^\s\0"'>\/=\x01-\x1F\x7F]+/,   // the unicode range accounts for excluding control chars, and the delete char
+		    attrValueRegex = /(?:"[^"]*?"|'[^']*?'|[^'"=<>`\s]+)/, // double quoted, single quoted, or unquoted attribute values
+		    nameEqualsValueRegex = attrNameRegex.source + '(?:\\s*=\\s*' + attrValueRegex.source + ')?';  // optional '=[value]'
+		
+		return new RegExp( [
+			// for <!DOCTYPE> tag. Ex: <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">) 
+			'(?:',
+				'<(!DOCTYPE)',  // *** Capturing Group 1 - If it's a doctype tag
+					
+					// Zero or more attributes following the tag name
+					'(?:',
+						'\\s+',  // one or more whitespace chars before an attribute
+						
+						// Either:
+						// A. attr="value", or 
+						// B. "value" alone (To cover example doctype tag: <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">) 
+						'(?:', nameEqualsValueRegex, '|', attrValueRegex.source + ')',
+					')*',
+				'>',
+			')',
+			
+			'|',
+			
+			// All other HTML tags (i.e. tags that are not <!DOCTYPE>)
+			'(?:',
+				'<(/)?',  // Beginning of a tag. Either '<' for a start tag, or '</' for an end tag. 
+				          // *** Capturing Group 2: The slash or an empty string. Slash ('/') for end tag, empty string for start or self-closing tag.
+			
+					// *** Capturing Group 3 - The tag name
+					'(' + tagNameRegex.source + ')',
+					
+					// Zero or more attributes following the tag name
+					'(?:',
+						'\\s+',                // one or more whitespace chars before an attribute
+						nameEqualsValueRegex,  // attr="value" (with optional ="value" part)
+					')*',
+					
+					'\\s*/?',  // any trailing spaces and optional '/' before the closing '>'
+				'>',
+			')'
+		].join( "" ), 'gi' );
+	} )(),
+	
+	/**
+	 * @private
+	 * @property {RegExp} htmlCharacterEntitiesRegex
+	 *
+	 * The regular expression that matches common HTML character entities.
+	 * 
+	 * Ignoring &amp; as it could be part of a query string -- handling it separately.
+	 */
+	htmlCharacterEntitiesRegex: /(&nbsp;|&#160;|&lt;|&#60;|&gt;|&#62;|&quot;|&#34;|&#39;)/gi,
+	
+	
+	/**
+	 * Parses an HTML string and returns a simple array of {@link Autolinker.htmlParser.HtmlNode HtmlNodes} to represent
+	 * the HTML structure of the input string. 
+	 * 
+	 * @param {String} html The HTML to parse.
+	 * @return {Autolinker.htmlParser.HtmlNode[]}
+	 */
+	parse : function( html ) {
+		var htmlRegex = this.htmlRegex,
+		    currentResult,
+		    lastIndex = 0,
+		    textAndEntityNodes,
+		    nodes = [];  // will be the result of the method
+		
+		while( ( currentResult = htmlRegex.exec( html ) ) !== null ) {
+			var tagText = currentResult[ 0 ],
+			    tagName = currentResult[ 1 ] || currentResult[ 3 ],  // The <!DOCTYPE> tag (ex: "!DOCTYPE"), or another tag (ex: "a" or "img") 
+			    isClosingTag = !!currentResult[ 2 ],
+			    inBetweenTagsText = html.substring( lastIndex, currentResult.index );
+			
+			// Push TextNodes and EntityNodes for any text found between tags
+			if( inBetweenTagsText ) {
+				textAndEntityNodes = this.parseTextAndEntityNodes( inBetweenTagsText );
+				nodes.push.apply( nodes, textAndEntityNodes );
+			}
+			
+			// Push the ElementNode
+			nodes.push( this.createElementNode( tagText, tagName, isClosingTag ) );
+			
+			lastIndex = currentResult.index + tagText.length;
+		}
+		
+		// Process any remaining text after the last HTML element. Will process all of the text if there were no HTML elements.
+		if( lastIndex < html.length ) {
+			var text = html.substring( lastIndex );
+			
+			// Push TextNodes and EntityNodes for any text found between tags
+			if( text ) {
+				textAndEntityNodes = this.parseTextAndEntityNodes( text );
+				nodes.push.apply( nodes, textAndEntityNodes );
+			}
+		}
+		
+		return nodes;
+	},
+	
+	
+	/**
+	 * Parses text and HTML entity nodes from a given string. The input string should not have any HTML tags (elements)
+	 * within it.
+	 * 
+	 * @private
+	 * @param {String} text The text to parse.
+	 * @return {Autolinker.htmlParser.HtmlNode[]} An array of HtmlNodes to represent the 
+	 *   {@link Autolinker.htmlParser.TextNode TextNodes} and {@link Autolinker.htmlParser.EntityNode EntityNodes} found.
+	 */
+	parseTextAndEntityNodes : function( text ) {
+		var nodes = [],
+		    textAndEntityTokens = Autolinker.Util.splitAndCapture( text, this.htmlCharacterEntitiesRegex );  // split at HTML entities, but include the HTML entities in the results array
+		
+		// Every even numbered token is a TextNode, and every odd numbered token is an EntityNode
+		// For example: an input `text` of "Test &quot;this&quot; today" would turn into the 
+		//   `textAndEntityTokens`: [ 'Test ', '&quot;', 'this', '&quot;', ' today' ]
+		for( var i = 0, len = textAndEntityTokens.length; i < len; i += 2 ) {
+			var textToken = textAndEntityTokens[ i ],
+			    entityToken = textAndEntityTokens[ i + 1 ];
+			
+			if( textToken ) nodes.push( this.createTextNode( textToken ) );
+			if( entityToken ) nodes.push( this.createEntityNode( entityToken ) );
+		}
+		return nodes;
+	},
+	
+	
+	/**
+	 * Factory method to create an {@link Autolinker.htmlParser.ElementNode ElementNode}.
+	 * 
+	 * @private
+	 * @param {String} tagText The full text of the tag (element) that was matched, including its attributes.
+	 * @param {String} tagName The name of the tag. Ex: An &lt;img&gt; tag would be passed to this method as "img".
+	 * @param {Boolean} isClosingTag `true` if it's a closing tag, false otherwise.
+	 * @return {Autolinker.htmlParser.ElementNode}
+	 */
+	createElementNode : function( tagText, tagName, isClosingTag ) {
+		return new Autolinker.htmlParser.ElementNode( {
+			text    : tagText,
+			tagName : tagName.toLowerCase(),
+			closing : isClosingTag
+		} );
+	},
+	
+	
+	/**
+	 * Factory method to create a {@link Autolinker.htmlParser.EntityNode EntityNode}.
+	 * 
+	 * @private
+	 * @param {String} text The text that was matched for the HTML entity (such as '&amp;nbsp;').
+	 * @return {Autolinker.htmlParser.EntityNode}
+	 */
+	createEntityNode : function( text ) {
+		return new Autolinker.htmlParser.EntityNode( { text: text } );
+	},
+	
+	
+	/**
+	 * Factory method to create a {@link Autolinker.htmlParser.TextNode TextNode}.
+	 * 
+	 * @private
+	 * @param {String} text The text that was matched.
+	 * @return {Autolinker.htmlParser.TextNode}
+	 */
+	createTextNode : function( text ) {
+		return new Autolinker.htmlParser.TextNode( { text: text } );
+	}
+	
+} );
+/*global Autolinker */
+/**
+ * @abstract
+ * @class Autolinker.htmlParser.HtmlNode
+ * 
+ * Represents an HTML node found in an input string. An HTML node is one of the following:
+ * 
+ * 1. An {@link Autolinker.htmlParser.ElementNode ElementNode}, which represents HTML tags.
+ * 2. A {@link Autolinker.htmlParser.TextNode TextNode}, which represents text outside or within HTML tags.
+ * 3. A {@link Autolinker.htmlParser.EntityNode EntityNode}, which represents one of the known HTML
+ *    entities that Autolinker looks for. This includes common ones such as &amp;quot; and &amp;nbsp;
+ */
+Autolinker.htmlParser.HtmlNode = Autolinker.Util.extend( Object, {
+	
+	/**
+	 * @cfg {String} text (required)
+	 * 
+	 * The original text that was matched for the HtmlNode. 
+	 * 
+	 * - In the case of an {@link Autolinker.htmlParser.ElementNode ElementNode}, this will be the tag's
+	 *   text.
+	 * - In the case of a {@link Autolinker.htmlParser.TextNode TextNode}, this will be the text itself.
+	 * - In the case of a {@link Autolinker.htmlParser.EntityNode EntityNode}, this will be the text of
+	 *   the HTML entity.
+	 */
+	text : "",
+	
+	
+	/**
+	 * @constructor
+	 * @param {Object} cfg The configuration properties for the Match instance, specified in an Object (map).
+	 */
+	constructor : function( cfg ) {
+		Autolinker.Util.assign( this, cfg );
+	},
+
+	
+	/**
+	 * Returns a string name for the type of node that this class represents.
+	 * 
+	 * @abstract
+	 * @return {String}
+	 */
+	getType : Autolinker.Util.abstractMethod,
+	
+	
+	/**
+	 * Retrieves the {@link #text} for the HtmlNode.
+	 * 
+	 * @return {String}
+	 */
+	getText : function() {
+		return this.text;
+	}
+
+} );
+/*global Autolinker */
+/**
+ * @class Autolinker.htmlParser.ElementNode
+ * @extends Autolinker.htmlParser.HtmlNode
+ * 
+ * Represents an HTML element node that has been parsed by the {@link Autolinker.htmlParser.HtmlParser}.
+ * 
+ * See this class's superclass ({@link Autolinker.htmlParser.HtmlNode}) for more details.
+ */
+Autolinker.htmlParser.ElementNode = Autolinker.Util.extend( Autolinker.htmlParser.HtmlNode, {
+	
+	/**
+	 * @cfg {String} tagName (required)
+	 * 
+	 * The name of the tag that was matched.
+	 */
+	tagName : '',
+	
+	/**
+	 * @cfg {Boolean} closing (required)
+	 * 
+	 * `true` if the element (tag) is a closing tag, `false` if its an opening tag.
+	 */
+	closing : false,
+
+	
+	/**
+	 * Returns a string name for the type of node that this class represents.
+	 * 
+	 * @return {String}
+	 */
+	getType : function() {
+		return 'element';
+	},
+	
+
+	/**
+	 * Returns the HTML element's (tag's) name. Ex: for an &lt;img&gt; tag, returns "img".
+	 * 
+	 * @return {String}
+	 */
+	getTagName : function() {
+		return this.tagName;
+	},
+	
+	
+	/**
+	 * Determines if the HTML element (tag) is a closing tag. Ex: &lt;div&gt; returns
+	 * `false`, while &lt;/div&gt; returns `true`.
+	 * 
+	 * @return {Boolean}
+	 */
+	isClosing : function() {
+		return this.closing;
+	}
+	
+} );
+/*global Autolinker */
+/**
+ * @class Autolinker.htmlParser.EntityNode
+ * @extends Autolinker.htmlParser.HtmlNode
+ * 
+ * Represents a known HTML entity node that has been parsed by the {@link Autolinker.htmlParser.HtmlParser}.
+ * Ex: '&amp;nbsp;', or '&amp#160;' (which will be retrievable from the {@link #getText} method.
+ * 
+ * Note that this class will only be returned from the HtmlParser for the set of checked HTML entity nodes 
+ * defined by the {@link Autolinker.htmlParser.HtmlParser#htmlCharacterEntitiesRegex}.
+ * 
+ * See this class's superclass ({@link Autolinker.htmlParser.HtmlNode}) for more details.
+ */
+Autolinker.htmlParser.EntityNode = Autolinker.Util.extend( Autolinker.htmlParser.HtmlNode, {
+	
+	/**
+	 * Returns a string name for the type of node that this class represents.
+	 * 
+	 * @return {String}
+	 */
+	getType : function() {
+		return 'entity';
+	}
+	
+} );
+/*global Autolinker */
+/**
+ * @class Autolinker.htmlParser.TextNode
+ * @extends Autolinker.htmlParser.HtmlNode
+ * 
+ * Represents a text node that has been parsed by the {@link Autolinker.htmlParser.HtmlParser}.
+ * 
+ * See this class's superclass ({@link Autolinker.htmlParser.HtmlNode}) for more details.
+ */
+Autolinker.htmlParser.TextNode = Autolinker.Util.extend( Autolinker.htmlParser.HtmlNode, {
+	
+	/**
+	 * Returns a string name for the type of node that this class represents.
+	 * 
+	 * @return {String}
+	 */
+	getType : function() {
+		return 'text';
+	}
+	
+} );
+/*global Autolinker */
+/**
+ * @private
+ * @class Autolinker.matchParser.MatchParser
+ * @extends Object
+ * 
+ * Used by Autolinker to parse {@link #urls URLs}, {@link #emails email addresses}, and {@link #twitter Twitter handles}, 
+ * given an input string of text.
+ * 
+ * The MatchParser is fed a non-HTML string in order to search out URLs, email addresses and Twitter handles. Autolinker
+ * first uses the {@link HtmlParser} to "walk around" HTML tags, and then the text around the HTML tags is passed into
+ * the MatchParser in order to find the actual matches.
+ */
+Autolinker.matchParser.MatchParser = Autolinker.Util.extend( Object, {
+	
+	/**
+	 * @cfg {Boolean} urls
+	 * 
+	 * `true` if miscellaneous URLs should be automatically linked, `false` if they should not be.
+	 */
+	urls : true,
+	
+	/**
+	 * @cfg {Boolean} email
+	 * 
+	 * `true` if email addresses should be automatically linked, `false` if they should not be.
+	 */
+	email : true,
+	
+	/**
+	 * @cfg {Boolean} twitter
+	 * 
+	 * `true` if Twitter handles ("@example") should be automatically linked, `false` if they should not be.
+	 */
+	twitter : true,
+	
+	/**
+	 * @cfg {Boolean} stripPrefix
+	 * 
+	 * `true` if 'http://' or 'https://' and/or the 'www.' should be stripped from the beginning of URL links' text
+	 * in {@link Autolinker.match.Url URL matches}, `false` otherwise.
+	 * 
+	 * TODO: Handle this before a URL Match object is instantiated.
+	 */
+	stripPrefix : true,
+	
+	
+	/**
+	 * @private
+	 * @property {RegExp} matcherRegex
+	 * 
+	 * The regular expression that matches URLs, email addresses, and Twitter handles.
+	 * 
+	 * This regular expression has the following capturing groups:
+	 * 
+	 * 1. Group that is used to determine if there is a Twitter handle match (i.e. \@someTwitterUser). Simply check for its 
+	 *    existence to determine if there is a Twitter handle match. The next couple of capturing groups give information 
+	 *    about the Twitter handle match.
+	 * 2. The whitespace character before the \@sign in a Twitter handle. This is needed because there are no lookbehinds in
+	 *    JS regular expressions, and can be used to reconstruct the original string in a replace().
+	 * 3. The Twitter handle itself in a Twitter match. If the match is '@someTwitterUser', the handle is 'someTwitterUser'.
+	 * 4. Group that matches an email address. Used to determine if the match is an email address, as well as holding the full 
+	 *    address. Ex: 'me@my.com'
+	 * 5. Group that matches a URL in the input text. Ex: 'http://google.com', 'www.google.com', or just 'google.com'.
+	 *    This also includes a path, url parameters, or hash anchors. Ex: google.com/path/to/file?q1=1&q2=2#myAnchor
+	 * 6. Group that matches a protocol URL (i.e. 'http://google.com'). This is used to match protocol URLs with just a single
+	 *    word, like 'http://localhost', where we won't double check that the domain name has at least one '.' in it.
+	 * 7. A protocol-relative ('//') match for the case of a 'www.' prefixed URL. Will be an empty string if it is not a 
+	 *    protocol-relative match. We need to know the character before the '//' in order to determine if it is a valid match
+	 *    or the // was in a string we don't want to auto-link.
+	 * 8. A protocol-relative ('//') match for the case of a known TLD prefixed URL. Will be an empty string if it is not a 
+	 *    protocol-relative match. See #6 for more info. 
+	 */
+	matcherRegex : (function() {
+		var twitterRegex = /(^|[^\w])@(\w{1,15})/,              // For matching a twitter handle. Ex: @gregory_jacobs
+		    
+		    emailRegex = /(?:[\-;:&=\+\$,\w\.]+@)/,             // something@ for email addresses (a.k.a. local-part)
+		    
+		    protocolRegex = /(?:[A-Za-z][-.+A-Za-z0-9]+:(?![A-Za-z][-.+A-Za-z0-9]+:\/\/)(?!\d+\/?)(?:\/\/)?)/,  // match protocol, allow in format "http://" or "mailto:". However, do not match the first part of something like 'link:http://www.google.com' (i.e. don't match "link:"). Also, make sure we don't interpret 'google.com:8000' as if 'google.com' was a protocol here (i.e. ignore a trailing port number in this regex)
+		    wwwRegex = /(?:www\.)/,                             // starting with 'www.'
+		    domainNameRegex = /[A-Za-z0-9\.\-]*[A-Za-z0-9\-]/,  // anything looking at all like a domain, non-unicode domains, not ending in a period
+		    tldRegex = /\.(?:international|construction|contractors|enterprises|photography|productions|foundation|immobilien|industries|management|properties|technology|christmas|community|directory|education|equipment|institute|marketing|solutions|vacations|bargains|boutique|builders|catering|cleaning|clothing|computer|democrat|diamonds|graphics|holdings|lighting|partners|plumbing|supplies|training|ventures|academy|careers|company|cruises|domains|exposed|flights|florist|gallery|guitars|holiday|kitchen|neustar|okinawa|recipes|rentals|reviews|shiksha|singles|support|systems|agency|berlin|camera|center|coffee|condos|dating|estate|events|expert|futbol|kaufen|luxury|maison|monash|museum|nagoya|photos|repair|report|social|supply|tattoo|tienda|travel|viajes|villas|vision|voting|voyage|actor|build|cards|cheap|codes|dance|email|glass|house|mango|ninja|parts|photo|shoes|solar|today|tokyo|tools|watch|works|aero|arpa|asia|best|bike|blue|buzz|camp|club|cool|coop|farm|fish|gift|guru|info|jobs|kiwi|kred|land|limo|link|menu|mobi|moda|name|pics|pink|post|qpon|rich|ruhr|sexy|tips|vote|voto|wang|wien|wiki|zone|bar|bid|biz|cab|cat|ceo|com|edu|gov|int|kim|mil|net|onl|org|pro|pub|red|tel|uno|wed|xxx|xyz|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cr|cu|cv|cw|cx|cy|cz|de|dj|dk|dm|do|dz|ec|ee|eg|er|es|et|eu|fi|fj|fk|fm|fo|fr|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|sk|sl|sm|sn|so|sr|st|su|sv|sx|sy|sz|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|za|zm|zw)\b/,   // match our known top level domains (TLDs)
+		    
+		    // Allow optional path, query string, and hash anchor, not ending in the following characters: "?!:,.;"
+		    // http://blog.codinghorror.com/the-problem-with-urls/
+		    urlSuffixRegex = /[\-A-Za-z0-9+&@#\/%=~_()|'$*\[\]?!:,.;]*[\-A-Za-z0-9+&@#\/%=~_()|'$*\[\]]/;
+		
+		return new RegExp( [
+			'(',  // *** Capturing group $1, which can be used to check for a twitter handle match. Use group $3 for the actual twitter handle though. $2 may be used to reconstruct the original string in a replace() 
+				// *** Capturing group $2, which matches the whitespace character before the '@' sign (needed because of no lookbehinds), and 
+				// *** Capturing group $3, which matches the actual twitter handle
+				twitterRegex.source,
+			')',
+			
+			'|',
+			
+			'(',  // *** Capturing group $4, which is used to determine an email match
+				emailRegex.source,
+				domainNameRegex.source,
+				tldRegex.source,
+			')',
+			
+			'|',
+			
+			'(',  // *** Capturing group $5, which is used to match a URL
+				'(?:', // parens to cover match for protocol (optional), and domain
+					'(',  // *** Capturing group $6, for a protocol-prefixed url (ex: http://google.com)
+						protocolRegex.source,
+						domainNameRegex.source,
+					')',
+					
+					'|',
+					
+					'(?:',  // non-capturing paren for a 'www.' prefixed url (ex: www.google.com)
+						'(.?//)?',  // *** Capturing group $7 for an optional protocol-relative URL. Must be at the beginning of the string or start with a non-word character
+						wwwRegex.source,
+						domainNameRegex.source,
+					')',
+					
+					'|',
+					
+					'(?:',  // non-capturing paren for known a TLD url (ex: google.com)
+						'(.?//)?',  // *** Capturing group $8 for an optional protocol-relative URL. Must be at the beginning of the string or start with a non-word character
+						domainNameRegex.source,
+						tldRegex.source,
+					')',
+				')',
+				
+				'(?:' + urlSuffixRegex.source + ')?',  // match for path, query string, and/or hash anchor - optional
+			')'
+		].join( "" ), 'gi' );
+	} )(),
+	
+	/**
+	 * @private
+	 * @property {RegExp} charBeforeProtocolRelMatchRegex
+	 * 
+	 * The regular expression used to retrieve the character before a protocol-relative URL match.
+	 * 
+	 * This is used in conjunction with the {@link #matcherRegex}, which needs to grab the character before a protocol-relative
+	 * '//' due to the lack of a negative look-behind in JavaScript regular expressions. The character before the match is stripped
+	 * from the URL.
+	 */
+	charBeforeProtocolRelMatchRegex : /^(.)?\/\//,
+	
+	/**
+	 * @private
+	 * @property {Autolinker.MatchValidator} matchValidator
+	 * 
+	 * The MatchValidator object, used to filter out any false positives from the {@link #matcherRegex}. See
+	 * {@link Autolinker.MatchValidator} for details.
+	 */
+	
+	
+	/**
+	 * @constructor
+	 * @param {Object} [cfg] The configuration options for the AnchorTagBuilder instance, specified in an Object (map).
+	 */
+	constructor : function( cfg ) {
+		Autolinker.Util.assign( this, cfg );
+	
+		this.matchValidator = new Autolinker.MatchValidator();
+	},
+	
+	
+	/**
+	 * Parses the input `text` to search for URLs/emails/Twitter handles, and calls the `replaceFn`
+	 * to allow replacements of the matches. Returns the `text` with matches replaced.
+	 * 
+	 * @param {String} text The text to search and repace matches in.
+	 * @param {Function} replaceFn The iterator function to handle the replacements. The function takes a
+	 *   single argument, a {@link Autolinker.match.Match} object, and should return the text that should
+	 *   make the replacement.
+	 * @param {Object} [contextObj=window] The context object ("scope") to run the `replaceFn` in.
+	 * @return {String}
+	 */
+	replace : function( text, replaceFn, contextObj ) {
+		var me = this;  // for closure
+		
+		return text.replace( this.matcherRegex, function( matchStr, $1, $2, $3, $4, $5, $6, $7, $8 ) {
+			var matchDescObj = me.processCandidateMatch( matchStr, $1, $2, $3, $4, $5, $6, $7, $8 );  // "match description" object
+			
+			// Return out with no changes for match types that are disabled (url, email, twitter), or for matches that are 
+			// invalid (false positives from the matcherRegex, which can't use look-behinds since they are unavailable in JS).
+			if( !matchDescObj ) {
+				return matchStr;
+				
+			} else {
+				// Generate replacement text for the match from the `replaceFn`
+				var replaceStr = replaceFn.call( contextObj, matchDescObj.match );
+				return matchDescObj.prefixStr + replaceStr + matchDescObj.suffixStr;
+			}
+		} );
+	},
+	
+	
+	/**
+	 * Processes a candidate match from the {@link #matcherRegex}. 
+	 * 
+	 * Not all matches found by the regex are actual URL/email/Twitter matches, as determined by the {@link #matchValidator}. In
+	 * this case, the method returns `null`. Otherwise, a valid Object with `prefixStr`, `match`, and `suffixStr` is returned.
+	 * 
+	 * @private
+	 * @param {String} matchStr The full match that was found by the {@link #matcherRegex}.
+	 * @param {String} twitterMatch The matched text of a Twitter handle, if the match is a Twitter match.
+	 * @param {String} twitterHandlePrefixWhitespaceChar The whitespace char before the @ sign in a Twitter handle match. This 
+	 *   is needed because of no lookbehinds in JS regexes, and is need to re-include the character for the anchor tag replacement.
+	 * @param {String} twitterHandle The actual Twitter user (i.e the word after the @ sign in a Twitter match).
+	 * @param {String} emailAddressMatch The matched email address for an email address match.
+	 * @param {String} urlMatch The matched URL string for a URL match.
+	 * @param {String} protocolUrlMatch The match URL string for a protocol match. Ex: 'http://yahoo.com'. This is used to match
+	 *   something like 'http://localhost', where we won't double check that the domain name has at least one '.' in it.
+	 * @param {String} wwwProtocolRelativeMatch The '//' for a protocol-relative match from a 'www' url, with the character that 
+	 *   comes before the '//'.
+	 * @param {String} tldProtocolRelativeMatch The '//' for a protocol-relative match from a TLD (top level domain) match, with 
+	 *   the character that comes before the '//'.
+	 *   
+	 * @return {Object} A "match description object". This will be `null` if the match was invalid, or if a match type is disabled.
+	 *   Otherwise, this will be an Object (map) with the following properties:
+	 * @return {String} return.prefixStr The char(s) that should be prepended to the replacement string. These are char(s) that
+	 *   were needed to be included from the regex match that were ignored by processing code, and should be re-inserted into 
+	 *   the replacement stream.
+	 * @return {String} return.suffixStr The char(s) that should be appended to the replacement string. These are char(s) that
+	 *   were needed to be included from the regex match that were ignored by processing code, and should be re-inserted into 
+	 *   the replacement stream.
+	 * @return {Autolinker.match.Match} return.match The Match object that represents the match that was found.
+	 */
+	processCandidateMatch : function( 
+		matchStr, twitterMatch, twitterHandlePrefixWhitespaceChar, twitterHandle, 
+		emailAddressMatch, urlMatch, protocolUrlMatch, wwwProtocolRelativeMatch, tldProtocolRelativeMatch
+	) {
+		// Note: The `matchStr` variable wil be fixed up to remove characters that are no longer needed (which will 
+		// be added to `prefixStr` and `suffixStr`).
+		
+		var protocolRelativeMatch = wwwProtocolRelativeMatch || tldProtocolRelativeMatch,
+		    match,  // Will be an Autolinker.match.Match object
+		    
+		    prefixStr = "",       // A string to use to prefix the anchor tag that is created. This is needed for the Twitter handle match
+		    suffixStr = "";       // A string to suffix the anchor tag that is created. This is used if there is a trailing parenthesis that should not be auto-linked.
+		    
+		
+		// Return out with `null` for match types that are disabled (url, email, twitter), or for matches that are 
+		// invalid (false positives from the matcherRegex, which can't use look-behinds since they are unavailable in JS).
+		if(
+			( twitterMatch && !this.twitter ) || ( emailAddressMatch && !this.email ) || ( urlMatch && !this.urls ) ||
+			!this.matchValidator.isValidMatch( urlMatch, protocolUrlMatch, protocolRelativeMatch ) 
+		) {
+			return null;
+		}
+		
+		// Handle a closing parenthesis at the end of the match, and exclude it if there is not a matching open parenthesis
+		// in the match itself. 
+		if( this.matchHasUnbalancedClosingParen( matchStr ) ) {
+			matchStr = matchStr.substr( 0, matchStr.length - 1 );  // remove the trailing ")"
+			suffixStr = ")";  // this will be added after the generated <a> tag
+		}
+		
+		
+		if( emailAddressMatch ) {
+			match = new Autolinker.match.Email( { matchedText: matchStr, email: emailAddressMatch } );
+			
+		} else if( twitterMatch ) {
+			// fix up the `matchStr` if there was a preceding whitespace char, which was needed to determine the match 
+			// itself (since there are no look-behinds in JS regexes)
+			if( twitterHandlePrefixWhitespaceChar ) {
+				prefixStr = twitterHandlePrefixWhitespaceChar;
+				matchStr = matchStr.slice( 1 );  // remove the prefixed whitespace char from the match
+			}
+			match = new Autolinker.match.Twitter( { matchedText: matchStr, twitterHandle: twitterHandle } );
+			
+		} else {  // url match
+			// If it's a protocol-relative '//' match, remove the character before the '//' (which the matcherRegex needed
+			// to match due to the lack of a negative look-behind in JavaScript regular expressions)
+			if( protocolRelativeMatch ) {
+				var charBeforeMatch = protocolRelativeMatch.match( this.charBeforeProtocolRelMatchRegex )[ 1 ] || "";
+				
+				if( charBeforeMatch ) {  // fix up the `matchStr` if there was a preceding char before a protocol-relative match, which was needed to determine the match itself (since there are no look-behinds in JS regexes)
+					prefixStr = charBeforeMatch;
+					matchStr = matchStr.slice( 1 );  // remove the prefixed char from the match
+				}
+			}
+			
+			match = new Autolinker.match.Url( {
+				matchedText : matchStr,
+				url : matchStr,
+				protocolUrlMatch : !!protocolUrlMatch,
+				protocolRelativeMatch : !!protocolRelativeMatch,
+				stripPrefix : this.stripPrefix
+			} );
+		}
+		
+		return {
+			prefixStr : prefixStr,
+			suffixStr : suffixStr,
+			match     : match
+		};
+	},
+	
+	
+	/**
+	 * Determines if a match found has an unmatched closing parenthesis. If so, this parenthesis will be removed
+	 * from the match itself, and appended after the generated anchor tag in {@link #processTextNode}.
+	 * 
+	 * A match may have an extra closing parenthesis at the end of the match because the regular expression must include parenthesis
+	 * for URLs such as "wikipedia.com/something_(disambiguation)", which should be auto-linked. 
+	 * 
+	 * However, an extra parenthesis *will* be included when the URL itself is wrapped in parenthesis, such as in the case of
+	 * "(wikipedia.com/something_(disambiguation))". In this case, the last closing parenthesis should *not* be part of the URL 
+	 * itself, and this method will return `true`.
+	 * 
+	 * @private
+	 * @param {String} matchStr The full match string from the {@link #matcherRegex}.
+	 * @return {Boolean} `true` if there is an unbalanced closing parenthesis at the end of the `matchStr`, `false` otherwise.
+	 */
+	matchHasUnbalancedClosingParen : function( matchStr ) {
+		var lastChar = matchStr.charAt( matchStr.length - 1 );
+		
+		if( lastChar === ')' ) {
+			var openParensMatch = matchStr.match( /\(/g ),
+			    closeParensMatch = matchStr.match( /\)/g ),
+			    numOpenParens = ( openParensMatch && openParensMatch.length ) || 0,
+			    numCloseParens = ( closeParensMatch && closeParensMatch.length ) || 0;
+			
+			if( numOpenParens < numCloseParens ) {
+				return true;
+			}
+		}
+		
+		return false;
+	}
+	
+} );
+/*global Autolinker */
+/*jshint scripturl:true */
+/**
+ * @private
+ * @class Autolinker.MatchValidator
+ * @extends Object
+ * 
+ * Used by Autolinker to filter out false positives from the {@link Autolinker#matcherRegex}.
+ * 
+ * Due to the limitations of regular expressions (including the missing feature of look-behinds in JS regular expressions),
+ * we cannot always determine the validity of a given match. This class applies a bit of additional logic to filter out any
+ * false positives that have been matched by the {@link Autolinker#matcherRegex}.
+ */
+Autolinker.MatchValidator = Autolinker.Util.extend( Object, {
+	
+	/**
+	 * @private
+	 * @property {RegExp} invalidProtocolRelMatchRegex
+	 * 
+	 * The regular expression used to check a potential protocol-relative URL match, coming from the 
+	 * {@link Autolinker#matcherRegex}. A protocol-relative URL is, for example, "//yahoo.com"
+	 * 
+	 * This regular expression checks to see if there is a word character before the '//' match in order to determine if 
+	 * we should actually autolink a protocol-relative URL. This is needed because there is no negative look-behind in 
+	 * JavaScript regular expressions. 
+	 * 
+	 * For instance, we want to autolink something like "Go to: //google.com", but we don't want to autolink something 
+	 * like "abc//google.com"
+	 */
+	invalidProtocolRelMatchRegex : /^[\w]\/\//,
+	
+	/**
+	 * Regex to test for a full protocol, with the two trailing slashes. Ex: 'http://'
+	 * 
+	 * @private
+	 * @property {RegExp} hasFullProtocolRegex
+	 */
+	hasFullProtocolRegex : /^[A-Za-z][-.+A-Za-z0-9]+:\/\//,
+	
+	/**
+	 * Regex to find the URI scheme, such as 'mailto:'.
+	 * 
+	 * This is used to filter out 'javascript:' and 'vbscript:' schemes.
+	 * 
+	 * @private
+	 * @property {RegExp} uriSchemeRegex
+	 */
+	uriSchemeRegex : /^[A-Za-z][-.+A-Za-z0-9]+:/,
+	
+	/**
+	 * Regex to determine if at least one word char exists after the protocol (i.e. after the ':')
+	 * 
+	 * @private
+	 * @property {RegExp} hasWordCharAfterProtocolRegex
+	 */
+	hasWordCharAfterProtocolRegex : /:[^\s]*?[A-Za-z]/,
+	
+	
+	/**
+	 * Determines if a given match found by {@link Autolinker#processTextNode} is valid. Will return `false` for:
+	 * 
+	 * 1) URL matches which do not have at least have one period ('.') in the domain name (effectively skipping over 
+	 *    matches like "abc:def"). However, URL matches with a protocol will be allowed (ex: 'http://localhost')
+	 * 2) URL matches which do not have at least one word character in the domain name (effectively skipping over
+	 *    matches like "git:1.0").
+	 * 3) A protocol-relative url match (a URL beginning with '//') whose previous character is a word character 
+	 *    (effectively skipping over strings like "abc//google.com")
+	 * 
+	 * Otherwise, returns `true`.
+	 * 
+	 * @param {String} urlMatch The matched URL, if there was one. Will be an empty string if the match is not a URL match.
+	 * @param {String} protocolUrlMatch The match URL string for a protocol match. Ex: 'http://yahoo.com'. This is used to match
+	 *   something like 'http://localhost', where we won't double check that the domain name has at least one '.' in it.
+	 * @param {String} protocolRelativeMatch The protocol-relative string for a URL match (i.e. '//'), possibly with a preceding
+	 *   character (ex, a space, such as: ' //', or a letter, such as: 'a//'). The match is invalid if there is a word character
+	 *   preceding the '//'.
+	 * @return {Boolean} `true` if the match given is valid and should be processed, or `false` if the match is invalid and/or 
+	 *   should just not be processed.
+	 */
+	isValidMatch : function( urlMatch, protocolUrlMatch, protocolRelativeMatch ) {
+		if(
+			( protocolUrlMatch && !this.isValidUriScheme( protocolUrlMatch ) ) ||
+			this.urlMatchDoesNotHaveProtocolOrDot( urlMatch, protocolUrlMatch ) ||       // At least one period ('.') must exist in the URL match for us to consider it an actual URL, *unless* it was a full protocol match (like 'http://localhost')
+			this.urlMatchDoesNotHaveAtLeastOneWordChar( urlMatch, protocolUrlMatch ) ||  // At least one letter character must exist in the domain name after a protocol match. Ex: skip over something like "git:1.0"
+			this.isInvalidProtocolRelativeMatch( protocolRelativeMatch )                 // A protocol-relative match which has a word character in front of it (so we can skip something like "abc//google.com")
+		) {
+			return false;
+		}
+		
+		return true;
+	},
+	
+	
+	/**
+	 * Determines if the URI scheme is a valid scheme to be autolinked. Returns `false` if the scheme is 
+	 * 'javascript:' or 'vbscript:'
+	 * 
+	 * @private
+	 * @param {String} uriSchemeMatch The match URL string for a full URI scheme match. Ex: 'http://yahoo.com' 
+	 *   or 'mailto:a@a.com'.
+	 * @return {Boolean} `true` if the scheme is a valid one, `false` otherwise.
+	 */
+	isValidUriScheme : function( uriSchemeMatch ) {
+		var uriScheme = uriSchemeMatch.match( this.uriSchemeRegex )[ 0 ].toLowerCase();
+		
+		return ( uriScheme !== 'javascript:' && uriScheme !== 'vbscript:' );
+	},
+	
+	
+	/**
+	 * Determines if a URL match does not have either:
+	 * 
+	 * a) a full protocol (i.e. 'http://'), or
+	 * b) at least one dot ('.') in the domain name (for a non-full-protocol match).
+	 * 
+	 * Either situation is considered an invalid URL (ex: 'git:d' does not have either the '://' part, or at least one dot
+	 * in the domain name. If the match was 'git:abc.com', we would consider this valid.)
+	 * 
+	 * @private
+	 * @param {String} urlMatch The matched URL, if there was one. Will be an empty string if the match is not a URL match.
+	 * @param {String} protocolUrlMatch The match URL string for a protocol match. Ex: 'http://yahoo.com'. This is used to match
+	 *   something like 'http://localhost', where we won't double check that the domain name has at least one '.' in it.
+	 * @return {Boolean} `true` if the URL match does not have a full protocol, or at least one dot ('.') in a non-full-protocol
+	 *   match.
+	 */
+	urlMatchDoesNotHaveProtocolOrDot : function( urlMatch, protocolUrlMatch ) {
+		return ( !!urlMatch && ( !protocolUrlMatch || !this.hasFullProtocolRegex.test( protocolUrlMatch ) ) && urlMatch.indexOf( '.' ) === -1 );
+	},
+	
+	
+	/**
+	 * Determines if a URL match does not have at least one word character after the protocol (i.e. in the domain name).
+	 * 
+	 * At least one letter character must exist in the domain name after a protocol match. Ex: skip over something 
+	 * like "git:1.0"
+	 * 
+	 * @private
+	 * @param {String} urlMatch The matched URL, if there was one. Will be an empty string if the match is not a URL match.
+	 * @param {String} protocolUrlMatch The match URL string for a protocol match. Ex: 'http://yahoo.com'. This is used to
+	 *   know whether or not we have a protocol in the URL string, in order to check for a word character after the protocol
+	 *   separator (':').
+	 * @return {Boolean} `true` if the URL match does not have at least one word character in it after the protocol, `false`
+	 *   otherwise.
+	 */
+	urlMatchDoesNotHaveAtLeastOneWordChar : function( urlMatch, protocolUrlMatch ) {
+		if( urlMatch && protocolUrlMatch ) {
+			return !this.hasWordCharAfterProtocolRegex.test( urlMatch );
+		} else {
+			return false;
+		}
+	},
+	
+	
+	/**
+	 * Determines if a protocol-relative match is an invalid one. This method returns `true` if there is a `protocolRelativeMatch`,
+	 * and that match contains a word character before the '//' (i.e. it must contain whitespace or nothing before the '//' in
+	 * order to be considered valid).
+	 * 
+	 * @private
+	 * @param {String} protocolRelativeMatch The protocol-relative string for a URL match (i.e. '//'), possibly with a preceding
+	 *   character (ex, a space, such as: ' //', or a letter, such as: 'a//'). The match is invalid if there is a word character
+	 *   preceding the '//'.
+	 * @return {Boolean} `true` if it is an invalid protocol-relative match, `false` otherwise.
+	 */
+	isInvalidProtocolRelativeMatch : function( protocolRelativeMatch ) {
+		return ( !!protocolRelativeMatch && this.invalidProtocolRelMatchRegex.test( protocolRelativeMatch ) );
+	}
+
+} );
+/*global Autolinker */
+/**
+ * @abstract
+ * @class Autolinker.match.Match
+ * 
+ * Represents a match found in an input string which should be Autolinked. A Match object is what is provided in a 
+ * {@link Autolinker#replaceFn replaceFn}, and may be used to query for details about the match.
+ * 
+ * For example:
+ * 
+ *     var input = "...";  // string with URLs, Email Addresses, and Twitter Handles
+ *     
+ *     var linkedText = Autolinker.link( input, {
+ *         replaceFn : function( autolinker, match ) {
+ *             console.log( "href = ", match.getAnchorHref() );
+ *             console.log( "text = ", match.getAnchorText() );
+ *         
+ *             switch( match.getType() ) {
+ *                 case 'url' : 
+ *                     console.log( "url: ", match.getUrl() );
+ *                     
+ *                 case 'email' :
+ *                     console.log( "email: ", match.getEmail() );
+ *                     
+ *                 case 'twitter' :
+ *                     console.log( "twitter: ", match.getTwitterHandle() );
+ *             }
+ *         }
+ *     } );
+ *     
+ * See the {@link Autolinker} class for more details on using the {@link Autolinker#replaceFn replaceFn}.
+ */
+Autolinker.match.Match = Autolinker.Util.extend( Object, {
+	
+	/**
+	 * @cfg {String} matchedText (required)
+	 * 
+	 * The original text that was matched.
+	 */
+	
+	
+	/**
+	 * @constructor
+	 * @param {Object} cfg The configuration properties for the Match instance, specified in an Object (map).
+	 */
+	constructor : function( cfg ) {
+		Autolinker.Util.assign( this, cfg );
+	},
+
+	
+	/**
+	 * Returns a string name for the type of match that this class represents.
+	 * 
+	 * @abstract
+	 * @return {String}
+	 */
+	getType : Autolinker.Util.abstractMethod,
+	
+	
+	/**
+	 * Returns the original text that was matched.
+	 * 
+	 * @return {String}
+	 */
+	getMatchedText : function() {
+		return this.matchedText;
+	},
+	
+
+	/**
+	 * Returns the anchor href that should be generated for the match.
+	 * 
+	 * @abstract
+	 * @return {String}
+	 */
+	getAnchorHref : Autolinker.Util.abstractMethod,
+	
+	
+	/**
+	 * Returns the anchor text that should be generated for the match.
+	 * 
+	 * @abstract
+	 * @return {String}
+	 */
+	getAnchorText : Autolinker.Util.abstractMethod
+
+} );
+/*global Autolinker */
+/**
+ * @class Autolinker.match.Email
+ * @extends Autolinker.match.Match
+ * 
+ * Represents a Email match found in an input string which should be Autolinked.
+ * 
+ * See this class's superclass ({@link Autolinker.match.Match}) for more details.
+ */
+Autolinker.match.Email = Autolinker.Util.extend( Autolinker.match.Match, {
+	
+	/**
+	 * @cfg {String} email (required)
+	 * 
+	 * The email address that was matched.
+	 */
+	
+
+	/**
+	 * Returns a string name for the type of match that this class represents.
+	 * 
+	 * @return {String}
+	 */
+	getType : function() {
+		return 'email';
+	},
+	
+	
+	/**
+	 * Returns the email address that was matched.
+	 * 
+	 * @return {String}
+	 */
+	getEmail : function() {
+		return this.email;
+	},
+	
+
+	/**
+	 * Returns the anchor href that should be generated for the match.
+	 * 
+	 * @return {String}
+	 */
+	getAnchorHref : function() {
+		return 'mailto:' + this.email;
+	},
+	
+	
+	/**
+	 * Returns the anchor text that should be generated for the match.
+	 * 
+	 * @return {String}
+	 */
+	getAnchorText : function() {
+		return this.email;
+	}
+	
+} );
+/*global Autolinker */
+/**
+ * @class Autolinker.match.Twitter
+ * @extends Autolinker.match.Match
+ * 
+ * Represents a Twitter match found in an input string which should be Autolinked.
+ * 
+ * See this class's superclass ({@link Autolinker.match.Match}) for more details.
+ */
+Autolinker.match.Twitter = Autolinker.Util.extend( Autolinker.match.Match, {
+	
+	/**
+	 * @cfg {String} twitterHandle (required)
+	 * 
+	 * The Twitter handle that was matched.
+	 */
+	
+
+	/**
+	 * Returns the type of match that this class represents.
+	 * 
+	 * @return {String}
+	 */
+	getType : function() {
+		return 'twitter';
+	},
+	
+	
+	/**
+	 * Returns a string name for the type of match that this class represents.
+	 * 
+	 * @return {String}
+	 */
+	getTwitterHandle : function() {
+		return this.twitterHandle;
+	},
+	
+
+	/**
+	 * Returns the anchor href that should be generated for the match.
+	 * 
+	 * @return {String}
+	 */
+	getAnchorHref : function() {
+		return 'https://twitter.com/' + this.twitterHandle;
+	},
+	
+	
+	/**
+	 * Returns the anchor text that should be generated for the match.
+	 * 
+	 * @return {String}
+	 */
+	getAnchorText : function() {
+		return '@' + this.twitterHandle;
+	}
+	
+} );
+/*global Autolinker */
+/**
+ * @class Autolinker.match.Url
+ * @extends Autolinker.match.Match
+ * 
+ * Represents a Url match found in an input string which should be Autolinked.
+ * 
+ * See this class's superclass ({@link Autolinker.match.Match}) for more details.
+ */
+Autolinker.match.Url = Autolinker.Util.extend( Autolinker.match.Match, {
+	
+	/**
+	 * @cfg {String} url (required)
+	 * 
+	 * The url that was matched.
+	 */
+	
+	/**
+	 * @cfg {Boolean} protocolUrlMatch (required)
+	 * 
+	 * `true` if the URL is a match which already has a protocol (i.e. 'http://'), `false` if the match was from a 'www' or
+	 * known TLD match.
+	 */
+	
+	/**
+	 * @cfg {Boolean} protocolRelativeMatch (required)
+	 * 
+	 * `true` if the URL is a protocol-relative match. A protocol-relative match is a URL that starts with '//',
+	 * and will be either http:// or https:// based on the protocol that the site is loaded under.
+	 */
+	
+	/**
+	 * @cfg {Boolean} stripPrefix (required)
+	 * @inheritdoc Autolinker#stripPrefix
+	 */
+	
+
+	/**
+	 * @private
+	 * @property {RegExp} urlPrefixRegex
+	 * 
+	 * A regular expression used to remove the 'http://' or 'https://' and/or the 'www.' from URLs.
+	 */
+	urlPrefixRegex: /^(https?:\/\/)?(www\.)?/i,
+	
+	/**
+	 * @private
+	 * @property {RegExp} protocolRelativeRegex
+	 * 
+	 * The regular expression used to remove the protocol-relative '//' from the {@link #url} string, for purposes
+	 * of {@link #getAnchorText}. A protocol-relative URL is, for example, "//yahoo.com"
+	 */
+	protocolRelativeRegex : /^\/\//,
+	
+	/**
+	 * @private
+	 * @property {Boolean} protocolPrepended
+	 * 
+	 * Will be set to `true` if the 'http://' protocol has been prepended to the {@link #url} (because the
+	 * {@link #url} did not have a protocol)
+	 */
+	protocolPrepended : false,
+	
+
+	/**
+	 * Returns a string name for the type of match that this class represents.
+	 * 
+	 * @return {String}
+	 */
+	getType : function() {
+		return 'url';
+	},
+	
+	
+	/**
+	 * Returns the url that was matched, assuming the protocol to be 'http://' if the original
+	 * match was missing a protocol.
+	 * 
+	 * @return {String}
+	 */
+	getUrl : function() {
+		var url = this.url;
+		
+		// if the url string doesn't begin with a protocol, assume 'http://'
+		if( !this.protocolRelativeMatch && !this.protocolUrlMatch && !this.protocolPrepended ) {
+			url = this.url = 'http://' + url;
+			
+			this.protocolPrepended = true;
+		}
+		
+		return url;
+	},
+	
+
+	/**
+	 * Returns the anchor href that should be generated for the match.
+	 * 
+	 * @return {String}
+	 */
+	getAnchorHref : function() {
+		var url = this.getUrl();
+		
+		return url.replace( /&amp;/g, '&' );  // any &amp;'s in the URL should be converted back to '&' if they were displayed as &amp; in the source html 
+	},
+	
+	
+	/**
+	 * Returns the anchor text that should be generated for the match.
+	 * 
+	 * @return {String}
+	 */
+	getAnchorText : function() {
+		var anchorText = this.getUrl();
+		
+		if( this.protocolRelativeMatch ) {
+			// Strip off any protocol-relative '//' from the anchor text
+			anchorText = this.stripProtocolRelativePrefix( anchorText );
+		}
+		if( this.stripPrefix ) {
+			anchorText = this.stripUrlPrefix( anchorText );
+		}
+		anchorText = this.removeTrailingSlash( anchorText );  // remove trailing slash, if there is one
+		
+		return anchorText;
+	},
+	
+	
+	// ---------------------------------------
+	
+	// Utility Functionality
+	
+	/**
+	 * Strips the URL prefix (such as "http://" or "https://") from the given text.
+	 * 
+	 * @private
+	 * @param {String} text The text of the anchor that is being generated, for which to strip off the
+	 *   url prefix (such as stripping off "http://")
+	 * @return {String} The `anchorText`, with the prefix stripped.
+	 */
+	stripUrlPrefix : function( text ) {
+		return text.replace( this.urlPrefixRegex, '' );
+	},
+	
+	
+	/**
+	 * Strips any protocol-relative '//' from the anchor text.
+	 * 
+	 * @private
+	 * @param {String} text The text of the anchor that is being generated, for which to strip off the
+	 *   protocol-relative prefix (such as stripping off "//")
+	 * @return {String} The `anchorText`, with the protocol-relative prefix stripped.
+	 */
+	stripProtocolRelativePrefix : function( text ) {
+		return text.replace( this.protocolRelativeRegex, '' );
+	},
+	
+	
+	/**
+	 * Removes any trailing slash from the given `anchorText`, in preparation for the text to be displayed.
+	 * 
+	 * @private
+	 * @param {String} anchorText The text of the anchor that is being generated, for which to remove any trailing
+	 *   slash ('/') that may exist.
+	 * @return {String} The `anchorText`, with the trailing slash removed.
+	 */
+	removeTrailingSlash : function( anchorText ) {
+		if( anchorText.charAt( anchorText.length - 1 ) === '/' ) {
+			anchorText = anchorText.slice( 0, -1 );
+		}
+		return anchorText;
+	}
+	
+} );
+return Autolinker;
+
+}));
+
+
+/***/ }),
+/* 117 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var utils = __webpack_require__(10);
+var bind = __webpack_require__(68);
+var Axios = __webpack_require__(119);
+var defaults = __webpack_require__(39);
 
 /**
  * Create an instance of Axios
@@ -10255,15 +17027,15 @@ axios.create = function create(instanceConfig) {
 };
 
 // Expose Cancel & CancelToken
-axios.Cancel = __webpack_require__(53);
-axios.CancelToken = __webpack_require__(91);
-axios.isCancel = __webpack_require__(54);
+axios.Cancel = __webpack_require__(65);
+axios.CancelToken = __webpack_require__(118);
+axios.isCancel = __webpack_require__(66);
 
 // Expose all/spread
 axios.all = function all(promises) {
   return Promise.all(promises);
 };
-axios.spread = __webpack_require__(106);
+axios.spread = __webpack_require__(133);
 
 module.exports = axios;
 
@@ -10272,13 +17044,13 @@ module.exports.default = axios;
 
 
 /***/ }),
-/* 91 */
+/* 118 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var Cancel = __webpack_require__(53);
+var Cancel = __webpack_require__(65);
 
 /**
  * A `CancelToken` is an object that can be used to request cancellation of an operation.
@@ -10336,18 +17108,18 @@ module.exports = CancelToken;
 
 
 /***/ }),
-/* 92 */
+/* 119 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var defaults = __webpack_require__(33);
-var utils = __webpack_require__(8);
-var InterceptorManager = __webpack_require__(93);
-var dispatchRequest = __webpack_require__(94);
-var isAbsoluteURL = __webpack_require__(102);
-var combineURLs = __webpack_require__(100);
+var defaults = __webpack_require__(39);
+var utils = __webpack_require__(10);
+var InterceptorManager = __webpack_require__(120);
+var dispatchRequest = __webpack_require__(121);
+var isAbsoluteURL = __webpack_require__(129);
+var combineURLs = __webpack_require__(127);
 
 /**
  * Create a new instance of Axios
@@ -10428,13 +17200,13 @@ module.exports = Axios;
 
 
 /***/ }),
-/* 93 */
+/* 120 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var utils = __webpack_require__(8);
+var utils = __webpack_require__(10);
 
 function InterceptorManager() {
   this.handlers = [];
@@ -10487,16 +17259,16 @@ module.exports = InterceptorManager;
 
 
 /***/ }),
-/* 94 */
+/* 121 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var utils = __webpack_require__(8);
-var transformData = __webpack_require__(97);
-var isCancel = __webpack_require__(54);
-var defaults = __webpack_require__(33);
+var utils = __webpack_require__(10);
+var transformData = __webpack_require__(124);
+var isCancel = __webpack_require__(66);
+var defaults = __webpack_require__(39);
 
 /**
  * Throws a `Cancel` if cancellation has been requested.
@@ -10573,7 +17345,7 @@ module.exports = function dispatchRequest(config) {
 
 
 /***/ }),
-/* 95 */
+/* 122 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -10599,13 +17371,13 @@ module.exports = function enhanceError(error, config, code, response) {
 
 
 /***/ }),
-/* 96 */
+/* 123 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var createError = __webpack_require__(55);
+var createError = __webpack_require__(67);
 
 /**
  * Resolve or reject a Promise based on response status.
@@ -10631,13 +17403,13 @@ module.exports = function settle(resolve, reject, response) {
 
 
 /***/ }),
-/* 97 */
+/* 124 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var utils = __webpack_require__(8);
+var utils = __webpack_require__(10);
 
 /**
  * Transform the data for a request or a response
@@ -10658,7 +17430,7 @@ module.exports = function transformData(data, headers, fns) {
 
 
 /***/ }),
-/* 98 */
+/* 125 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -10701,13 +17473,13 @@ module.exports = btoa;
 
 
 /***/ }),
-/* 99 */
+/* 126 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var utils = __webpack_require__(8);
+var utils = __webpack_require__(10);
 
 function encode(val) {
   return encodeURIComponent(val).
@@ -10776,7 +17548,7 @@ module.exports = function buildURL(url, params, paramsSerializer) {
 
 
 /***/ }),
-/* 100 */
+/* 127 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -10797,13 +17569,13 @@ module.exports = function combineURLs(baseURL, relativeURL) {
 
 
 /***/ }),
-/* 101 */
+/* 128 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var utils = __webpack_require__(8);
+var utils = __webpack_require__(10);
 
 module.exports = (
   utils.isStandardBrowserEnv() ?
@@ -10857,7 +17629,7 @@ module.exports = (
 
 
 /***/ }),
-/* 102 */
+/* 129 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -10878,13 +17650,13 @@ module.exports = function isAbsoluteURL(url) {
 
 
 /***/ }),
-/* 103 */
+/* 130 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var utils = __webpack_require__(8);
+var utils = __webpack_require__(10);
 
 module.exports = (
   utils.isStandardBrowserEnv() ?
@@ -10953,13 +17725,13 @@ module.exports = (
 
 
 /***/ }),
-/* 104 */
+/* 131 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var utils = __webpack_require__(8);
+var utils = __webpack_require__(10);
 
 module.exports = function normalizeHeaderName(headers, normalizedName) {
   utils.forEach(headers, function processHeader(value, name) {
@@ -10972,13 +17744,13 @@ module.exports = function normalizeHeaderName(headers, normalizedName) {
 
 
 /***/ }),
-/* 105 */
+/* 132 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var utils = __webpack_require__(8);
+var utils = __webpack_require__(10);
 
 /**
  * Parse headers into an object
@@ -11016,7 +17788,7 @@ module.exports = function parseHeaders(headers) {
 
 
 /***/ }),
-/* 106 */
+/* 133 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -11050,25 +17822,27 @@ module.exports = function spread(callback) {
 
 
 /***/ }),
-/* 107 */
+/* 134 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _react = __webpack_require__(89);
+var _react = __webpack_require__(9);
 
 var _react2 = _interopRequireDefault(_react);
 
-var _reactDom = __webpack_require__(88);
+var _reactCodemirror = __webpack_require__(174);
 
-var _reactDom2 = _interopRequireDefault(_reactDom);
+var _reactCodemirror2 = _interopRequireDefault(_reactCodemirror);
 
-var _axios = __webpack_require__(87);
-
-var _axios2 = _interopRequireDefault(_axios);
+__webpack_require__(144);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -11078,45 +17852,308 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-var style = {
-  font: "12pt sans-serif"
+var codeMirrorOptions = {
+  lineNumbers: true,
+  lineWrapping: true,
+  gutters: ['annotations', 'CodeMirror-linenumbers']
 };
 
-window.onload = function () {
-  document.querySelectorAll('[data-component=codesplain]').forEach(function (node) {
-    var snippetKey = node.getAttribute('data-snippet');
-    _reactDom2.default.render(_react2.default.createElement(App, { snippetKey: snippetKey }), node);
-  });
+var makeMarker = function makeMarker() {
+  var marker = document.createElement('div');
+  marker.style.color = '#822';
+  marker.innerHTML = '●';
+  return marker;
 };
 
-var App = function (_React$Component) {
-  _inherits(App, _React$Component);
+var pushValueToCodeMirror = function pushValueToCodeMirror(value, codeMirror) {
+  if (codeMirror.getValue() === '' && value !== '') {
+    codeMirror.setValue(value);
+  }
+};
 
-  function App() {
-    _classCallCheck(this, App);
+var Editor = function (_Component) {
+  _inherits(Editor, _Component);
 
-    var _this = _possibleConstructorReturn(this, (App.__proto__ || Object.getPrototypeOf(App)).call(this));
+  function Editor(props) {
+    _classCallCheck(this, Editor);
 
-    _this.state = {
-      ipsum: ''
-    };
+    var _this = _possibleConstructorReturn(this, (Editor.__proto__ || Object.getPrototypeOf(Editor)).call(this, props));
+
+    _this.handleGutterClick = _this.handleGutterClick.bind(_this);
     return _this;
   }
 
-  _createClass(App, [{
+  _createClass(Editor, [{
     key: 'componentDidMount',
     value: function componentDidMount() {
+      var codeMirror = this.codeMirror.getCodeMirror();
+      codeMirror.on('gutterClick', this.handleGutterClick);
+    }
+  }, {
+    key: 'componentDidUpdate',
+    value: function componentDidUpdate() {
+      var _props = this.props,
+          markedLines = _props.markedLines,
+          openLine = _props.openLine,
+          AST = _props.AST,
+          filters = _props.filters,
+          snippet = _props.snippet;
+
+
+      var codeMirror = this.codeMirror.getCodeMirror();
+
+      pushValueToCodeMirror(snippet, codeMirror);
+
+      markedLines.forEach(function (lineNumber) {
+        codeMirror.setGutterMarker(Number(lineNumber), 'annotations', makeMarker());
+      });
+    }
+  }, {
+    key: 'handleGutterClick',
+    value: function handleGutterClick(instance, lineNumber) {
+      var onGutterClick = this.props.onGutterClick;
+
+      var lineText = instance.getLine(lineNumber);
+      onGutterClick(lineNumber, lineText);
+    }
+  }, {
+    key: 'render',
+    value: function render() {
       var _this2 = this;
 
-      _axios2.default.get('https://baconipsum.com/api/?type=meat-and-filler').then(function (res) {
-        _this2.setState({ ipsum: res.data[0] });
+      return _react2.default.createElement(_reactCodemirror2.default, {
+        options: codeMirrorOptions,
+        value: this.props.snippet,
+        ref: function ref(cm) {
+          return _this2.codeMirror = cm;
+        }
+      });
+    }
+  }]);
+
+  return Editor;
+}(_react.Component);
+
+exports.default = Editor;
+
+/***/ }),
+/* 135 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = __webpack_require__(9);
+
+var _react2 = _interopRequireDefault(_react);
+
+var _reactMarkdownRenderer = __webpack_require__(245);
+
+var _reactMarkdownRenderer2 = _interopRequireDefault(_reactMarkdownRenderer);
+
+var _reactRedux = __webpack_require__(34);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var AnnotationDisplay = function (_Component) {
+  _inherits(AnnotationDisplay, _Component);
+
+  function AnnotationDisplay(props) {
+    _classCallCheck(this, AnnotationDisplay);
+
+    return _possibleConstructorReturn(this, (AnnotationDisplay.__proto__ || Object.getPrototypeOf(AnnotationDisplay)).call(this, props));
+  }
+
+  _createClass(AnnotationDisplay, [{
+    key: 'render',
+    value: function render() {
+      var _props = this.props,
+          annotations = _props.annotations,
+          selectedLine = _props.selectedLine;
+
+
+      var annotation = annotations[selectedLine];
+
+      return _react2.default.createElement(
+        'div',
+        null,
+        _react2.default.createElement(_reactMarkdownRenderer2.default, {
+          markdown: annotation ? annotation.annotation : ''
+        })
+      );
+    }
+  }]);
+
+  return AnnotationDisplay;
+}(_react.Component);
+
+var mapStateToProps = function mapStateToProps(state) {
+  return {
+    annotations: state.annotations,
+    selectedLine: state.selectedLine
+  };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps)(AnnotationDisplay);
+
+/***/ }),
+/* 136 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = __webpack_require__(9);
+
+var _react2 = _interopRequireDefault(_react);
+
+var _reactRedux = __webpack_require__(34);
+
+var _axios = __webpack_require__(62);
+
+var _axios2 = _interopRequireDefault(_axios);
+
+var _app = __webpack_require__(40);
+
+var _SnippetArea = __webpack_require__(137);
+
+var _SnippetArea2 = _interopRequireDefault(_SnippetArea);
+
+var _AnnotationDisplay = __webpack_require__(135);
+
+var _AnnotationDisplay2 = _interopRequireDefault(_AnnotationDisplay);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var AppBody = function (_Component) {
+  _inherits(AppBody, _Component);
+
+  function AppBody() {
+    _classCallCheck(this, AppBody);
+
+    return _possibleConstructorReturn(this, (AppBody.__proto__ || Object.getPrototypeOf(AppBody)).apply(this, arguments));
+  }
+
+  _createClass(AppBody, [{
+    key: 'componentDidMount',
+    value: function componentDidMount() {
+      var _props = this.props,
+          dispatch = _props.dispatch,
+          snippetKey = _props.snippetKey;
+
+      _axios2.default.get("../snippet.json").then(function (res) {
+        dispatch((0, _app.setState)(res.data));
       });
     }
   }, {
     key: 'render',
     value: function render() {
-      var snippetKey = this.props.snippetKey;
-      var ipsum = this.state.ipsum;
+      return _react2.default.createElement(
+        'div',
+        null,
+        _react2.default.createElement(_SnippetArea2.default, null),
+        _react2.default.createElement(_AnnotationDisplay2.default, null)
+      );
+    }
+  }]);
+
+  return AppBody;
+}(_react.Component);
+
+AppBody.propTypes = {
+  snippetKey: _react.PropTypes.string.required
+};
+
+exports.default = (0, _reactRedux.connect)()(AppBody);
+
+/***/ }),
+/* 137 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = __webpack_require__(9);
+
+var _react2 = _interopRequireDefault(_react);
+
+var _reactRedux = __webpack_require__(34);
+
+var _app = __webpack_require__(40);
+
+var _Editor = __webpack_require__(134);
+
+var _Editor2 = _interopRequireDefault(_Editor);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var SnippetArea = function (_Component) {
+  _inherits(SnippetArea, _Component);
+
+  function SnippetArea(props) {
+    _classCallCheck(this, SnippetArea);
+
+    var _this = _possibleConstructorReturn(this, (SnippetArea.__proto__ || Object.getPrototypeOf(SnippetArea)).call(this, props));
+
+    _this.handleGutterClick = _this.handleGutterClick.bind(_this);
+    return _this;
+  }
+
+  _createClass(SnippetArea, [{
+    key: 'handleGutterClick',
+    value: function handleGutterClick(line) {
+      var dispatch = this.props.dispatch;
+
+      dispatch((0, _app.setSelectedLine)(line));
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      var _props = this.props,
+          snippet = _props.snippet,
+          title = _props.title,
+          language = _props.language,
+          annotations = _props.annotations;
+
+      var markedLines = Object.keys(annotations).map(function (key) {
+        return Number(key);
+      });
 
       return _react2.default.createElement(
         'div',
@@ -11124,22 +18161,130 @@ var App = function (_React$Component) {
         _react2.default.createElement(
           'h1',
           null,
-          snippetKey
+          title
         ),
         _react2.default.createElement(
-          'p',
+          'h3',
           null,
-          ipsum
-        )
+          'A ',
+          language,
+          ' snippet'
+        ),
+        _react2.default.createElement(_Editor2.default, {
+          snippet: snippet,
+          markedLines: markedLines,
+          onGutterClick: this.handleGutterClick
+        })
       );
     }
   }]);
 
-  return App;
-}(_react2.default.Component);
+  return SnippetArea;
+}(_react.Component);
+
+var mapStateToProps = function mapStateToProps(state) {
+  return {
+    snippet: state.snippet,
+    title: state.snippetTitle,
+    language: state.snippetLanguage,
+    annotations: state.annotations
+  };
+};
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps)(SnippetArea);
 
 /***/ }),
-/* 108 */
+/* 138 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _react = __webpack_require__(9);
+
+var _react2 = _interopRequireDefault(_react);
+
+var _reactDom = __webpack_require__(63);
+
+var _reactDom2 = _interopRequireDefault(_reactDom);
+
+var _axios = __webpack_require__(62);
+
+var _axios2 = _interopRequireDefault(_axios);
+
+var _App = __webpack_require__(115);
+
+var _App2 = _interopRequireDefault(_App);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var style = {
+  font: "12pt sans-serif"
+};
+
+window.onload = function () {
+  document.querySelectorAll('[data-component=codesplain]').forEach(function (node) {
+    var snippetKey = node.getAttribute('data-snippet');
+    _reactDom2.default.render(_react2.default.createElement(_App2.default, { snippetKey: snippetKey }), node);
+  });
+};
+
+/***/ }),
+/* 139 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.initialState = undefined;
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var _app = __webpack_require__(40);
+
+var actions = _interopRequireWildcard(_app);
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+
+var initialState = exports.initialState = {
+  annotations: {},
+  AST: {},
+  filters: {},
+  snippetLanguage: 'python3',
+  snippet: '',
+  snippetKey: '',
+  snippetTitle: ''
+};
+
+var app = function app() {
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : initialState;
+  var action = arguments[1];
+
+  switch (action.type) {
+    case actions.SET_STATE:
+      {
+        return Object.assign({}, action.payload);
+      }
+    case actions.SET_SELECTED_LINE:
+      {
+        return _extends({}, state, {
+          selectedLine: action.payload
+        });
+      }
+    default:
+      {
+        return state;
+      }
+  }
+};
+
+exports.default = app;
+
+/***/ }),
+/* 140 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -11260,7 +18405,7 @@ function fromByteArray (uint8) {
 
 
 /***/ }),
-/* 109 */
+/* 141 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -11274,9 +18419,9 @@ function fromByteArray (uint8) {
 
 
 
-var base64 = __webpack_require__(108)
-var ieee754 = __webpack_require__(124)
-var isArray = __webpack_require__(125)
+var base64 = __webpack_require__(140)
+var ieee754 = __webpack_require__(160)
+var isArray = __webpack_require__(162)
 
 exports.Buffer = Buffer
 exports.SlowBuffer = SlowBuffer
@@ -13054,10 +20199,9409 @@ function isnan (val) {
   return val !== val // eslint-disable-line no-self-compare
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(211)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(38)))
 
 /***/ }),
-/* 110 */
+/* 142 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
+  Copyright (c) 2016 Jed Watson.
+  Licensed under the MIT License (MIT), see
+  http://jedwatson.github.io/classnames
+*/
+/* global define */
+
+(function () {
+	'use strict';
+
+	var hasOwn = {}.hasOwnProperty;
+
+	function classNames () {
+		var classes = [];
+
+		for (var i = 0; i < arguments.length; i++) {
+			var arg = arguments[i];
+			if (!arg) continue;
+
+			var argType = typeof arg;
+
+			if (argType === 'string' || argType === 'number') {
+				classes.push(arg);
+			} else if (Array.isArray(arg)) {
+				classes.push(classNames.apply(null, arg));
+			} else if (argType === 'object') {
+				for (var key in arg) {
+					if (hasOwn.call(arg, key) && arg[key]) {
+						classes.push(key);
+					}
+				}
+			}
+		}
+
+		return classes.join(' ');
+	}
+
+	if (typeof module !== 'undefined' && module.exports) {
+		module.exports = classNames;
+	} else if (true) {
+		// register as 'classnames', consistent with npm package name
+		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = function () {
+			return classNames;
+		}.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__),
+				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	} else {
+		window.classNames = classNames;
+	}
+}());
+
+
+/***/ }),
+/* 143 */
+/***/ (function(module, exports, __webpack_require__) {
+
+// CodeMirror, copyright (c) by Marijn Haverbeke and others
+// Distributed under an MIT license: http://codemirror.net/LICENSE
+
+// This is CodeMirror (http://codemirror.net), a code editor
+// implemented in JavaScript on top of the browser's DOM.
+//
+// You can find some technical background for some of the code below
+// at http://marijnhaverbeke.nl/blog/#cm-internals .
+
+(function (global, factory) {
+	 true ? module.exports = factory() :
+	typeof define === 'function' && define.amd ? define(factory) :
+	(global.CodeMirror = factory());
+}(this, (function () { 'use strict';
+
+// Kludges for bugs and behavior differences that can't be feature
+// detected are enabled based on userAgent etc sniffing.
+var userAgent = navigator.userAgent;
+var platform = navigator.platform;
+
+var gecko = /gecko\/\d/i.test(userAgent);
+var ie_upto10 = /MSIE \d/.test(userAgent);
+var ie_11up = /Trident\/(?:[7-9]|\d{2,})\..*rv:(\d+)/.exec(userAgent);
+var edge = /Edge\/(\d+)/.exec(userAgent);
+var ie = ie_upto10 || ie_11up || edge;
+var ie_version = ie && (ie_upto10 ? document.documentMode || 6 : +(edge || ie_11up)[1]);
+var webkit = !edge && /WebKit\//.test(userAgent);
+var qtwebkit = webkit && /Qt\/\d+\.\d+/.test(userAgent);
+var chrome = !edge && /Chrome\//.test(userAgent);
+var presto = /Opera\//.test(userAgent);
+var safari = /Apple Computer/.test(navigator.vendor);
+var mac_geMountainLion = /Mac OS X 1\d\D([8-9]|\d\d)\D/.test(userAgent);
+var phantom = /PhantomJS/.test(userAgent);
+
+var ios = !edge && /AppleWebKit/.test(userAgent) && /Mobile\/\w+/.test(userAgent);
+var android = /Android/.test(userAgent);
+// This is woefully incomplete. Suggestions for alternative methods welcome.
+var mobile = ios || android || /webOS|BlackBerry|Opera Mini|Opera Mobi|IEMobile/i.test(userAgent);
+var mac = ios || /Mac/.test(platform);
+var chromeOS = /\bCrOS\b/.test(userAgent);
+var windows = /win/i.test(platform);
+
+var presto_version = presto && userAgent.match(/Version\/(\d*\.\d*)/);
+if (presto_version) { presto_version = Number(presto_version[1]); }
+if (presto_version && presto_version >= 15) { presto = false; webkit = true; }
+// Some browsers use the wrong event properties to signal cmd/ctrl on OS X
+var flipCtrlCmd = mac && (qtwebkit || presto && (presto_version == null || presto_version < 12.11));
+var captureRightClick = gecko || (ie && ie_version >= 9);
+
+function classTest(cls) { return new RegExp("(^|\\s)" + cls + "(?:$|\\s)\\s*") }
+
+var rmClass = function(node, cls) {
+  var current = node.className;
+  var match = classTest(cls).exec(current);
+  if (match) {
+    var after = current.slice(match.index + match[0].length);
+    node.className = current.slice(0, match.index) + (after ? match[1] + after : "");
+  }
+};
+
+function removeChildren(e) {
+  for (var count = e.childNodes.length; count > 0; --count)
+    { e.removeChild(e.firstChild); }
+  return e
+}
+
+function removeChildrenAndAdd(parent, e) {
+  return removeChildren(parent).appendChild(e)
+}
+
+function elt(tag, content, className, style) {
+  var e = document.createElement(tag);
+  if (className) { e.className = className; }
+  if (style) { e.style.cssText = style; }
+  if (typeof content == "string") { e.appendChild(document.createTextNode(content)); }
+  else if (content) { for (var i = 0; i < content.length; ++i) { e.appendChild(content[i]); } }
+  return e
+}
+// wrapper for elt, which removes the elt from the accessibility tree
+function eltP(tag, content, className, style) {
+  var e = elt(tag, content, className, style);
+  e.setAttribute("role", "presentation");
+  return e
+}
+
+var range;
+if (document.createRange) { range = function(node, start, end, endNode) {
+  var r = document.createRange();
+  r.setEnd(endNode || node, end);
+  r.setStart(node, start);
+  return r
+}; }
+else { range = function(node, start, end) {
+  var r = document.body.createTextRange();
+  try { r.moveToElementText(node.parentNode); }
+  catch(e) { return r }
+  r.collapse(true);
+  r.moveEnd("character", end);
+  r.moveStart("character", start);
+  return r
+}; }
+
+function contains(parent, child) {
+  if (child.nodeType == 3) // Android browser always returns false when child is a textnode
+    { child = child.parentNode; }
+  if (parent.contains)
+    { return parent.contains(child) }
+  do {
+    if (child.nodeType == 11) { child = child.host; }
+    if (child == parent) { return true }
+  } while (child = child.parentNode)
+}
+
+function activeElt() {
+  // IE and Edge may throw an "Unspecified Error" when accessing document.activeElement.
+  // IE < 10 will throw when accessed while the page is loading or in an iframe.
+  // IE > 9 and Edge will throw when accessed in an iframe if document.body is unavailable.
+  var activeElement;
+  try {
+    activeElement = document.activeElement;
+  } catch(e) {
+    activeElement = document.body || null;
+  }
+  while (activeElement && activeElement.shadowRoot && activeElement.shadowRoot.activeElement)
+    { activeElement = activeElement.shadowRoot.activeElement; }
+  return activeElement
+}
+
+function addClass(node, cls) {
+  var current = node.className;
+  if (!classTest(cls).test(current)) { node.className += (current ? " " : "") + cls; }
+}
+function joinClasses(a, b) {
+  var as = a.split(" ");
+  for (var i = 0; i < as.length; i++)
+    { if (as[i] && !classTest(as[i]).test(b)) { b += " " + as[i]; } }
+  return b
+}
+
+var selectInput = function(node) { node.select(); };
+if (ios) // Mobile Safari apparently has a bug where select() is broken.
+  { selectInput = function(node) { node.selectionStart = 0; node.selectionEnd = node.value.length; }; }
+else if (ie) // Suppress mysterious IE10 errors
+  { selectInput = function(node) { try { node.select(); } catch(_e) {} }; }
+
+function bind(f) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return function(){return f.apply(null, args)}
+}
+
+function copyObj(obj, target, overwrite) {
+  if (!target) { target = {}; }
+  for (var prop in obj)
+    { if (obj.hasOwnProperty(prop) && (overwrite !== false || !target.hasOwnProperty(prop)))
+      { target[prop] = obj[prop]; } }
+  return target
+}
+
+// Counts the column offset in a string, taking tabs into account.
+// Used mostly to find indentation.
+function countColumn(string, end, tabSize, startIndex, startValue) {
+  if (end == null) {
+    end = string.search(/[^\s\u00a0]/);
+    if (end == -1) { end = string.length; }
+  }
+  for (var i = startIndex || 0, n = startValue || 0;;) {
+    var nextTab = string.indexOf("\t", i);
+    if (nextTab < 0 || nextTab >= end)
+      { return n + (end - i) }
+    n += nextTab - i;
+    n += tabSize - (n % tabSize);
+    i = nextTab + 1;
+  }
+}
+
+var Delayed = function() {this.id = null;};
+Delayed.prototype.set = function (ms, f) {
+  clearTimeout(this.id);
+  this.id = setTimeout(f, ms);
+};
+
+function indexOf(array, elt) {
+  for (var i = 0; i < array.length; ++i)
+    { if (array[i] == elt) { return i } }
+  return -1
+}
+
+// Number of pixels added to scroller and sizer to hide scrollbar
+var scrollerGap = 30;
+
+// Returned or thrown by various protocols to signal 'I'm not
+// handling this'.
+var Pass = {toString: function(){return "CodeMirror.Pass"}};
+
+// Reused option objects for setSelection & friends
+var sel_dontScroll = {scroll: false};
+var sel_mouse = {origin: "*mouse"};
+var sel_move = {origin: "+move"};
+
+// The inverse of countColumn -- find the offset that corresponds to
+// a particular column.
+function findColumn(string, goal, tabSize) {
+  for (var pos = 0, col = 0;;) {
+    var nextTab = string.indexOf("\t", pos);
+    if (nextTab == -1) { nextTab = string.length; }
+    var skipped = nextTab - pos;
+    if (nextTab == string.length || col + skipped >= goal)
+      { return pos + Math.min(skipped, goal - col) }
+    col += nextTab - pos;
+    col += tabSize - (col % tabSize);
+    pos = nextTab + 1;
+    if (col >= goal) { return pos }
+  }
+}
+
+var spaceStrs = [""];
+function spaceStr(n) {
+  while (spaceStrs.length <= n)
+    { spaceStrs.push(lst(spaceStrs) + " "); }
+  return spaceStrs[n]
+}
+
+function lst(arr) { return arr[arr.length-1] }
+
+function map(array, f) {
+  var out = [];
+  for (var i = 0; i < array.length; i++) { out[i] = f(array[i], i); }
+  return out
+}
+
+function insertSorted(array, value, score) {
+  var pos = 0, priority = score(value);
+  while (pos < array.length && score(array[pos]) <= priority) { pos++; }
+  array.splice(pos, 0, value);
+}
+
+function nothing() {}
+
+function createObj(base, props) {
+  var inst;
+  if (Object.create) {
+    inst = Object.create(base);
+  } else {
+    nothing.prototype = base;
+    inst = new nothing();
+  }
+  if (props) { copyObj(props, inst); }
+  return inst
+}
+
+var nonASCIISingleCaseWordChar = /[\u00df\u0587\u0590-\u05f4\u0600-\u06ff\u3040-\u309f\u30a0-\u30ff\u3400-\u4db5\u4e00-\u9fcc\uac00-\ud7af]/;
+function isWordCharBasic(ch) {
+  return /\w/.test(ch) || ch > "\x80" &&
+    (ch.toUpperCase() != ch.toLowerCase() || nonASCIISingleCaseWordChar.test(ch))
+}
+function isWordChar(ch, helper) {
+  if (!helper) { return isWordCharBasic(ch) }
+  if (helper.source.indexOf("\\w") > -1 && isWordCharBasic(ch)) { return true }
+  return helper.test(ch)
+}
+
+function isEmpty(obj) {
+  for (var n in obj) { if (obj.hasOwnProperty(n) && obj[n]) { return false } }
+  return true
+}
+
+// Extending unicode characters. A series of a non-extending char +
+// any number of extending chars is treated as a single unit as far
+// as editing and measuring is concerned. This is not fully correct,
+// since some scripts/fonts/browsers also treat other configurations
+// of code points as a group.
+var extendingChars = /[\u0300-\u036f\u0483-\u0489\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7\u0610-\u061a\u064b-\u065e\u0670\u06d6-\u06dc\u06de-\u06e4\u06e7\u06e8\u06ea-\u06ed\u0711\u0730-\u074a\u07a6-\u07b0\u07eb-\u07f3\u0816-\u0819\u081b-\u0823\u0825-\u0827\u0829-\u082d\u0900-\u0902\u093c\u0941-\u0948\u094d\u0951-\u0955\u0962\u0963\u0981\u09bc\u09be\u09c1-\u09c4\u09cd\u09d7\u09e2\u09e3\u0a01\u0a02\u0a3c\u0a41\u0a42\u0a47\u0a48\u0a4b-\u0a4d\u0a51\u0a70\u0a71\u0a75\u0a81\u0a82\u0abc\u0ac1-\u0ac5\u0ac7\u0ac8\u0acd\u0ae2\u0ae3\u0b01\u0b3c\u0b3e\u0b3f\u0b41-\u0b44\u0b4d\u0b56\u0b57\u0b62\u0b63\u0b82\u0bbe\u0bc0\u0bcd\u0bd7\u0c3e-\u0c40\u0c46-\u0c48\u0c4a-\u0c4d\u0c55\u0c56\u0c62\u0c63\u0cbc\u0cbf\u0cc2\u0cc6\u0ccc\u0ccd\u0cd5\u0cd6\u0ce2\u0ce3\u0d3e\u0d41-\u0d44\u0d4d\u0d57\u0d62\u0d63\u0dca\u0dcf\u0dd2-\u0dd4\u0dd6\u0ddf\u0e31\u0e34-\u0e3a\u0e47-\u0e4e\u0eb1\u0eb4-\u0eb9\u0ebb\u0ebc\u0ec8-\u0ecd\u0f18\u0f19\u0f35\u0f37\u0f39\u0f71-\u0f7e\u0f80-\u0f84\u0f86\u0f87\u0f90-\u0f97\u0f99-\u0fbc\u0fc6\u102d-\u1030\u1032-\u1037\u1039\u103a\u103d\u103e\u1058\u1059\u105e-\u1060\u1071-\u1074\u1082\u1085\u1086\u108d\u109d\u135f\u1712-\u1714\u1732-\u1734\u1752\u1753\u1772\u1773\u17b7-\u17bd\u17c6\u17c9-\u17d3\u17dd\u180b-\u180d\u18a9\u1920-\u1922\u1927\u1928\u1932\u1939-\u193b\u1a17\u1a18\u1a56\u1a58-\u1a5e\u1a60\u1a62\u1a65-\u1a6c\u1a73-\u1a7c\u1a7f\u1b00-\u1b03\u1b34\u1b36-\u1b3a\u1b3c\u1b42\u1b6b-\u1b73\u1b80\u1b81\u1ba2-\u1ba5\u1ba8\u1ba9\u1c2c-\u1c33\u1c36\u1c37\u1cd0-\u1cd2\u1cd4-\u1ce0\u1ce2-\u1ce8\u1ced\u1dc0-\u1de6\u1dfd-\u1dff\u200c\u200d\u20d0-\u20f0\u2cef-\u2cf1\u2de0-\u2dff\u302a-\u302f\u3099\u309a\ua66f-\ua672\ua67c\ua67d\ua6f0\ua6f1\ua802\ua806\ua80b\ua825\ua826\ua8c4\ua8e0-\ua8f1\ua926-\ua92d\ua947-\ua951\ua980-\ua982\ua9b3\ua9b6-\ua9b9\ua9bc\uaa29-\uaa2e\uaa31\uaa32\uaa35\uaa36\uaa43\uaa4c\uaab0\uaab2-\uaab4\uaab7\uaab8\uaabe\uaabf\uaac1\uabe5\uabe8\uabed\udc00-\udfff\ufb1e\ufe00-\ufe0f\ufe20-\ufe26\uff9e\uff9f]/;
+function isExtendingChar(ch) { return ch.charCodeAt(0) >= 768 && extendingChars.test(ch) }
+
+// Returns a number from the range [`0`; `str.length`] unless `pos` is outside that range.
+function skipExtendingChars(str, pos, dir) {
+  while ((dir < 0 ? pos > 0 : pos < str.length) && isExtendingChar(str.charAt(pos))) { pos += dir; }
+  return pos
+}
+
+// Returns the value from the range [`from`; `to`] that satisfies
+// `pred` and is closest to `from`. Assumes that at least `to` satisfies `pred`.
+function findFirst(pred, from, to) {
+  for (;;) {
+    if (Math.abs(from - to) <= 1) { return pred(from) ? from : to }
+    var mid = Math.floor((from + to) / 2);
+    if (pred(mid)) { to = mid; }
+    else { from = mid; }
+  }
+}
+
+// The display handles the DOM integration, both for input reading
+// and content drawing. It holds references to DOM nodes and
+// display-related state.
+
+function Display(place, doc, input) {
+  var d = this;
+  this.input = input;
+
+  // Covers bottom-right square when both scrollbars are present.
+  d.scrollbarFiller = elt("div", null, "CodeMirror-scrollbar-filler");
+  d.scrollbarFiller.setAttribute("cm-not-content", "true");
+  // Covers bottom of gutter when coverGutterNextToScrollbar is on
+  // and h scrollbar is present.
+  d.gutterFiller = elt("div", null, "CodeMirror-gutter-filler");
+  d.gutterFiller.setAttribute("cm-not-content", "true");
+  // Will contain the actual code, positioned to cover the viewport.
+  d.lineDiv = eltP("div", null, "CodeMirror-code");
+  // Elements are added to these to represent selection and cursors.
+  d.selectionDiv = elt("div", null, null, "position: relative; z-index: 1");
+  d.cursorDiv = elt("div", null, "CodeMirror-cursors");
+  // A visibility: hidden element used to find the size of things.
+  d.measure = elt("div", null, "CodeMirror-measure");
+  // When lines outside of the viewport are measured, they are drawn in this.
+  d.lineMeasure = elt("div", null, "CodeMirror-measure");
+  // Wraps everything that needs to exist inside the vertically-padded coordinate system
+  d.lineSpace = eltP("div", [d.measure, d.lineMeasure, d.selectionDiv, d.cursorDiv, d.lineDiv],
+                    null, "position: relative; outline: none");
+  var lines = eltP("div", [d.lineSpace], "CodeMirror-lines");
+  // Moved around its parent to cover visible view.
+  d.mover = elt("div", [lines], null, "position: relative");
+  // Set to the height of the document, allowing scrolling.
+  d.sizer = elt("div", [d.mover], "CodeMirror-sizer");
+  d.sizerWidth = null;
+  // Behavior of elts with overflow: auto and padding is
+  // inconsistent across browsers. This is used to ensure the
+  // scrollable area is big enough.
+  d.heightForcer = elt("div", null, null, "position: absolute; height: " + scrollerGap + "px; width: 1px;");
+  // Will contain the gutters, if any.
+  d.gutters = elt("div", null, "CodeMirror-gutters");
+  d.lineGutter = null;
+  // Actual scrollable element.
+  d.scroller = elt("div", [d.sizer, d.heightForcer, d.gutters], "CodeMirror-scroll");
+  d.scroller.setAttribute("tabIndex", "-1");
+  // The element in which the editor lives.
+  d.wrapper = elt("div", [d.scrollbarFiller, d.gutterFiller, d.scroller], "CodeMirror");
+
+  // Work around IE7 z-index bug (not perfect, hence IE7 not really being supported)
+  if (ie && ie_version < 8) { d.gutters.style.zIndex = -1; d.scroller.style.paddingRight = 0; }
+  if (!webkit && !(gecko && mobile)) { d.scroller.draggable = true; }
+
+  if (place) {
+    if (place.appendChild) { place.appendChild(d.wrapper); }
+    else { place(d.wrapper); }
+  }
+
+  // Current rendered range (may be bigger than the view window).
+  d.viewFrom = d.viewTo = doc.first;
+  d.reportedViewFrom = d.reportedViewTo = doc.first;
+  // Information about the rendered lines.
+  d.view = [];
+  d.renderedView = null;
+  // Holds info about a single rendered line when it was rendered
+  // for measurement, while not in view.
+  d.externalMeasured = null;
+  // Empty space (in pixels) above the view
+  d.viewOffset = 0;
+  d.lastWrapHeight = d.lastWrapWidth = 0;
+  d.updateLineNumbers = null;
+
+  d.nativeBarWidth = d.barHeight = d.barWidth = 0;
+  d.scrollbarsClipped = false;
+
+  // Used to only resize the line number gutter when necessary (when
+  // the amount of lines crosses a boundary that makes its width change)
+  d.lineNumWidth = d.lineNumInnerWidth = d.lineNumChars = null;
+  // Set to true when a non-horizontal-scrolling line widget is
+  // added. As an optimization, line widget aligning is skipped when
+  // this is false.
+  d.alignWidgets = false;
+
+  d.cachedCharWidth = d.cachedTextHeight = d.cachedPaddingH = null;
+
+  // Tracks the maximum line length so that the horizontal scrollbar
+  // can be kept static when scrolling.
+  d.maxLine = null;
+  d.maxLineLength = 0;
+  d.maxLineChanged = false;
+
+  // Used for measuring wheel scrolling granularity
+  d.wheelDX = d.wheelDY = d.wheelStartX = d.wheelStartY = null;
+
+  // True when shift is held down.
+  d.shift = false;
+
+  // Used to track whether anything happened since the context menu
+  // was opened.
+  d.selForContextMenu = null;
+
+  d.activeTouch = null;
+
+  input.init(d);
+}
+
+// Find the line object corresponding to the given line number.
+function getLine(doc, n) {
+  n -= doc.first;
+  if (n < 0 || n >= doc.size) { throw new Error("There is no line " + (n + doc.first) + " in the document.") }
+  var chunk = doc;
+  while (!chunk.lines) {
+    for (var i = 0;; ++i) {
+      var child = chunk.children[i], sz = child.chunkSize();
+      if (n < sz) { chunk = child; break }
+      n -= sz;
+    }
+  }
+  return chunk.lines[n]
+}
+
+// Get the part of a document between two positions, as an array of
+// strings.
+function getBetween(doc, start, end) {
+  var out = [], n = start.line;
+  doc.iter(start.line, end.line + 1, function (line) {
+    var text = line.text;
+    if (n == end.line) { text = text.slice(0, end.ch); }
+    if (n == start.line) { text = text.slice(start.ch); }
+    out.push(text);
+    ++n;
+  });
+  return out
+}
+// Get the lines between from and to, as array of strings.
+function getLines(doc, from, to) {
+  var out = [];
+  doc.iter(from, to, function (line) { out.push(line.text); }); // iter aborts when callback returns truthy value
+  return out
+}
+
+// Update the height of a line, propagating the height change
+// upwards to parent nodes.
+function updateLineHeight(line, height) {
+  var diff = height - line.height;
+  if (diff) { for (var n = line; n; n = n.parent) { n.height += diff; } }
+}
+
+// Given a line object, find its line number by walking up through
+// its parent links.
+function lineNo(line) {
+  if (line.parent == null) { return null }
+  var cur = line.parent, no = indexOf(cur.lines, line);
+  for (var chunk = cur.parent; chunk; cur = chunk, chunk = chunk.parent) {
+    for (var i = 0;; ++i) {
+      if (chunk.children[i] == cur) { break }
+      no += chunk.children[i].chunkSize();
+    }
+  }
+  return no + cur.first
+}
+
+// Find the line at the given vertical position, using the height
+// information in the document tree.
+function lineAtHeight(chunk, h) {
+  var n = chunk.first;
+  outer: do {
+    for (var i$1 = 0; i$1 < chunk.children.length; ++i$1) {
+      var child = chunk.children[i$1], ch = child.height;
+      if (h < ch) { chunk = child; continue outer }
+      h -= ch;
+      n += child.chunkSize();
+    }
+    return n
+  } while (!chunk.lines)
+  var i = 0;
+  for (; i < chunk.lines.length; ++i) {
+    var line = chunk.lines[i], lh = line.height;
+    if (h < lh) { break }
+    h -= lh;
+  }
+  return n + i
+}
+
+function isLine(doc, l) {return l >= doc.first && l < doc.first + doc.size}
+
+function lineNumberFor(options, i) {
+  return String(options.lineNumberFormatter(i + options.firstLineNumber))
+}
+
+// A Pos instance represents a position within the text.
+function Pos(line, ch, sticky) {
+  if ( sticky === void 0 ) sticky = null;
+
+  if (!(this instanceof Pos)) { return new Pos(line, ch, sticky) }
+  this.line = line;
+  this.ch = ch;
+  this.sticky = sticky;
+}
+
+// Compare two positions, return 0 if they are the same, a negative
+// number when a is less, and a positive number otherwise.
+function cmp(a, b) { return a.line - b.line || a.ch - b.ch }
+
+function equalCursorPos(a, b) { return a.sticky == b.sticky && cmp(a, b) == 0 }
+
+function copyPos(x) {return Pos(x.line, x.ch)}
+function maxPos(a, b) { return cmp(a, b) < 0 ? b : a }
+function minPos(a, b) { return cmp(a, b) < 0 ? a : b }
+
+// Most of the external API clips given positions to make sure they
+// actually exist within the document.
+function clipLine(doc, n) {return Math.max(doc.first, Math.min(n, doc.first + doc.size - 1))}
+function clipPos(doc, pos) {
+  if (pos.line < doc.first) { return Pos(doc.first, 0) }
+  var last = doc.first + doc.size - 1;
+  if (pos.line > last) { return Pos(last, getLine(doc, last).text.length) }
+  return clipToLen(pos, getLine(doc, pos.line).text.length)
+}
+function clipToLen(pos, linelen) {
+  var ch = pos.ch;
+  if (ch == null || ch > linelen) { return Pos(pos.line, linelen) }
+  else if (ch < 0) { return Pos(pos.line, 0) }
+  else { return pos }
+}
+function clipPosArray(doc, array) {
+  var out = [];
+  for (var i = 0; i < array.length; i++) { out[i] = clipPos(doc, array[i]); }
+  return out
+}
+
+// Optimize some code when these features are not used.
+var sawReadOnlySpans = false;
+var sawCollapsedSpans = false;
+
+function seeReadOnlySpans() {
+  sawReadOnlySpans = true;
+}
+
+function seeCollapsedSpans() {
+  sawCollapsedSpans = true;
+}
+
+// TEXTMARKER SPANS
+
+function MarkedSpan(marker, from, to) {
+  this.marker = marker;
+  this.from = from; this.to = to;
+}
+
+// Search an array of spans for a span matching the given marker.
+function getMarkedSpanFor(spans, marker) {
+  if (spans) { for (var i = 0; i < spans.length; ++i) {
+    var span = spans[i];
+    if (span.marker == marker) { return span }
+  } }
+}
+// Remove a span from an array, returning undefined if no spans are
+// left (we don't store arrays for lines without spans).
+function removeMarkedSpan(spans, span) {
+  var r;
+  for (var i = 0; i < spans.length; ++i)
+    { if (spans[i] != span) { (r || (r = [])).push(spans[i]); } }
+  return r
+}
+// Add a span to a line.
+function addMarkedSpan(line, span) {
+  line.markedSpans = line.markedSpans ? line.markedSpans.concat([span]) : [span];
+  span.marker.attachLine(line);
+}
+
+// Used for the algorithm that adjusts markers for a change in the
+// document. These functions cut an array of spans at a given
+// character position, returning an array of remaining chunks (or
+// undefined if nothing remains).
+function markedSpansBefore(old, startCh, isInsert) {
+  var nw;
+  if (old) { for (var i = 0; i < old.length; ++i) {
+    var span = old[i], marker = span.marker;
+    var startsBefore = span.from == null || (marker.inclusiveLeft ? span.from <= startCh : span.from < startCh);
+    if (startsBefore || span.from == startCh && marker.type == "bookmark" && (!isInsert || !span.marker.insertLeft)) {
+      var endsAfter = span.to == null || (marker.inclusiveRight ? span.to >= startCh : span.to > startCh);(nw || (nw = [])).push(new MarkedSpan(marker, span.from, endsAfter ? null : span.to));
+    }
+  } }
+  return nw
+}
+function markedSpansAfter(old, endCh, isInsert) {
+  var nw;
+  if (old) { for (var i = 0; i < old.length; ++i) {
+    var span = old[i], marker = span.marker;
+    var endsAfter = span.to == null || (marker.inclusiveRight ? span.to >= endCh : span.to > endCh);
+    if (endsAfter || span.from == endCh && marker.type == "bookmark" && (!isInsert || span.marker.insertLeft)) {
+      var startsBefore = span.from == null || (marker.inclusiveLeft ? span.from <= endCh : span.from < endCh);(nw || (nw = [])).push(new MarkedSpan(marker, startsBefore ? null : span.from - endCh,
+                                            span.to == null ? null : span.to - endCh));
+    }
+  } }
+  return nw
+}
+
+// Given a change object, compute the new set of marker spans that
+// cover the line in which the change took place. Removes spans
+// entirely within the change, reconnects spans belonging to the
+// same marker that appear on both sides of the change, and cuts off
+// spans partially within the change. Returns an array of span
+// arrays with one element for each line in (after) the change.
+function stretchSpansOverChange(doc, change) {
+  if (change.full) { return null }
+  var oldFirst = isLine(doc, change.from.line) && getLine(doc, change.from.line).markedSpans;
+  var oldLast = isLine(doc, change.to.line) && getLine(doc, change.to.line).markedSpans;
+  if (!oldFirst && !oldLast) { return null }
+
+  var startCh = change.from.ch, endCh = change.to.ch, isInsert = cmp(change.from, change.to) == 0;
+  // Get the spans that 'stick out' on both sides
+  var first = markedSpansBefore(oldFirst, startCh, isInsert);
+  var last = markedSpansAfter(oldLast, endCh, isInsert);
+
+  // Next, merge those two ends
+  var sameLine = change.text.length == 1, offset = lst(change.text).length + (sameLine ? startCh : 0);
+  if (first) {
+    // Fix up .to properties of first
+    for (var i = 0; i < first.length; ++i) {
+      var span = first[i];
+      if (span.to == null) {
+        var found = getMarkedSpanFor(last, span.marker);
+        if (!found) { span.to = startCh; }
+        else if (sameLine) { span.to = found.to == null ? null : found.to + offset; }
+      }
+    }
+  }
+  if (last) {
+    // Fix up .from in last (or move them into first in case of sameLine)
+    for (var i$1 = 0; i$1 < last.length; ++i$1) {
+      var span$1 = last[i$1];
+      if (span$1.to != null) { span$1.to += offset; }
+      if (span$1.from == null) {
+        var found$1 = getMarkedSpanFor(first, span$1.marker);
+        if (!found$1) {
+          span$1.from = offset;
+          if (sameLine) { (first || (first = [])).push(span$1); }
+        }
+      } else {
+        span$1.from += offset;
+        if (sameLine) { (first || (first = [])).push(span$1); }
+      }
+    }
+  }
+  // Make sure we didn't create any zero-length spans
+  if (first) { first = clearEmptySpans(first); }
+  if (last && last != first) { last = clearEmptySpans(last); }
+
+  var newMarkers = [first];
+  if (!sameLine) {
+    // Fill gap with whole-line-spans
+    var gap = change.text.length - 2, gapMarkers;
+    if (gap > 0 && first)
+      { for (var i$2 = 0; i$2 < first.length; ++i$2)
+        { if (first[i$2].to == null)
+          { (gapMarkers || (gapMarkers = [])).push(new MarkedSpan(first[i$2].marker, null, null)); } } }
+    for (var i$3 = 0; i$3 < gap; ++i$3)
+      { newMarkers.push(gapMarkers); }
+    newMarkers.push(last);
+  }
+  return newMarkers
+}
+
+// Remove spans that are empty and don't have a clearWhenEmpty
+// option of false.
+function clearEmptySpans(spans) {
+  for (var i = 0; i < spans.length; ++i) {
+    var span = spans[i];
+    if (span.from != null && span.from == span.to && span.marker.clearWhenEmpty !== false)
+      { spans.splice(i--, 1); }
+  }
+  if (!spans.length) { return null }
+  return spans
+}
+
+// Used to 'clip' out readOnly ranges when making a change.
+function removeReadOnlyRanges(doc, from, to) {
+  var markers = null;
+  doc.iter(from.line, to.line + 1, function (line) {
+    if (line.markedSpans) { for (var i = 0; i < line.markedSpans.length; ++i) {
+      var mark = line.markedSpans[i].marker;
+      if (mark.readOnly && (!markers || indexOf(markers, mark) == -1))
+        { (markers || (markers = [])).push(mark); }
+    } }
+  });
+  if (!markers) { return null }
+  var parts = [{from: from, to: to}];
+  for (var i = 0; i < markers.length; ++i) {
+    var mk = markers[i], m = mk.find(0);
+    for (var j = 0; j < parts.length; ++j) {
+      var p = parts[j];
+      if (cmp(p.to, m.from) < 0 || cmp(p.from, m.to) > 0) { continue }
+      var newParts = [j, 1], dfrom = cmp(p.from, m.from), dto = cmp(p.to, m.to);
+      if (dfrom < 0 || !mk.inclusiveLeft && !dfrom)
+        { newParts.push({from: p.from, to: m.from}); }
+      if (dto > 0 || !mk.inclusiveRight && !dto)
+        { newParts.push({from: m.to, to: p.to}); }
+      parts.splice.apply(parts, newParts);
+      j += newParts.length - 3;
+    }
+  }
+  return parts
+}
+
+// Connect or disconnect spans from a line.
+function detachMarkedSpans(line) {
+  var spans = line.markedSpans;
+  if (!spans) { return }
+  for (var i = 0; i < spans.length; ++i)
+    { spans[i].marker.detachLine(line); }
+  line.markedSpans = null;
+}
+function attachMarkedSpans(line, spans) {
+  if (!spans) { return }
+  for (var i = 0; i < spans.length; ++i)
+    { spans[i].marker.attachLine(line); }
+  line.markedSpans = spans;
+}
+
+// Helpers used when computing which overlapping collapsed span
+// counts as the larger one.
+function extraLeft(marker) { return marker.inclusiveLeft ? -1 : 0 }
+function extraRight(marker) { return marker.inclusiveRight ? 1 : 0 }
+
+// Returns a number indicating which of two overlapping collapsed
+// spans is larger (and thus includes the other). Falls back to
+// comparing ids when the spans cover exactly the same range.
+function compareCollapsedMarkers(a, b) {
+  var lenDiff = a.lines.length - b.lines.length;
+  if (lenDiff != 0) { return lenDiff }
+  var aPos = a.find(), bPos = b.find();
+  var fromCmp = cmp(aPos.from, bPos.from) || extraLeft(a) - extraLeft(b);
+  if (fromCmp) { return -fromCmp }
+  var toCmp = cmp(aPos.to, bPos.to) || extraRight(a) - extraRight(b);
+  if (toCmp) { return toCmp }
+  return b.id - a.id
+}
+
+// Find out whether a line ends or starts in a collapsed span. If
+// so, return the marker for that span.
+function collapsedSpanAtSide(line, start) {
+  var sps = sawCollapsedSpans && line.markedSpans, found;
+  if (sps) { for (var sp = (void 0), i = 0; i < sps.length; ++i) {
+    sp = sps[i];
+    if (sp.marker.collapsed && (start ? sp.from : sp.to) == null &&
+        (!found || compareCollapsedMarkers(found, sp.marker) < 0))
+      { found = sp.marker; }
+  } }
+  return found
+}
+function collapsedSpanAtStart(line) { return collapsedSpanAtSide(line, true) }
+function collapsedSpanAtEnd(line) { return collapsedSpanAtSide(line, false) }
+
+// Test whether there exists a collapsed span that partially
+// overlaps (covers the start or end, but not both) of a new span.
+// Such overlap is not allowed.
+function conflictingCollapsedRange(doc, lineNo$$1, from, to, marker) {
+  var line = getLine(doc, lineNo$$1);
+  var sps = sawCollapsedSpans && line.markedSpans;
+  if (sps) { for (var i = 0; i < sps.length; ++i) {
+    var sp = sps[i];
+    if (!sp.marker.collapsed) { continue }
+    var found = sp.marker.find(0);
+    var fromCmp = cmp(found.from, from) || extraLeft(sp.marker) - extraLeft(marker);
+    var toCmp = cmp(found.to, to) || extraRight(sp.marker) - extraRight(marker);
+    if (fromCmp >= 0 && toCmp <= 0 || fromCmp <= 0 && toCmp >= 0) { continue }
+    if (fromCmp <= 0 && (sp.marker.inclusiveRight && marker.inclusiveLeft ? cmp(found.to, from) >= 0 : cmp(found.to, from) > 0) ||
+        fromCmp >= 0 && (sp.marker.inclusiveRight && marker.inclusiveLeft ? cmp(found.from, to) <= 0 : cmp(found.from, to) < 0))
+      { return true }
+  } }
+}
+
+// A visual line is a line as drawn on the screen. Folding, for
+// example, can cause multiple logical lines to appear on the same
+// visual line. This finds the start of the visual line that the
+// given line is part of (usually that is the line itself).
+function visualLine(line) {
+  var merged;
+  while (merged = collapsedSpanAtStart(line))
+    { line = merged.find(-1, true).line; }
+  return line
+}
+
+function visualLineEnd(line) {
+  var merged;
+  while (merged = collapsedSpanAtEnd(line))
+    { line = merged.find(1, true).line; }
+  return line
+}
+
+// Returns an array of logical lines that continue the visual line
+// started by the argument, or undefined if there are no such lines.
+function visualLineContinued(line) {
+  var merged, lines;
+  while (merged = collapsedSpanAtEnd(line)) {
+    line = merged.find(1, true).line
+    ;(lines || (lines = [])).push(line);
+  }
+  return lines
+}
+
+// Get the line number of the start of the visual line that the
+// given line number is part of.
+function visualLineNo(doc, lineN) {
+  var line = getLine(doc, lineN), vis = visualLine(line);
+  if (line == vis) { return lineN }
+  return lineNo(vis)
+}
+
+// Get the line number of the start of the next visual line after
+// the given line.
+function visualLineEndNo(doc, lineN) {
+  if (lineN > doc.lastLine()) { return lineN }
+  var line = getLine(doc, lineN), merged;
+  if (!lineIsHidden(doc, line)) { return lineN }
+  while (merged = collapsedSpanAtEnd(line))
+    { line = merged.find(1, true).line; }
+  return lineNo(line) + 1
+}
+
+// Compute whether a line is hidden. Lines count as hidden when they
+// are part of a visual line that starts with another line, or when
+// they are entirely covered by collapsed, non-widget span.
+function lineIsHidden(doc, line) {
+  var sps = sawCollapsedSpans && line.markedSpans;
+  if (sps) { for (var sp = (void 0), i = 0; i < sps.length; ++i) {
+    sp = sps[i];
+    if (!sp.marker.collapsed) { continue }
+    if (sp.from == null) { return true }
+    if (sp.marker.widgetNode) { continue }
+    if (sp.from == 0 && sp.marker.inclusiveLeft && lineIsHiddenInner(doc, line, sp))
+      { return true }
+  } }
+}
+function lineIsHiddenInner(doc, line, span) {
+  if (span.to == null) {
+    var end = span.marker.find(1, true);
+    return lineIsHiddenInner(doc, end.line, getMarkedSpanFor(end.line.markedSpans, span.marker))
+  }
+  if (span.marker.inclusiveRight && span.to == line.text.length)
+    { return true }
+  for (var sp = (void 0), i = 0; i < line.markedSpans.length; ++i) {
+    sp = line.markedSpans[i];
+    if (sp.marker.collapsed && !sp.marker.widgetNode && sp.from == span.to &&
+        (sp.to == null || sp.to != span.from) &&
+        (sp.marker.inclusiveLeft || span.marker.inclusiveRight) &&
+        lineIsHiddenInner(doc, line, sp)) { return true }
+  }
+}
+
+// Find the height above the given line.
+function heightAtLine(lineObj) {
+  lineObj = visualLine(lineObj);
+
+  var h = 0, chunk = lineObj.parent;
+  for (var i = 0; i < chunk.lines.length; ++i) {
+    var line = chunk.lines[i];
+    if (line == lineObj) { break }
+    else { h += line.height; }
+  }
+  for (var p = chunk.parent; p; chunk = p, p = chunk.parent) {
+    for (var i$1 = 0; i$1 < p.children.length; ++i$1) {
+      var cur = p.children[i$1];
+      if (cur == chunk) { break }
+      else { h += cur.height; }
+    }
+  }
+  return h
+}
+
+// Compute the character length of a line, taking into account
+// collapsed ranges (see markText) that might hide parts, and join
+// other lines onto it.
+function lineLength(line) {
+  if (line.height == 0) { return 0 }
+  var len = line.text.length, merged, cur = line;
+  while (merged = collapsedSpanAtStart(cur)) {
+    var found = merged.find(0, true);
+    cur = found.from.line;
+    len += found.from.ch - found.to.ch;
+  }
+  cur = line;
+  while (merged = collapsedSpanAtEnd(cur)) {
+    var found$1 = merged.find(0, true);
+    len -= cur.text.length - found$1.from.ch;
+    cur = found$1.to.line;
+    len += cur.text.length - found$1.to.ch;
+  }
+  return len
+}
+
+// Find the longest line in the document.
+function findMaxLine(cm) {
+  var d = cm.display, doc = cm.doc;
+  d.maxLine = getLine(doc, doc.first);
+  d.maxLineLength = lineLength(d.maxLine);
+  d.maxLineChanged = true;
+  doc.iter(function (line) {
+    var len = lineLength(line);
+    if (len > d.maxLineLength) {
+      d.maxLineLength = len;
+      d.maxLine = line;
+    }
+  });
+}
+
+// BIDI HELPERS
+
+function iterateBidiSections(order, from, to, f) {
+  if (!order) { return f(from, to, "ltr") }
+  var found = false;
+  for (var i = 0; i < order.length; ++i) {
+    var part = order[i];
+    if (part.from < to && part.to > from || from == to && part.to == from) {
+      f(Math.max(part.from, from), Math.min(part.to, to), part.level == 1 ? "rtl" : "ltr");
+      found = true;
+    }
+  }
+  if (!found) { f(from, to, "ltr"); }
+}
+
+var bidiOther = null;
+function getBidiPartAt(order, ch, sticky) {
+  var found;
+  bidiOther = null;
+  for (var i = 0; i < order.length; ++i) {
+    var cur = order[i];
+    if (cur.from < ch && cur.to > ch) { return i }
+    if (cur.to == ch) {
+      if (cur.from != cur.to && sticky == "before") { found = i; }
+      else { bidiOther = i; }
+    }
+    if (cur.from == ch) {
+      if (cur.from != cur.to && sticky != "before") { found = i; }
+      else { bidiOther = i; }
+    }
+  }
+  return found != null ? found : bidiOther
+}
+
+// Bidirectional ordering algorithm
+// See http://unicode.org/reports/tr9/tr9-13.html for the algorithm
+// that this (partially) implements.
+
+// One-char codes used for character types:
+// L (L):   Left-to-Right
+// R (R):   Right-to-Left
+// r (AL):  Right-to-Left Arabic
+// 1 (EN):  European Number
+// + (ES):  European Number Separator
+// % (ET):  European Number Terminator
+// n (AN):  Arabic Number
+// , (CS):  Common Number Separator
+// m (NSM): Non-Spacing Mark
+// b (BN):  Boundary Neutral
+// s (B):   Paragraph Separator
+// t (S):   Segment Separator
+// w (WS):  Whitespace
+// N (ON):  Other Neutrals
+
+// Returns null if characters are ordered as they appear
+// (left-to-right), or an array of sections ({from, to, level}
+// objects) in the order in which they occur visually.
+var bidiOrdering = (function() {
+  // Character types for codepoints 0 to 0xff
+  var lowTypes = "bbbbbbbbbtstwsbbbbbbbbbbbbbbssstwNN%%%NNNNNN,N,N1111111111NNNNNNNLLLLLLLLLLLLLLLLLLLLLLLLLLNNNNNNLLLLLLLLLLLLLLLLLLLLLLLLLLNNNNbbbbbbsbbbbbbbbbbbbbbbbbbbbbbbbbb,N%%%%NNNNLNNNNN%%11NLNNN1LNNNNNLLLLLLLLLLLLLLLLLLLLLLLNLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLN";
+  // Character types for codepoints 0x600 to 0x6f9
+  var arabicTypes = "nnnnnnNNr%%r,rNNmmmmmmmmmmmrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrmmmmmmmmmmmmmmmmmmmmmnnnnnnnnnn%nnrrrmrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrmmmmmmmnNmmmmmmrrmmNmmmmrr1111111111";
+  function charType(code) {
+    if (code <= 0xf7) { return lowTypes.charAt(code) }
+    else if (0x590 <= code && code <= 0x5f4) { return "R" }
+    else if (0x600 <= code && code <= 0x6f9) { return arabicTypes.charAt(code - 0x600) }
+    else if (0x6ee <= code && code <= 0x8ac) { return "r" }
+    else if (0x2000 <= code && code <= 0x200b) { return "w" }
+    else if (code == 0x200c) { return "b" }
+    else { return "L" }
+  }
+
+  var bidiRE = /[\u0590-\u05f4\u0600-\u06ff\u0700-\u08ac]/;
+  var isNeutral = /[stwN]/, isStrong = /[LRr]/, countsAsLeft = /[Lb1n]/, countsAsNum = /[1n]/;
+
+  function BidiSpan(level, from, to) {
+    this.level = level;
+    this.from = from; this.to = to;
+  }
+
+  return function(str, direction) {
+    var outerType = direction == "ltr" ? "L" : "R";
+
+    if (str.length == 0 || direction == "ltr" && !bidiRE.test(str)) { return false }
+    var len = str.length, types = [];
+    for (var i = 0; i < len; ++i)
+      { types.push(charType(str.charCodeAt(i))); }
+
+    // W1. Examine each non-spacing mark (NSM) in the level run, and
+    // change the type of the NSM to the type of the previous
+    // character. If the NSM is at the start of the level run, it will
+    // get the type of sor.
+    for (var i$1 = 0, prev = outerType; i$1 < len; ++i$1) {
+      var type = types[i$1];
+      if (type == "m") { types[i$1] = prev; }
+      else { prev = type; }
+    }
+
+    // W2. Search backwards from each instance of a European number
+    // until the first strong type (R, L, AL, or sor) is found. If an
+    // AL is found, change the type of the European number to Arabic
+    // number.
+    // W3. Change all ALs to R.
+    for (var i$2 = 0, cur = outerType; i$2 < len; ++i$2) {
+      var type$1 = types[i$2];
+      if (type$1 == "1" && cur == "r") { types[i$2] = "n"; }
+      else if (isStrong.test(type$1)) { cur = type$1; if (type$1 == "r") { types[i$2] = "R"; } }
+    }
+
+    // W4. A single European separator between two European numbers
+    // changes to a European number. A single common separator between
+    // two numbers of the same type changes to that type.
+    for (var i$3 = 1, prev$1 = types[0]; i$3 < len - 1; ++i$3) {
+      var type$2 = types[i$3];
+      if (type$2 == "+" && prev$1 == "1" && types[i$3+1] == "1") { types[i$3] = "1"; }
+      else if (type$2 == "," && prev$1 == types[i$3+1] &&
+               (prev$1 == "1" || prev$1 == "n")) { types[i$3] = prev$1; }
+      prev$1 = type$2;
+    }
+
+    // W5. A sequence of European terminators adjacent to European
+    // numbers changes to all European numbers.
+    // W6. Otherwise, separators and terminators change to Other
+    // Neutral.
+    for (var i$4 = 0; i$4 < len; ++i$4) {
+      var type$3 = types[i$4];
+      if (type$3 == ",") { types[i$4] = "N"; }
+      else if (type$3 == "%") {
+        var end = (void 0);
+        for (end = i$4 + 1; end < len && types[end] == "%"; ++end) {}
+        var replace = (i$4 && types[i$4-1] == "!") || (end < len && types[end] == "1") ? "1" : "N";
+        for (var j = i$4; j < end; ++j) { types[j] = replace; }
+        i$4 = end - 1;
+      }
+    }
+
+    // W7. Search backwards from each instance of a European number
+    // until the first strong type (R, L, or sor) is found. If an L is
+    // found, then change the type of the European number to L.
+    for (var i$5 = 0, cur$1 = outerType; i$5 < len; ++i$5) {
+      var type$4 = types[i$5];
+      if (cur$1 == "L" && type$4 == "1") { types[i$5] = "L"; }
+      else if (isStrong.test(type$4)) { cur$1 = type$4; }
+    }
+
+    // N1. A sequence of neutrals takes the direction of the
+    // surrounding strong text if the text on both sides has the same
+    // direction. European and Arabic numbers act as if they were R in
+    // terms of their influence on neutrals. Start-of-level-run (sor)
+    // and end-of-level-run (eor) are used at level run boundaries.
+    // N2. Any remaining neutrals take the embedding direction.
+    for (var i$6 = 0; i$6 < len; ++i$6) {
+      if (isNeutral.test(types[i$6])) {
+        var end$1 = (void 0);
+        for (end$1 = i$6 + 1; end$1 < len && isNeutral.test(types[end$1]); ++end$1) {}
+        var before = (i$6 ? types[i$6-1] : outerType) == "L";
+        var after = (end$1 < len ? types[end$1] : outerType) == "L";
+        var replace$1 = before == after ? (before ? "L" : "R") : outerType;
+        for (var j$1 = i$6; j$1 < end$1; ++j$1) { types[j$1] = replace$1; }
+        i$6 = end$1 - 1;
+      }
+    }
+
+    // Here we depart from the documented algorithm, in order to avoid
+    // building up an actual levels array. Since there are only three
+    // levels (0, 1, 2) in an implementation that doesn't take
+    // explicit embedding into account, we can build up the order on
+    // the fly, without following the level-based algorithm.
+    var order = [], m;
+    for (var i$7 = 0; i$7 < len;) {
+      if (countsAsLeft.test(types[i$7])) {
+        var start = i$7;
+        for (++i$7; i$7 < len && countsAsLeft.test(types[i$7]); ++i$7) {}
+        order.push(new BidiSpan(0, start, i$7));
+      } else {
+        var pos = i$7, at = order.length;
+        for (++i$7; i$7 < len && types[i$7] != "L"; ++i$7) {}
+        for (var j$2 = pos; j$2 < i$7;) {
+          if (countsAsNum.test(types[j$2])) {
+            if (pos < j$2) { order.splice(at, 0, new BidiSpan(1, pos, j$2)); }
+            var nstart = j$2;
+            for (++j$2; j$2 < i$7 && countsAsNum.test(types[j$2]); ++j$2) {}
+            order.splice(at, 0, new BidiSpan(2, nstart, j$2));
+            pos = j$2;
+          } else { ++j$2; }
+        }
+        if (pos < i$7) { order.splice(at, 0, new BidiSpan(1, pos, i$7)); }
+      }
+    }
+    if (order[0].level == 1 && (m = str.match(/^\s+/))) {
+      order[0].from = m[0].length;
+      order.unshift(new BidiSpan(0, 0, m[0].length));
+    }
+    if (lst(order).level == 1 && (m = str.match(/\s+$/))) {
+      lst(order).to -= m[0].length;
+      order.push(new BidiSpan(0, len - m[0].length, len));
+    }
+
+    return direction == "rtl" ? order.reverse() : order
+  }
+})();
+
+// Get the bidi ordering for the given line (and cache it). Returns
+// false for lines that are fully left-to-right, and an array of
+// BidiSpan objects otherwise.
+function getOrder(line, direction) {
+  var order = line.order;
+  if (order == null) { order = line.order = bidiOrdering(line.text, direction); }
+  return order
+}
+
+function moveCharLogically(line, ch, dir) {
+  var target = skipExtendingChars(line.text, ch + dir, dir);
+  return target < 0 || target > line.text.length ? null : target
+}
+
+function moveLogically(line, start, dir) {
+  var ch = moveCharLogically(line, start.ch, dir);
+  return ch == null ? null : new Pos(start.line, ch, dir < 0 ? "after" : "before")
+}
+
+function endOfLine(visually, cm, lineObj, lineNo, dir) {
+  if (visually) {
+    var order = getOrder(lineObj, cm.doc.direction);
+    if (order) {
+      var part = dir < 0 ? lst(order) : order[0];
+      var moveInStorageOrder = (dir < 0) == (part.level == 1);
+      var sticky = moveInStorageOrder ? "after" : "before";
+      var ch;
+      // With a wrapped rtl chunk (possibly spanning multiple bidi parts),
+      // it could be that the last bidi part is not on the last visual line,
+      // since visual lines contain content order-consecutive chunks.
+      // Thus, in rtl, we are looking for the first (content-order) character
+      // in the rtl chunk that is on the last line (that is, the same line
+      // as the last (content-order) character).
+      if (part.level > 0) {
+        var prep = prepareMeasureForLine(cm, lineObj);
+        ch = dir < 0 ? lineObj.text.length - 1 : 0;
+        var targetTop = measureCharPrepared(cm, prep, ch).top;
+        ch = findFirst(function (ch) { return measureCharPrepared(cm, prep, ch).top == targetTop; }, (dir < 0) == (part.level == 1) ? part.from : part.to - 1, ch);
+        if (sticky == "before") { ch = moveCharLogically(lineObj, ch, 1, true); }
+      } else { ch = dir < 0 ? part.to : part.from; }
+      return new Pos(lineNo, ch, sticky)
+    }
+  }
+  return new Pos(lineNo, dir < 0 ? lineObj.text.length : 0, dir < 0 ? "before" : "after")
+}
+
+function moveVisually(cm, line, start, dir) {
+  var bidi = getOrder(line, cm.doc.direction);
+  if (!bidi) { return moveLogically(line, start, dir) }
+  if (start.ch >= line.text.length) {
+    start.ch = line.text.length;
+    start.sticky = "before";
+  } else if (start.ch <= 0) {
+    start.ch = 0;
+    start.sticky = "after";
+  }
+  var partPos = getBidiPartAt(bidi, start.ch, start.sticky), part = bidi[partPos];
+  if (cm.doc.direction == "ltr" && part.level % 2 == 0 && (dir > 0 ? part.to > start.ch : part.from < start.ch)) {
+    // Case 1: We move within an ltr part in an ltr editor. Even with wrapped lines,
+    // nothing interesting happens.
+    return moveLogically(line, start, dir)
+  }
+
+  var mv = function (pos, dir) { return moveCharLogically(line, pos instanceof Pos ? pos.ch : pos, dir); };
+  var prep;
+  var getWrappedLineExtent = function (ch) {
+    if (!cm.options.lineWrapping) { return {begin: 0, end: line.text.length} }
+    prep = prep || prepareMeasureForLine(cm, line);
+    return wrappedLineExtentChar(cm, line, prep, ch)
+  };
+  var wrappedLineExtent = getWrappedLineExtent(start.sticky == "before" ? mv(start, -1) : start.ch);
+
+  if (cm.doc.direction == "rtl" || part.level == 1) {
+    var moveInStorageOrder = (part.level == 1) == (dir < 0);
+    var ch = mv(start, moveInStorageOrder ? 1 : -1);
+    if (ch != null && (!moveInStorageOrder ? ch >= part.from && ch >= wrappedLineExtent.begin : ch <= part.to && ch <= wrappedLineExtent.end)) {
+      // Case 2: We move within an rtl part or in an rtl editor on the same visual line
+      var sticky = moveInStorageOrder ? "before" : "after";
+      return new Pos(start.line, ch, sticky)
+    }
+  }
+
+  // Case 3: Could not move within this bidi part in this visual line, so leave
+  // the current bidi part
+
+  var searchInVisualLine = function (partPos, dir, wrappedLineExtent) {
+    var getRes = function (ch, moveInStorageOrder) { return moveInStorageOrder
+      ? new Pos(start.line, mv(ch, 1), "before")
+      : new Pos(start.line, ch, "after"); };
+
+    for (; partPos >= 0 && partPos < bidi.length; partPos += dir) {
+      var part = bidi[partPos];
+      var moveInStorageOrder = (dir > 0) == (part.level != 1);
+      var ch = moveInStorageOrder ? wrappedLineExtent.begin : mv(wrappedLineExtent.end, -1);
+      if (part.from <= ch && ch < part.to) { return getRes(ch, moveInStorageOrder) }
+      ch = moveInStorageOrder ? part.from : mv(part.to, -1);
+      if (wrappedLineExtent.begin <= ch && ch < wrappedLineExtent.end) { return getRes(ch, moveInStorageOrder) }
+    }
+  };
+
+  // Case 3a: Look for other bidi parts on the same visual line
+  var res = searchInVisualLine(partPos + dir, dir, wrappedLineExtent);
+  if (res) { return res }
+
+  // Case 3b: Look for other bidi parts on the next visual line
+  var nextCh = dir > 0 ? wrappedLineExtent.end : mv(wrappedLineExtent.begin, -1);
+  if (nextCh != null && !(dir > 0 && nextCh == line.text.length)) {
+    res = searchInVisualLine(dir > 0 ? 0 : bidi.length - 1, dir, getWrappedLineExtent(nextCh));
+    if (res) { return res }
+  }
+
+  // Case 4: Nowhere to move
+  return null
+}
+
+// EVENT HANDLING
+
+// Lightweight event framework. on/off also work on DOM nodes,
+// registering native DOM handlers.
+
+var noHandlers = [];
+
+var on = function(emitter, type, f) {
+  if (emitter.addEventListener) {
+    emitter.addEventListener(type, f, false);
+  } else if (emitter.attachEvent) {
+    emitter.attachEvent("on" + type, f);
+  } else {
+    var map$$1 = emitter._handlers || (emitter._handlers = {});
+    map$$1[type] = (map$$1[type] || noHandlers).concat(f);
+  }
+};
+
+function getHandlers(emitter, type) {
+  return emitter._handlers && emitter._handlers[type] || noHandlers
+}
+
+function off(emitter, type, f) {
+  if (emitter.removeEventListener) {
+    emitter.removeEventListener(type, f, false);
+  } else if (emitter.detachEvent) {
+    emitter.detachEvent("on" + type, f);
+  } else {
+    var map$$1 = emitter._handlers, arr = map$$1 && map$$1[type];
+    if (arr) {
+      var index = indexOf(arr, f);
+      if (index > -1)
+        { map$$1[type] = arr.slice(0, index).concat(arr.slice(index + 1)); }
+    }
+  }
+}
+
+function signal(emitter, type /*, values...*/) {
+  var handlers = getHandlers(emitter, type);
+  if (!handlers.length) { return }
+  var args = Array.prototype.slice.call(arguments, 2);
+  for (var i = 0; i < handlers.length; ++i) { handlers[i].apply(null, args); }
+}
+
+// The DOM events that CodeMirror handles can be overridden by
+// registering a (non-DOM) handler on the editor for the event name,
+// and preventDefault-ing the event in that handler.
+function signalDOMEvent(cm, e, override) {
+  if (typeof e == "string")
+    { e = {type: e, preventDefault: function() { this.defaultPrevented = true; }}; }
+  signal(cm, override || e.type, cm, e);
+  return e_defaultPrevented(e) || e.codemirrorIgnore
+}
+
+function signalCursorActivity(cm) {
+  var arr = cm._handlers && cm._handlers.cursorActivity;
+  if (!arr) { return }
+  var set = cm.curOp.cursorActivityHandlers || (cm.curOp.cursorActivityHandlers = []);
+  for (var i = 0; i < arr.length; ++i) { if (indexOf(set, arr[i]) == -1)
+    { set.push(arr[i]); } }
+}
+
+function hasHandler(emitter, type) {
+  return getHandlers(emitter, type).length > 0
+}
+
+// Add on and off methods to a constructor's prototype, to make
+// registering events on such objects more convenient.
+function eventMixin(ctor) {
+  ctor.prototype.on = function(type, f) {on(this, type, f);};
+  ctor.prototype.off = function(type, f) {off(this, type, f);};
+}
+
+// Due to the fact that we still support jurassic IE versions, some
+// compatibility wrappers are needed.
+
+function e_preventDefault(e) {
+  if (e.preventDefault) { e.preventDefault(); }
+  else { e.returnValue = false; }
+}
+function e_stopPropagation(e) {
+  if (e.stopPropagation) { e.stopPropagation(); }
+  else { e.cancelBubble = true; }
+}
+function e_defaultPrevented(e) {
+  return e.defaultPrevented != null ? e.defaultPrevented : e.returnValue == false
+}
+function e_stop(e) {e_preventDefault(e); e_stopPropagation(e);}
+
+function e_target(e) {return e.target || e.srcElement}
+function e_button(e) {
+  var b = e.which;
+  if (b == null) {
+    if (e.button & 1) { b = 1; }
+    else if (e.button & 2) { b = 3; }
+    else if (e.button & 4) { b = 2; }
+  }
+  if (mac && e.ctrlKey && b == 1) { b = 3; }
+  return b
+}
+
+// Detect drag-and-drop
+var dragAndDrop = function() {
+  // There is *some* kind of drag-and-drop support in IE6-8, but I
+  // couldn't get it to work yet.
+  if (ie && ie_version < 9) { return false }
+  var div = elt('div');
+  return "draggable" in div || "dragDrop" in div
+}();
+
+var zwspSupported;
+function zeroWidthElement(measure) {
+  if (zwspSupported == null) {
+    var test = elt("span", "\u200b");
+    removeChildrenAndAdd(measure, elt("span", [test, document.createTextNode("x")]));
+    if (measure.firstChild.offsetHeight != 0)
+      { zwspSupported = test.offsetWidth <= 1 && test.offsetHeight > 2 && !(ie && ie_version < 8); }
+  }
+  var node = zwspSupported ? elt("span", "\u200b") :
+    elt("span", "\u00a0", null, "display: inline-block; width: 1px; margin-right: -1px");
+  node.setAttribute("cm-text", "");
+  return node
+}
+
+// Feature-detect IE's crummy client rect reporting for bidi text
+var badBidiRects;
+function hasBadBidiRects(measure) {
+  if (badBidiRects != null) { return badBidiRects }
+  var txt = removeChildrenAndAdd(measure, document.createTextNode("A\u062eA"));
+  var r0 = range(txt, 0, 1).getBoundingClientRect();
+  var r1 = range(txt, 1, 2).getBoundingClientRect();
+  removeChildren(measure);
+  if (!r0 || r0.left == r0.right) { return false } // Safari returns null in some cases (#2780)
+  return badBidiRects = (r1.right - r0.right < 3)
+}
+
+// See if "".split is the broken IE version, if so, provide an
+// alternative way to split lines.
+var splitLinesAuto = "\n\nb".split(/\n/).length != 3 ? function (string) {
+  var pos = 0, result = [], l = string.length;
+  while (pos <= l) {
+    var nl = string.indexOf("\n", pos);
+    if (nl == -1) { nl = string.length; }
+    var line = string.slice(pos, string.charAt(nl - 1) == "\r" ? nl - 1 : nl);
+    var rt = line.indexOf("\r");
+    if (rt != -1) {
+      result.push(line.slice(0, rt));
+      pos += rt + 1;
+    } else {
+      result.push(line);
+      pos = nl + 1;
+    }
+  }
+  return result
+} : function (string) { return string.split(/\r\n?|\n/); };
+
+var hasSelection = window.getSelection ? function (te) {
+  try { return te.selectionStart != te.selectionEnd }
+  catch(e) { return false }
+} : function (te) {
+  var range$$1;
+  try {range$$1 = te.ownerDocument.selection.createRange();}
+  catch(e) {}
+  if (!range$$1 || range$$1.parentElement() != te) { return false }
+  return range$$1.compareEndPoints("StartToEnd", range$$1) != 0
+};
+
+var hasCopyEvent = (function () {
+  var e = elt("div");
+  if ("oncopy" in e) { return true }
+  e.setAttribute("oncopy", "return;");
+  return typeof e.oncopy == "function"
+})();
+
+var badZoomedRects = null;
+function hasBadZoomedRects(measure) {
+  if (badZoomedRects != null) { return badZoomedRects }
+  var node = removeChildrenAndAdd(measure, elt("span", "x"));
+  var normal = node.getBoundingClientRect();
+  var fromRange = range(node, 0, 1).getBoundingClientRect();
+  return badZoomedRects = Math.abs(normal.left - fromRange.left) > 1
+}
+
+// Known modes, by name and by MIME
+var modes = {};
+var mimeModes = {};
+
+// Extra arguments are stored as the mode's dependencies, which is
+// used by (legacy) mechanisms like loadmode.js to automatically
+// load a mode. (Preferred mechanism is the require/define calls.)
+function defineMode(name, mode) {
+  if (arguments.length > 2)
+    { mode.dependencies = Array.prototype.slice.call(arguments, 2); }
+  modes[name] = mode;
+}
+
+function defineMIME(mime, spec) {
+  mimeModes[mime] = spec;
+}
+
+// Given a MIME type, a {name, ...options} config object, or a name
+// string, return a mode config object.
+function resolveMode(spec) {
+  if (typeof spec == "string" && mimeModes.hasOwnProperty(spec)) {
+    spec = mimeModes[spec];
+  } else if (spec && typeof spec.name == "string" && mimeModes.hasOwnProperty(spec.name)) {
+    var found = mimeModes[spec.name];
+    if (typeof found == "string") { found = {name: found}; }
+    spec = createObj(found, spec);
+    spec.name = found.name;
+  } else if (typeof spec == "string" && /^[\w\-]+\/[\w\-]+\+xml$/.test(spec)) {
+    return resolveMode("application/xml")
+  } else if (typeof spec == "string" && /^[\w\-]+\/[\w\-]+\+json$/.test(spec)) {
+    return resolveMode("application/json")
+  }
+  if (typeof spec == "string") { return {name: spec} }
+  else { return spec || {name: "null"} }
+}
+
+// Given a mode spec (anything that resolveMode accepts), find and
+// initialize an actual mode object.
+function getMode(options, spec) {
+  spec = resolveMode(spec);
+  var mfactory = modes[spec.name];
+  if (!mfactory) { return getMode(options, "text/plain") }
+  var modeObj = mfactory(options, spec);
+  if (modeExtensions.hasOwnProperty(spec.name)) {
+    var exts = modeExtensions[spec.name];
+    for (var prop in exts) {
+      if (!exts.hasOwnProperty(prop)) { continue }
+      if (modeObj.hasOwnProperty(prop)) { modeObj["_" + prop] = modeObj[prop]; }
+      modeObj[prop] = exts[prop];
+    }
+  }
+  modeObj.name = spec.name;
+  if (spec.helperType) { modeObj.helperType = spec.helperType; }
+  if (spec.modeProps) { for (var prop$1 in spec.modeProps)
+    { modeObj[prop$1] = spec.modeProps[prop$1]; } }
+
+  return modeObj
+}
+
+// This can be used to attach properties to mode objects from
+// outside the actual mode definition.
+var modeExtensions = {};
+function extendMode(mode, properties) {
+  var exts = modeExtensions.hasOwnProperty(mode) ? modeExtensions[mode] : (modeExtensions[mode] = {});
+  copyObj(properties, exts);
+}
+
+function copyState(mode, state) {
+  if (state === true) { return state }
+  if (mode.copyState) { return mode.copyState(state) }
+  var nstate = {};
+  for (var n in state) {
+    var val = state[n];
+    if (val instanceof Array) { val = val.concat([]); }
+    nstate[n] = val;
+  }
+  return nstate
+}
+
+// Given a mode and a state (for that mode), find the inner mode and
+// state at the position that the state refers to.
+function innerMode(mode, state) {
+  var info;
+  while (mode.innerMode) {
+    info = mode.innerMode(state);
+    if (!info || info.mode == mode) { break }
+    state = info.state;
+    mode = info.mode;
+  }
+  return info || {mode: mode, state: state}
+}
+
+function startState(mode, a1, a2) {
+  return mode.startState ? mode.startState(a1, a2) : true
+}
+
+// STRING STREAM
+
+// Fed to the mode parsers, provides helper functions to make
+// parsers more succinct.
+
+var StringStream = function(string, tabSize) {
+  this.pos = this.start = 0;
+  this.string = string;
+  this.tabSize = tabSize || 8;
+  this.lastColumnPos = this.lastColumnValue = 0;
+  this.lineStart = 0;
+};
+
+StringStream.prototype.eol = function () {return this.pos >= this.string.length};
+StringStream.prototype.sol = function () {return this.pos == this.lineStart};
+StringStream.prototype.peek = function () {return this.string.charAt(this.pos) || undefined};
+StringStream.prototype.next = function () {
+  if (this.pos < this.string.length)
+    { return this.string.charAt(this.pos++) }
+};
+StringStream.prototype.eat = function (match) {
+  var ch = this.string.charAt(this.pos);
+  var ok;
+  if (typeof match == "string") { ok = ch == match; }
+  else { ok = ch && (match.test ? match.test(ch) : match(ch)); }
+  if (ok) {++this.pos; return ch}
+};
+StringStream.prototype.eatWhile = function (match) {
+  var start = this.pos;
+  while (this.eat(match)){}
+  return this.pos > start
+};
+StringStream.prototype.eatSpace = function () {
+    var this$1 = this;
+
+  var start = this.pos;
+  while (/[\s\u00a0]/.test(this.string.charAt(this.pos))) { ++this$1.pos; }
+  return this.pos > start
+};
+StringStream.prototype.skipToEnd = function () {this.pos = this.string.length;};
+StringStream.prototype.skipTo = function (ch) {
+  var found = this.string.indexOf(ch, this.pos);
+  if (found > -1) {this.pos = found; return true}
+};
+StringStream.prototype.backUp = function (n) {this.pos -= n;};
+StringStream.prototype.column = function () {
+  if (this.lastColumnPos < this.start) {
+    this.lastColumnValue = countColumn(this.string, this.start, this.tabSize, this.lastColumnPos, this.lastColumnValue);
+    this.lastColumnPos = this.start;
+  }
+  return this.lastColumnValue - (this.lineStart ? countColumn(this.string, this.lineStart, this.tabSize) : 0)
+};
+StringStream.prototype.indentation = function () {
+  return countColumn(this.string, null, this.tabSize) -
+    (this.lineStart ? countColumn(this.string, this.lineStart, this.tabSize) : 0)
+};
+StringStream.prototype.match = function (pattern, consume, caseInsensitive) {
+  if (typeof pattern == "string") {
+    var cased = function (str) { return caseInsensitive ? str.toLowerCase() : str; };
+    var substr = this.string.substr(this.pos, pattern.length);
+    if (cased(substr) == cased(pattern)) {
+      if (consume !== false) { this.pos += pattern.length; }
+      return true
+    }
+  } else {
+    var match = this.string.slice(this.pos).match(pattern);
+    if (match && match.index > 0) { return null }
+    if (match && consume !== false) { this.pos += match[0].length; }
+    return match
+  }
+};
+StringStream.prototype.current = function (){return this.string.slice(this.start, this.pos)};
+StringStream.prototype.hideFirstChars = function (n, inner) {
+  this.lineStart += n;
+  try { return inner() }
+  finally { this.lineStart -= n; }
+};
+
+// Compute a style array (an array starting with a mode generation
+// -- for invalidation -- followed by pairs of end positions and
+// style strings), which is used to highlight the tokens on the
+// line.
+function highlightLine(cm, line, state, forceToEnd) {
+  // A styles array always starts with a number identifying the
+  // mode/overlays that it is based on (for easy invalidation).
+  var st = [cm.state.modeGen], lineClasses = {};
+  // Compute the base array of styles
+  runMode(cm, line.text, cm.doc.mode, state, function (end, style) { return st.push(end, style); },
+    lineClasses, forceToEnd);
+
+  // Run overlays, adjust style array.
+  var loop = function ( o ) {
+    var overlay = cm.state.overlays[o], i = 1, at = 0;
+    runMode(cm, line.text, overlay.mode, true, function (end, style) {
+      var start = i;
+      // Ensure there's a token end at the current position, and that i points at it
+      while (at < end) {
+        var i_end = st[i];
+        if (i_end > end)
+          { st.splice(i, 1, end, st[i+1], i_end); }
+        i += 2;
+        at = Math.min(end, i_end);
+      }
+      if (!style) { return }
+      if (overlay.opaque) {
+        st.splice(start, i - start, end, "overlay " + style);
+        i = start + 2;
+      } else {
+        for (; start < i; start += 2) {
+          var cur = st[start+1];
+          st[start+1] = (cur ? cur + " " : "") + "overlay " + style;
+        }
+      }
+    }, lineClasses);
+  };
+
+  for (var o = 0; o < cm.state.overlays.length; ++o) loop( o );
+
+  return {styles: st, classes: lineClasses.bgClass || lineClasses.textClass ? lineClasses : null}
+}
+
+function getLineStyles(cm, line, updateFrontier) {
+  if (!line.styles || line.styles[0] != cm.state.modeGen) {
+    var state = getStateBefore(cm, lineNo(line));
+    var result = highlightLine(cm, line, line.text.length > cm.options.maxHighlightLength ? copyState(cm.doc.mode, state) : state);
+    line.stateAfter = state;
+    line.styles = result.styles;
+    if (result.classes) { line.styleClasses = result.classes; }
+    else if (line.styleClasses) { line.styleClasses = null; }
+    if (updateFrontier === cm.doc.frontier) { cm.doc.frontier++; }
+  }
+  return line.styles
+}
+
+function getStateBefore(cm, n, precise) {
+  var doc = cm.doc, display = cm.display;
+  if (!doc.mode.startState) { return true }
+  var pos = findStartLine(cm, n, precise), state = pos > doc.first && getLine(doc, pos-1).stateAfter;
+  if (!state) { state = startState(doc.mode); }
+  else { state = copyState(doc.mode, state); }
+  doc.iter(pos, n, function (line) {
+    processLine(cm, line.text, state);
+    var save = pos == n - 1 || pos % 5 == 0 || pos >= display.viewFrom && pos < display.viewTo;
+    line.stateAfter = save ? copyState(doc.mode, state) : null;
+    ++pos;
+  });
+  if (precise) { doc.frontier = pos; }
+  return state
+}
+
+// Lightweight form of highlight -- proceed over this line and
+// update state, but don't save a style array. Used for lines that
+// aren't currently visible.
+function processLine(cm, text, state, startAt) {
+  var mode = cm.doc.mode;
+  var stream = new StringStream(text, cm.options.tabSize);
+  stream.start = stream.pos = startAt || 0;
+  if (text == "") { callBlankLine(mode, state); }
+  while (!stream.eol()) {
+    readToken(mode, stream, state);
+    stream.start = stream.pos;
+  }
+}
+
+function callBlankLine(mode, state) {
+  if (mode.blankLine) { return mode.blankLine(state) }
+  if (!mode.innerMode) { return }
+  var inner = innerMode(mode, state);
+  if (inner.mode.blankLine) { return inner.mode.blankLine(inner.state) }
+}
+
+function readToken(mode, stream, state, inner) {
+  for (var i = 0; i < 10; i++) {
+    if (inner) { inner[0] = innerMode(mode, state).mode; }
+    var style = mode.token(stream, state);
+    if (stream.pos > stream.start) { return style }
+  }
+  throw new Error("Mode " + mode.name + " failed to advance stream.")
+}
+
+// Utility for getTokenAt and getLineTokens
+function takeToken(cm, pos, precise, asArray) {
+  var getObj = function (copy) { return ({
+    start: stream.start, end: stream.pos,
+    string: stream.current(),
+    type: style || null,
+    state: copy ? copyState(doc.mode, state) : state
+  }); };
+
+  var doc = cm.doc, mode = doc.mode, style;
+  pos = clipPos(doc, pos);
+  var line = getLine(doc, pos.line), state = getStateBefore(cm, pos.line, precise);
+  var stream = new StringStream(line.text, cm.options.tabSize), tokens;
+  if (asArray) { tokens = []; }
+  while ((asArray || stream.pos < pos.ch) && !stream.eol()) {
+    stream.start = stream.pos;
+    style = readToken(mode, stream, state);
+    if (asArray) { tokens.push(getObj(true)); }
+  }
+  return asArray ? tokens : getObj()
+}
+
+function extractLineClasses(type, output) {
+  if (type) { for (;;) {
+    var lineClass = type.match(/(?:^|\s+)line-(background-)?(\S+)/);
+    if (!lineClass) { break }
+    type = type.slice(0, lineClass.index) + type.slice(lineClass.index + lineClass[0].length);
+    var prop = lineClass[1] ? "bgClass" : "textClass";
+    if (output[prop] == null)
+      { output[prop] = lineClass[2]; }
+    else if (!(new RegExp("(?:^|\s)" + lineClass[2] + "(?:$|\s)")).test(output[prop]))
+      { output[prop] += " " + lineClass[2]; }
+  } }
+  return type
+}
+
+// Run the given mode's parser over a line, calling f for each token.
+function runMode(cm, text, mode, state, f, lineClasses, forceToEnd) {
+  var flattenSpans = mode.flattenSpans;
+  if (flattenSpans == null) { flattenSpans = cm.options.flattenSpans; }
+  var curStart = 0, curStyle = null;
+  var stream = new StringStream(text, cm.options.tabSize), style;
+  var inner = cm.options.addModeClass && [null];
+  if (text == "") { extractLineClasses(callBlankLine(mode, state), lineClasses); }
+  while (!stream.eol()) {
+    if (stream.pos > cm.options.maxHighlightLength) {
+      flattenSpans = false;
+      if (forceToEnd) { processLine(cm, text, state, stream.pos); }
+      stream.pos = text.length;
+      style = null;
+    } else {
+      style = extractLineClasses(readToken(mode, stream, state, inner), lineClasses);
+    }
+    if (inner) {
+      var mName = inner[0].name;
+      if (mName) { style = "m-" + (style ? mName + " " + style : mName); }
+    }
+    if (!flattenSpans || curStyle != style) {
+      while (curStart < stream.start) {
+        curStart = Math.min(stream.start, curStart + 5000);
+        f(curStart, curStyle);
+      }
+      curStyle = style;
+    }
+    stream.start = stream.pos;
+  }
+  while (curStart < stream.pos) {
+    // Webkit seems to refuse to render text nodes longer than 57444
+    // characters, and returns inaccurate measurements in nodes
+    // starting around 5000 chars.
+    var pos = Math.min(stream.pos, curStart + 5000);
+    f(pos, curStyle);
+    curStart = pos;
+  }
+}
+
+// Finds the line to start with when starting a parse. Tries to
+// find a line with a stateAfter, so that it can start with a
+// valid state. If that fails, it returns the line with the
+// smallest indentation, which tends to need the least context to
+// parse correctly.
+function findStartLine(cm, n, precise) {
+  var minindent, minline, doc = cm.doc;
+  var lim = precise ? -1 : n - (cm.doc.mode.innerMode ? 1000 : 100);
+  for (var search = n; search > lim; --search) {
+    if (search <= doc.first) { return doc.first }
+    var line = getLine(doc, search - 1);
+    if (line.stateAfter && (!precise || search <= doc.frontier)) { return search }
+    var indented = countColumn(line.text, null, cm.options.tabSize);
+    if (minline == null || minindent > indented) {
+      minline = search - 1;
+      minindent = indented;
+    }
+  }
+  return minline
+}
+
+// LINE DATA STRUCTURE
+
+// Line objects. These hold state related to a line, including
+// highlighting info (the styles array).
+var Line = function(text, markedSpans, estimateHeight) {
+  this.text = text;
+  attachMarkedSpans(this, markedSpans);
+  this.height = estimateHeight ? estimateHeight(this) : 1;
+};
+
+Line.prototype.lineNo = function () { return lineNo(this) };
+eventMixin(Line);
+
+// Change the content (text, markers) of a line. Automatically
+// invalidates cached information and tries to re-estimate the
+// line's height.
+function updateLine(line, text, markedSpans, estimateHeight) {
+  line.text = text;
+  if (line.stateAfter) { line.stateAfter = null; }
+  if (line.styles) { line.styles = null; }
+  if (line.order != null) { line.order = null; }
+  detachMarkedSpans(line);
+  attachMarkedSpans(line, markedSpans);
+  var estHeight = estimateHeight ? estimateHeight(line) : 1;
+  if (estHeight != line.height) { updateLineHeight(line, estHeight); }
+}
+
+// Detach a line from the document tree and its markers.
+function cleanUpLine(line) {
+  line.parent = null;
+  detachMarkedSpans(line);
+}
+
+// Convert a style as returned by a mode (either null, or a string
+// containing one or more styles) to a CSS style. This is cached,
+// and also looks for line-wide styles.
+var styleToClassCache = {};
+var styleToClassCacheWithMode = {};
+function interpretTokenStyle(style, options) {
+  if (!style || /^\s*$/.test(style)) { return null }
+  var cache = options.addModeClass ? styleToClassCacheWithMode : styleToClassCache;
+  return cache[style] ||
+    (cache[style] = style.replace(/\S+/g, "cm-$&"))
+}
+
+// Render the DOM representation of the text of a line. Also builds
+// up a 'line map', which points at the DOM nodes that represent
+// specific stretches of text, and is used by the measuring code.
+// The returned object contains the DOM node, this map, and
+// information about line-wide styles that were set by the mode.
+function buildLineContent(cm, lineView) {
+  // The padding-right forces the element to have a 'border', which
+  // is needed on Webkit to be able to get line-level bounding
+  // rectangles for it (in measureChar).
+  var content = eltP("span", null, null, webkit ? "padding-right: .1px" : null);
+  var builder = {pre: eltP("pre", [content], "CodeMirror-line"), content: content,
+                 col: 0, pos: 0, cm: cm,
+                 trailingSpace: false,
+                 splitSpaces: (ie || webkit) && cm.getOption("lineWrapping")};
+  lineView.measure = {};
+
+  // Iterate over the logical lines that make up this visual line.
+  for (var i = 0; i <= (lineView.rest ? lineView.rest.length : 0); i++) {
+    var line = i ? lineView.rest[i - 1] : lineView.line, order = (void 0);
+    builder.pos = 0;
+    builder.addToken = buildToken;
+    // Optionally wire in some hacks into the token-rendering
+    // algorithm, to deal with browser quirks.
+    if (hasBadBidiRects(cm.display.measure) && (order = getOrder(line, cm.doc.direction)))
+      { builder.addToken = buildTokenBadBidi(builder.addToken, order); }
+    builder.map = [];
+    var allowFrontierUpdate = lineView != cm.display.externalMeasured && lineNo(line);
+    insertLineContent(line, builder, getLineStyles(cm, line, allowFrontierUpdate));
+    if (line.styleClasses) {
+      if (line.styleClasses.bgClass)
+        { builder.bgClass = joinClasses(line.styleClasses.bgClass, builder.bgClass || ""); }
+      if (line.styleClasses.textClass)
+        { builder.textClass = joinClasses(line.styleClasses.textClass, builder.textClass || ""); }
+    }
+
+    // Ensure at least a single node is present, for measuring.
+    if (builder.map.length == 0)
+      { builder.map.push(0, 0, builder.content.appendChild(zeroWidthElement(cm.display.measure))); }
+
+    // Store the map and a cache object for the current logical line
+    if (i == 0) {
+      lineView.measure.map = builder.map;
+      lineView.measure.cache = {};
+    } else {
+      (lineView.measure.maps || (lineView.measure.maps = [])).push(builder.map)
+      ;(lineView.measure.caches || (lineView.measure.caches = [])).push({});
+    }
+  }
+
+  // See issue #2901
+  if (webkit) {
+    var last = builder.content.lastChild;
+    if (/\bcm-tab\b/.test(last.className) || (last.querySelector && last.querySelector(".cm-tab")))
+      { builder.content.className = "cm-tab-wrap-hack"; }
+  }
+
+  signal(cm, "renderLine", cm, lineView.line, builder.pre);
+  if (builder.pre.className)
+    { builder.textClass = joinClasses(builder.pre.className, builder.textClass || ""); }
+
+  return builder
+}
+
+function defaultSpecialCharPlaceholder(ch) {
+  var token = elt("span", "\u2022", "cm-invalidchar");
+  token.title = "\\u" + ch.charCodeAt(0).toString(16);
+  token.setAttribute("aria-label", token.title);
+  return token
+}
+
+// Build up the DOM representation for a single token, and add it to
+// the line map. Takes care to render special characters separately.
+function buildToken(builder, text, style, startStyle, endStyle, title, css) {
+  if (!text) { return }
+  var displayText = builder.splitSpaces ? splitSpaces(text, builder.trailingSpace) : text;
+  var special = builder.cm.state.specialChars, mustWrap = false;
+  var content;
+  if (!special.test(text)) {
+    builder.col += text.length;
+    content = document.createTextNode(displayText);
+    builder.map.push(builder.pos, builder.pos + text.length, content);
+    if (ie && ie_version < 9) { mustWrap = true; }
+    builder.pos += text.length;
+  } else {
+    content = document.createDocumentFragment();
+    var pos = 0;
+    while (true) {
+      special.lastIndex = pos;
+      var m = special.exec(text);
+      var skipped = m ? m.index - pos : text.length - pos;
+      if (skipped) {
+        var txt = document.createTextNode(displayText.slice(pos, pos + skipped));
+        if (ie && ie_version < 9) { content.appendChild(elt("span", [txt])); }
+        else { content.appendChild(txt); }
+        builder.map.push(builder.pos, builder.pos + skipped, txt);
+        builder.col += skipped;
+        builder.pos += skipped;
+      }
+      if (!m) { break }
+      pos += skipped + 1;
+      var txt$1 = (void 0);
+      if (m[0] == "\t") {
+        var tabSize = builder.cm.options.tabSize, tabWidth = tabSize - builder.col % tabSize;
+        txt$1 = content.appendChild(elt("span", spaceStr(tabWidth), "cm-tab"));
+        txt$1.setAttribute("role", "presentation");
+        txt$1.setAttribute("cm-text", "\t");
+        builder.col += tabWidth;
+      } else if (m[0] == "\r" || m[0] == "\n") {
+        txt$1 = content.appendChild(elt("span", m[0] == "\r" ? "\u240d" : "\u2424", "cm-invalidchar"));
+        txt$1.setAttribute("cm-text", m[0]);
+        builder.col += 1;
+      } else {
+        txt$1 = builder.cm.options.specialCharPlaceholder(m[0]);
+        txt$1.setAttribute("cm-text", m[0]);
+        if (ie && ie_version < 9) { content.appendChild(elt("span", [txt$1])); }
+        else { content.appendChild(txt$1); }
+        builder.col += 1;
+      }
+      builder.map.push(builder.pos, builder.pos + 1, txt$1);
+      builder.pos++;
+    }
+  }
+  builder.trailingSpace = displayText.charCodeAt(text.length - 1) == 32;
+  if (style || startStyle || endStyle || mustWrap || css) {
+    var fullStyle = style || "";
+    if (startStyle) { fullStyle += startStyle; }
+    if (endStyle) { fullStyle += endStyle; }
+    var token = elt("span", [content], fullStyle, css);
+    if (title) { token.title = title; }
+    return builder.content.appendChild(token)
+  }
+  builder.content.appendChild(content);
+}
+
+function splitSpaces(text, trailingBefore) {
+  if (text.length > 1 && !/  /.test(text)) { return text }
+  var spaceBefore = trailingBefore, result = "";
+  for (var i = 0; i < text.length; i++) {
+    var ch = text.charAt(i);
+    if (ch == " " && spaceBefore && (i == text.length - 1 || text.charCodeAt(i + 1) == 32))
+      { ch = "\u00a0"; }
+    result += ch;
+    spaceBefore = ch == " ";
+  }
+  return result
+}
+
+// Work around nonsense dimensions being reported for stretches of
+// right-to-left text.
+function buildTokenBadBidi(inner, order) {
+  return function (builder, text, style, startStyle, endStyle, title, css) {
+    style = style ? style + " cm-force-border" : "cm-force-border";
+    var start = builder.pos, end = start + text.length;
+    for (;;) {
+      // Find the part that overlaps with the start of this text
+      var part = (void 0);
+      for (var i = 0; i < order.length; i++) {
+        part = order[i];
+        if (part.to > start && part.from <= start) { break }
+      }
+      if (part.to >= end) { return inner(builder, text, style, startStyle, endStyle, title, css) }
+      inner(builder, text.slice(0, part.to - start), style, startStyle, null, title, css);
+      startStyle = null;
+      text = text.slice(part.to - start);
+      start = part.to;
+    }
+  }
+}
+
+function buildCollapsedSpan(builder, size, marker, ignoreWidget) {
+  var widget = !ignoreWidget && marker.widgetNode;
+  if (widget) { builder.map.push(builder.pos, builder.pos + size, widget); }
+  if (!ignoreWidget && builder.cm.display.input.needsContentAttribute) {
+    if (!widget)
+      { widget = builder.content.appendChild(document.createElement("span")); }
+    widget.setAttribute("cm-marker", marker.id);
+  }
+  if (widget) {
+    builder.cm.display.input.setUneditable(widget);
+    builder.content.appendChild(widget);
+  }
+  builder.pos += size;
+  builder.trailingSpace = false;
+}
+
+// Outputs a number of spans to make up a line, taking highlighting
+// and marked text into account.
+function insertLineContent(line, builder, styles) {
+  var spans = line.markedSpans, allText = line.text, at = 0;
+  if (!spans) {
+    for (var i$1 = 1; i$1 < styles.length; i$1+=2)
+      { builder.addToken(builder, allText.slice(at, at = styles[i$1]), interpretTokenStyle(styles[i$1+1], builder.cm.options)); }
+    return
+  }
+
+  var len = allText.length, pos = 0, i = 1, text = "", style, css;
+  var nextChange = 0, spanStyle, spanEndStyle, spanStartStyle, title, collapsed;
+  for (;;) {
+    if (nextChange == pos) { // Update current marker set
+      spanStyle = spanEndStyle = spanStartStyle = title = css = "";
+      collapsed = null; nextChange = Infinity;
+      var foundBookmarks = [], endStyles = (void 0);
+      for (var j = 0; j < spans.length; ++j) {
+        var sp = spans[j], m = sp.marker;
+        if (m.type == "bookmark" && sp.from == pos && m.widgetNode) {
+          foundBookmarks.push(m);
+        } else if (sp.from <= pos && (sp.to == null || sp.to > pos || m.collapsed && sp.to == pos && sp.from == pos)) {
+          if (sp.to != null && sp.to != pos && nextChange > sp.to) {
+            nextChange = sp.to;
+            spanEndStyle = "";
+          }
+          if (m.className) { spanStyle += " " + m.className; }
+          if (m.css) { css = (css ? css + ";" : "") + m.css; }
+          if (m.startStyle && sp.from == pos) { spanStartStyle += " " + m.startStyle; }
+          if (m.endStyle && sp.to == nextChange) { (endStyles || (endStyles = [])).push(m.endStyle, sp.to); }
+          if (m.title && !title) { title = m.title; }
+          if (m.collapsed && (!collapsed || compareCollapsedMarkers(collapsed.marker, m) < 0))
+            { collapsed = sp; }
+        } else if (sp.from > pos && nextChange > sp.from) {
+          nextChange = sp.from;
+        }
+      }
+      if (endStyles) { for (var j$1 = 0; j$1 < endStyles.length; j$1 += 2)
+        { if (endStyles[j$1 + 1] == nextChange) { spanEndStyle += " " + endStyles[j$1]; } } }
+
+      if (!collapsed || collapsed.from == pos) { for (var j$2 = 0; j$2 < foundBookmarks.length; ++j$2)
+        { buildCollapsedSpan(builder, 0, foundBookmarks[j$2]); } }
+      if (collapsed && (collapsed.from || 0) == pos) {
+        buildCollapsedSpan(builder, (collapsed.to == null ? len + 1 : collapsed.to) - pos,
+                           collapsed.marker, collapsed.from == null);
+        if (collapsed.to == null) { return }
+        if (collapsed.to == pos) { collapsed = false; }
+      }
+    }
+    if (pos >= len) { break }
+
+    var upto = Math.min(len, nextChange);
+    while (true) {
+      if (text) {
+        var end = pos + text.length;
+        if (!collapsed) {
+          var tokenText = end > upto ? text.slice(0, upto - pos) : text;
+          builder.addToken(builder, tokenText, style ? style + spanStyle : spanStyle,
+                           spanStartStyle, pos + tokenText.length == nextChange ? spanEndStyle : "", title, css);
+        }
+        if (end >= upto) {text = text.slice(upto - pos); pos = upto; break}
+        pos = end;
+        spanStartStyle = "";
+      }
+      text = allText.slice(at, at = styles[i++]);
+      style = interpretTokenStyle(styles[i++], builder.cm.options);
+    }
+  }
+}
+
+
+// These objects are used to represent the visible (currently drawn)
+// part of the document. A LineView may correspond to multiple
+// logical lines, if those are connected by collapsed ranges.
+function LineView(doc, line, lineN) {
+  // The starting line
+  this.line = line;
+  // Continuing lines, if any
+  this.rest = visualLineContinued(line);
+  // Number of logical lines in this visual line
+  this.size = this.rest ? lineNo(lst(this.rest)) - lineN + 1 : 1;
+  this.node = this.text = null;
+  this.hidden = lineIsHidden(doc, line);
+}
+
+// Create a range of LineView objects for the given lines.
+function buildViewArray(cm, from, to) {
+  var array = [], nextPos;
+  for (var pos = from; pos < to; pos = nextPos) {
+    var view = new LineView(cm.doc, getLine(cm.doc, pos), pos);
+    nextPos = pos + view.size;
+    array.push(view);
+  }
+  return array
+}
+
+var operationGroup = null;
+
+function pushOperation(op) {
+  if (operationGroup) {
+    operationGroup.ops.push(op);
+  } else {
+    op.ownsGroup = operationGroup = {
+      ops: [op],
+      delayedCallbacks: []
+    };
+  }
+}
+
+function fireCallbacksForOps(group) {
+  // Calls delayed callbacks and cursorActivity handlers until no
+  // new ones appear
+  var callbacks = group.delayedCallbacks, i = 0;
+  do {
+    for (; i < callbacks.length; i++)
+      { callbacks[i].call(null); }
+    for (var j = 0; j < group.ops.length; j++) {
+      var op = group.ops[j];
+      if (op.cursorActivityHandlers)
+        { while (op.cursorActivityCalled < op.cursorActivityHandlers.length)
+          { op.cursorActivityHandlers[op.cursorActivityCalled++].call(null, op.cm); } }
+    }
+  } while (i < callbacks.length)
+}
+
+function finishOperation(op, endCb) {
+  var group = op.ownsGroup;
+  if (!group) { return }
+
+  try { fireCallbacksForOps(group); }
+  finally {
+    operationGroup = null;
+    endCb(group);
+  }
+}
+
+var orphanDelayedCallbacks = null;
+
+// Often, we want to signal events at a point where we are in the
+// middle of some work, but don't want the handler to start calling
+// other methods on the editor, which might be in an inconsistent
+// state or simply not expect any other events to happen.
+// signalLater looks whether there are any handlers, and schedules
+// them to be executed when the last operation ends, or, if no
+// operation is active, when a timeout fires.
+function signalLater(emitter, type /*, values...*/) {
+  var arr = getHandlers(emitter, type);
+  if (!arr.length) { return }
+  var args = Array.prototype.slice.call(arguments, 2), list;
+  if (operationGroup) {
+    list = operationGroup.delayedCallbacks;
+  } else if (orphanDelayedCallbacks) {
+    list = orphanDelayedCallbacks;
+  } else {
+    list = orphanDelayedCallbacks = [];
+    setTimeout(fireOrphanDelayed, 0);
+  }
+  var loop = function ( i ) {
+    list.push(function () { return arr[i].apply(null, args); });
+  };
+
+  for (var i = 0; i < arr.length; ++i)
+    loop( i );
+}
+
+function fireOrphanDelayed() {
+  var delayed = orphanDelayedCallbacks;
+  orphanDelayedCallbacks = null;
+  for (var i = 0; i < delayed.length; ++i) { delayed[i](); }
+}
+
+// When an aspect of a line changes, a string is added to
+// lineView.changes. This updates the relevant part of the line's
+// DOM structure.
+function updateLineForChanges(cm, lineView, lineN, dims) {
+  for (var j = 0; j < lineView.changes.length; j++) {
+    var type = lineView.changes[j];
+    if (type == "text") { updateLineText(cm, lineView); }
+    else if (type == "gutter") { updateLineGutter(cm, lineView, lineN, dims); }
+    else if (type == "class") { updateLineClasses(cm, lineView); }
+    else if (type == "widget") { updateLineWidgets(cm, lineView, dims); }
+  }
+  lineView.changes = null;
+}
+
+// Lines with gutter elements, widgets or a background class need to
+// be wrapped, and have the extra elements added to the wrapper div
+function ensureLineWrapped(lineView) {
+  if (lineView.node == lineView.text) {
+    lineView.node = elt("div", null, null, "position: relative");
+    if (lineView.text.parentNode)
+      { lineView.text.parentNode.replaceChild(lineView.node, lineView.text); }
+    lineView.node.appendChild(lineView.text);
+    if (ie && ie_version < 8) { lineView.node.style.zIndex = 2; }
+  }
+  return lineView.node
+}
+
+function updateLineBackground(cm, lineView) {
+  var cls = lineView.bgClass ? lineView.bgClass + " " + (lineView.line.bgClass || "") : lineView.line.bgClass;
+  if (cls) { cls += " CodeMirror-linebackground"; }
+  if (lineView.background) {
+    if (cls) { lineView.background.className = cls; }
+    else { lineView.background.parentNode.removeChild(lineView.background); lineView.background = null; }
+  } else if (cls) {
+    var wrap = ensureLineWrapped(lineView);
+    lineView.background = wrap.insertBefore(elt("div", null, cls), wrap.firstChild);
+    cm.display.input.setUneditable(lineView.background);
+  }
+}
+
+// Wrapper around buildLineContent which will reuse the structure
+// in display.externalMeasured when possible.
+function getLineContent(cm, lineView) {
+  var ext = cm.display.externalMeasured;
+  if (ext && ext.line == lineView.line) {
+    cm.display.externalMeasured = null;
+    lineView.measure = ext.measure;
+    return ext.built
+  }
+  return buildLineContent(cm, lineView)
+}
+
+// Redraw the line's text. Interacts with the background and text
+// classes because the mode may output tokens that influence these
+// classes.
+function updateLineText(cm, lineView) {
+  var cls = lineView.text.className;
+  var built = getLineContent(cm, lineView);
+  if (lineView.text == lineView.node) { lineView.node = built.pre; }
+  lineView.text.parentNode.replaceChild(built.pre, lineView.text);
+  lineView.text = built.pre;
+  if (built.bgClass != lineView.bgClass || built.textClass != lineView.textClass) {
+    lineView.bgClass = built.bgClass;
+    lineView.textClass = built.textClass;
+    updateLineClasses(cm, lineView);
+  } else if (cls) {
+    lineView.text.className = cls;
+  }
+}
+
+function updateLineClasses(cm, lineView) {
+  updateLineBackground(cm, lineView);
+  if (lineView.line.wrapClass)
+    { ensureLineWrapped(lineView).className = lineView.line.wrapClass; }
+  else if (lineView.node != lineView.text)
+    { lineView.node.className = ""; }
+  var textClass = lineView.textClass ? lineView.textClass + " " + (lineView.line.textClass || "") : lineView.line.textClass;
+  lineView.text.className = textClass || "";
+}
+
+function updateLineGutter(cm, lineView, lineN, dims) {
+  if (lineView.gutter) {
+    lineView.node.removeChild(lineView.gutter);
+    lineView.gutter = null;
+  }
+  if (lineView.gutterBackground) {
+    lineView.node.removeChild(lineView.gutterBackground);
+    lineView.gutterBackground = null;
+  }
+  if (lineView.line.gutterClass) {
+    var wrap = ensureLineWrapped(lineView);
+    lineView.gutterBackground = elt("div", null, "CodeMirror-gutter-background " + lineView.line.gutterClass,
+                                    ("left: " + (cm.options.fixedGutter ? dims.fixedPos : -dims.gutterTotalWidth) + "px; width: " + (dims.gutterTotalWidth) + "px"));
+    cm.display.input.setUneditable(lineView.gutterBackground);
+    wrap.insertBefore(lineView.gutterBackground, lineView.text);
+  }
+  var markers = lineView.line.gutterMarkers;
+  if (cm.options.lineNumbers || markers) {
+    var wrap$1 = ensureLineWrapped(lineView);
+    var gutterWrap = lineView.gutter = elt("div", null, "CodeMirror-gutter-wrapper", ("left: " + (cm.options.fixedGutter ? dims.fixedPos : -dims.gutterTotalWidth) + "px"));
+    cm.display.input.setUneditable(gutterWrap);
+    wrap$1.insertBefore(gutterWrap, lineView.text);
+    if (lineView.line.gutterClass)
+      { gutterWrap.className += " " + lineView.line.gutterClass; }
+    if (cm.options.lineNumbers && (!markers || !markers["CodeMirror-linenumbers"]))
+      { lineView.lineNumber = gutterWrap.appendChild(
+        elt("div", lineNumberFor(cm.options, lineN),
+            "CodeMirror-linenumber CodeMirror-gutter-elt",
+            ("left: " + (dims.gutterLeft["CodeMirror-linenumbers"]) + "px; width: " + (cm.display.lineNumInnerWidth) + "px"))); }
+    if (markers) { for (var k = 0; k < cm.options.gutters.length; ++k) {
+      var id = cm.options.gutters[k], found = markers.hasOwnProperty(id) && markers[id];
+      if (found)
+        { gutterWrap.appendChild(elt("div", [found], "CodeMirror-gutter-elt",
+                                   ("left: " + (dims.gutterLeft[id]) + "px; width: " + (dims.gutterWidth[id]) + "px"))); }
+    } }
+  }
+}
+
+function updateLineWidgets(cm, lineView, dims) {
+  if (lineView.alignable) { lineView.alignable = null; }
+  for (var node = lineView.node.firstChild, next = (void 0); node; node = next) {
+    next = node.nextSibling;
+    if (node.className == "CodeMirror-linewidget")
+      { lineView.node.removeChild(node); }
+  }
+  insertLineWidgets(cm, lineView, dims);
+}
+
+// Build a line's DOM representation from scratch
+function buildLineElement(cm, lineView, lineN, dims) {
+  var built = getLineContent(cm, lineView);
+  lineView.text = lineView.node = built.pre;
+  if (built.bgClass) { lineView.bgClass = built.bgClass; }
+  if (built.textClass) { lineView.textClass = built.textClass; }
+
+  updateLineClasses(cm, lineView);
+  updateLineGutter(cm, lineView, lineN, dims);
+  insertLineWidgets(cm, lineView, dims);
+  return lineView.node
+}
+
+// A lineView may contain multiple logical lines (when merged by
+// collapsed spans). The widgets for all of them need to be drawn.
+function insertLineWidgets(cm, lineView, dims) {
+  insertLineWidgetsFor(cm, lineView.line, lineView, dims, true);
+  if (lineView.rest) { for (var i = 0; i < lineView.rest.length; i++)
+    { insertLineWidgetsFor(cm, lineView.rest[i], lineView, dims, false); } }
+}
+
+function insertLineWidgetsFor(cm, line, lineView, dims, allowAbove) {
+  if (!line.widgets) { return }
+  var wrap = ensureLineWrapped(lineView);
+  for (var i = 0, ws = line.widgets; i < ws.length; ++i) {
+    var widget = ws[i], node = elt("div", [widget.node], "CodeMirror-linewidget");
+    if (!widget.handleMouseEvents) { node.setAttribute("cm-ignore-events", "true"); }
+    positionLineWidget(widget, node, lineView, dims);
+    cm.display.input.setUneditable(node);
+    if (allowAbove && widget.above)
+      { wrap.insertBefore(node, lineView.gutter || lineView.text); }
+    else
+      { wrap.appendChild(node); }
+    signalLater(widget, "redraw");
+  }
+}
+
+function positionLineWidget(widget, node, lineView, dims) {
+  if (widget.noHScroll) {
+    (lineView.alignable || (lineView.alignable = [])).push(node);
+    var width = dims.wrapperWidth;
+    node.style.left = dims.fixedPos + "px";
+    if (!widget.coverGutter) {
+      width -= dims.gutterTotalWidth;
+      node.style.paddingLeft = dims.gutterTotalWidth + "px";
+    }
+    node.style.width = width + "px";
+  }
+  if (widget.coverGutter) {
+    node.style.zIndex = 5;
+    node.style.position = "relative";
+    if (!widget.noHScroll) { node.style.marginLeft = -dims.gutterTotalWidth + "px"; }
+  }
+}
+
+function widgetHeight(widget) {
+  if (widget.height != null) { return widget.height }
+  var cm = widget.doc.cm;
+  if (!cm) { return 0 }
+  if (!contains(document.body, widget.node)) {
+    var parentStyle = "position: relative;";
+    if (widget.coverGutter)
+      { parentStyle += "margin-left: -" + cm.display.gutters.offsetWidth + "px;"; }
+    if (widget.noHScroll)
+      { parentStyle += "width: " + cm.display.wrapper.clientWidth + "px;"; }
+    removeChildrenAndAdd(cm.display.measure, elt("div", [widget.node], null, parentStyle));
+  }
+  return widget.height = widget.node.parentNode.offsetHeight
+}
+
+// Return true when the given mouse event happened in a widget
+function eventInWidget(display, e) {
+  for (var n = e_target(e); n != display.wrapper; n = n.parentNode) {
+    if (!n || (n.nodeType == 1 && n.getAttribute("cm-ignore-events") == "true") ||
+        (n.parentNode == display.sizer && n != display.mover))
+      { return true }
+  }
+}
+
+// POSITION MEASUREMENT
+
+function paddingTop(display) {return display.lineSpace.offsetTop}
+function paddingVert(display) {return display.mover.offsetHeight - display.lineSpace.offsetHeight}
+function paddingH(display) {
+  if (display.cachedPaddingH) { return display.cachedPaddingH }
+  var e = removeChildrenAndAdd(display.measure, elt("pre", "x"));
+  var style = window.getComputedStyle ? window.getComputedStyle(e) : e.currentStyle;
+  var data = {left: parseInt(style.paddingLeft), right: parseInt(style.paddingRight)};
+  if (!isNaN(data.left) && !isNaN(data.right)) { display.cachedPaddingH = data; }
+  return data
+}
+
+function scrollGap(cm) { return scrollerGap - cm.display.nativeBarWidth }
+function displayWidth(cm) {
+  return cm.display.scroller.clientWidth - scrollGap(cm) - cm.display.barWidth
+}
+function displayHeight(cm) {
+  return cm.display.scroller.clientHeight - scrollGap(cm) - cm.display.barHeight
+}
+
+// Ensure the lineView.wrapping.heights array is populated. This is
+// an array of bottom offsets for the lines that make up a drawn
+// line. When lineWrapping is on, there might be more than one
+// height.
+function ensureLineHeights(cm, lineView, rect) {
+  var wrapping = cm.options.lineWrapping;
+  var curWidth = wrapping && displayWidth(cm);
+  if (!lineView.measure.heights || wrapping && lineView.measure.width != curWidth) {
+    var heights = lineView.measure.heights = [];
+    if (wrapping) {
+      lineView.measure.width = curWidth;
+      var rects = lineView.text.firstChild.getClientRects();
+      for (var i = 0; i < rects.length - 1; i++) {
+        var cur = rects[i], next = rects[i + 1];
+        if (Math.abs(cur.bottom - next.bottom) > 2)
+          { heights.push((cur.bottom + next.top) / 2 - rect.top); }
+      }
+    }
+    heights.push(rect.bottom - rect.top);
+  }
+}
+
+// Find a line map (mapping character offsets to text nodes) and a
+// measurement cache for the given line number. (A line view might
+// contain multiple lines when collapsed ranges are present.)
+function mapFromLineView(lineView, line, lineN) {
+  if (lineView.line == line)
+    { return {map: lineView.measure.map, cache: lineView.measure.cache} }
+  for (var i = 0; i < lineView.rest.length; i++)
+    { if (lineView.rest[i] == line)
+      { return {map: lineView.measure.maps[i], cache: lineView.measure.caches[i]} } }
+  for (var i$1 = 0; i$1 < lineView.rest.length; i$1++)
+    { if (lineNo(lineView.rest[i$1]) > lineN)
+      { return {map: lineView.measure.maps[i$1], cache: lineView.measure.caches[i$1], before: true} } }
+}
+
+// Render a line into the hidden node display.externalMeasured. Used
+// when measurement is needed for a line that's not in the viewport.
+function updateExternalMeasurement(cm, line) {
+  line = visualLine(line);
+  var lineN = lineNo(line);
+  var view = cm.display.externalMeasured = new LineView(cm.doc, line, lineN);
+  view.lineN = lineN;
+  var built = view.built = buildLineContent(cm, view);
+  view.text = built.pre;
+  removeChildrenAndAdd(cm.display.lineMeasure, built.pre);
+  return view
+}
+
+// Get a {top, bottom, left, right} box (in line-local coordinates)
+// for a given character.
+function measureChar(cm, line, ch, bias) {
+  return measureCharPrepared(cm, prepareMeasureForLine(cm, line), ch, bias)
+}
+
+// Find a line view that corresponds to the given line number.
+function findViewForLine(cm, lineN) {
+  if (lineN >= cm.display.viewFrom && lineN < cm.display.viewTo)
+    { return cm.display.view[findViewIndex(cm, lineN)] }
+  var ext = cm.display.externalMeasured;
+  if (ext && lineN >= ext.lineN && lineN < ext.lineN + ext.size)
+    { return ext }
+}
+
+// Measurement can be split in two steps, the set-up work that
+// applies to the whole line, and the measurement of the actual
+// character. Functions like coordsChar, that need to do a lot of
+// measurements in a row, can thus ensure that the set-up work is
+// only done once.
+function prepareMeasureForLine(cm, line) {
+  var lineN = lineNo(line);
+  var view = findViewForLine(cm, lineN);
+  if (view && !view.text) {
+    view = null;
+  } else if (view && view.changes) {
+    updateLineForChanges(cm, view, lineN, getDimensions(cm));
+    cm.curOp.forceUpdate = true;
+  }
+  if (!view)
+    { view = updateExternalMeasurement(cm, line); }
+
+  var info = mapFromLineView(view, line, lineN);
+  return {
+    line: line, view: view, rect: null,
+    map: info.map, cache: info.cache, before: info.before,
+    hasHeights: false
+  }
+}
+
+// Given a prepared measurement object, measures the position of an
+// actual character (or fetches it from the cache).
+function measureCharPrepared(cm, prepared, ch, bias, varHeight) {
+  if (prepared.before) { ch = -1; }
+  var key = ch + (bias || ""), found;
+  if (prepared.cache.hasOwnProperty(key)) {
+    found = prepared.cache[key];
+  } else {
+    if (!prepared.rect)
+      { prepared.rect = prepared.view.text.getBoundingClientRect(); }
+    if (!prepared.hasHeights) {
+      ensureLineHeights(cm, prepared.view, prepared.rect);
+      prepared.hasHeights = true;
+    }
+    found = measureCharInner(cm, prepared, ch, bias);
+    if (!found.bogus) { prepared.cache[key] = found; }
+  }
+  return {left: found.left, right: found.right,
+          top: varHeight ? found.rtop : found.top,
+          bottom: varHeight ? found.rbottom : found.bottom}
+}
+
+var nullRect = {left: 0, right: 0, top: 0, bottom: 0};
+
+function nodeAndOffsetInLineMap(map$$1, ch, bias) {
+  var node, start, end, collapse, mStart, mEnd;
+  // First, search the line map for the text node corresponding to,
+  // or closest to, the target character.
+  for (var i = 0; i < map$$1.length; i += 3) {
+    mStart = map$$1[i];
+    mEnd = map$$1[i + 1];
+    if (ch < mStart) {
+      start = 0; end = 1;
+      collapse = "left";
+    } else if (ch < mEnd) {
+      start = ch - mStart;
+      end = start + 1;
+    } else if (i == map$$1.length - 3 || ch == mEnd && map$$1[i + 3] > ch) {
+      end = mEnd - mStart;
+      start = end - 1;
+      if (ch >= mEnd) { collapse = "right"; }
+    }
+    if (start != null) {
+      node = map$$1[i + 2];
+      if (mStart == mEnd && bias == (node.insertLeft ? "left" : "right"))
+        { collapse = bias; }
+      if (bias == "left" && start == 0)
+        { while (i && map$$1[i - 2] == map$$1[i - 3] && map$$1[i - 1].insertLeft) {
+          node = map$$1[(i -= 3) + 2];
+          collapse = "left";
+        } }
+      if (bias == "right" && start == mEnd - mStart)
+        { while (i < map$$1.length - 3 && map$$1[i + 3] == map$$1[i + 4] && !map$$1[i + 5].insertLeft) {
+          node = map$$1[(i += 3) + 2];
+          collapse = "right";
+        } }
+      break
+    }
+  }
+  return {node: node, start: start, end: end, collapse: collapse, coverStart: mStart, coverEnd: mEnd}
+}
+
+function getUsefulRect(rects, bias) {
+  var rect = nullRect;
+  if (bias == "left") { for (var i = 0; i < rects.length; i++) {
+    if ((rect = rects[i]).left != rect.right) { break }
+  } } else { for (var i$1 = rects.length - 1; i$1 >= 0; i$1--) {
+    if ((rect = rects[i$1]).left != rect.right) { break }
+  } }
+  return rect
+}
+
+function measureCharInner(cm, prepared, ch, bias) {
+  var place = nodeAndOffsetInLineMap(prepared.map, ch, bias);
+  var node = place.node, start = place.start, end = place.end, collapse = place.collapse;
+
+  var rect;
+  if (node.nodeType == 3) { // If it is a text node, use a range to retrieve the coordinates.
+    for (var i$1 = 0; i$1 < 4; i$1++) { // Retry a maximum of 4 times when nonsense rectangles are returned
+      while (start && isExtendingChar(prepared.line.text.charAt(place.coverStart + start))) { --start; }
+      while (place.coverStart + end < place.coverEnd && isExtendingChar(prepared.line.text.charAt(place.coverStart + end))) { ++end; }
+      if (ie && ie_version < 9 && start == 0 && end == place.coverEnd - place.coverStart)
+        { rect = node.parentNode.getBoundingClientRect(); }
+      else
+        { rect = getUsefulRect(range(node, start, end).getClientRects(), bias); }
+      if (rect.left || rect.right || start == 0) { break }
+      end = start;
+      start = start - 1;
+      collapse = "right";
+    }
+    if (ie && ie_version < 11) { rect = maybeUpdateRectForZooming(cm.display.measure, rect); }
+  } else { // If it is a widget, simply get the box for the whole widget.
+    if (start > 0) { collapse = bias = "right"; }
+    var rects;
+    if (cm.options.lineWrapping && (rects = node.getClientRects()).length > 1)
+      { rect = rects[bias == "right" ? rects.length - 1 : 0]; }
+    else
+      { rect = node.getBoundingClientRect(); }
+  }
+  if (ie && ie_version < 9 && !start && (!rect || !rect.left && !rect.right)) {
+    var rSpan = node.parentNode.getClientRects()[0];
+    if (rSpan)
+      { rect = {left: rSpan.left, right: rSpan.left + charWidth(cm.display), top: rSpan.top, bottom: rSpan.bottom}; }
+    else
+      { rect = nullRect; }
+  }
+
+  var rtop = rect.top - prepared.rect.top, rbot = rect.bottom - prepared.rect.top;
+  var mid = (rtop + rbot) / 2;
+  var heights = prepared.view.measure.heights;
+  var i = 0;
+  for (; i < heights.length - 1; i++)
+    { if (mid < heights[i]) { break } }
+  var top = i ? heights[i - 1] : 0, bot = heights[i];
+  var result = {left: (collapse == "right" ? rect.right : rect.left) - prepared.rect.left,
+                right: (collapse == "left" ? rect.left : rect.right) - prepared.rect.left,
+                top: top, bottom: bot};
+  if (!rect.left && !rect.right) { result.bogus = true; }
+  if (!cm.options.singleCursorHeightPerLine) { result.rtop = rtop; result.rbottom = rbot; }
+
+  return result
+}
+
+// Work around problem with bounding client rects on ranges being
+// returned incorrectly when zoomed on IE10 and below.
+function maybeUpdateRectForZooming(measure, rect) {
+  if (!window.screen || screen.logicalXDPI == null ||
+      screen.logicalXDPI == screen.deviceXDPI || !hasBadZoomedRects(measure))
+    { return rect }
+  var scaleX = screen.logicalXDPI / screen.deviceXDPI;
+  var scaleY = screen.logicalYDPI / screen.deviceYDPI;
+  return {left: rect.left * scaleX, right: rect.right * scaleX,
+          top: rect.top * scaleY, bottom: rect.bottom * scaleY}
+}
+
+function clearLineMeasurementCacheFor(lineView) {
+  if (lineView.measure) {
+    lineView.measure.cache = {};
+    lineView.measure.heights = null;
+    if (lineView.rest) { for (var i = 0; i < lineView.rest.length; i++)
+      { lineView.measure.caches[i] = {}; } }
+  }
+}
+
+function clearLineMeasurementCache(cm) {
+  cm.display.externalMeasure = null;
+  removeChildren(cm.display.lineMeasure);
+  for (var i = 0; i < cm.display.view.length; i++)
+    { clearLineMeasurementCacheFor(cm.display.view[i]); }
+}
+
+function clearCaches(cm) {
+  clearLineMeasurementCache(cm);
+  cm.display.cachedCharWidth = cm.display.cachedTextHeight = cm.display.cachedPaddingH = null;
+  if (!cm.options.lineWrapping) { cm.display.maxLineChanged = true; }
+  cm.display.lineNumChars = null;
+}
+
+function pageScrollX() {
+  // Work around https://bugs.chromium.org/p/chromium/issues/detail?id=489206
+  // which causes page_Offset and bounding client rects to use
+  // different reference viewports and invalidate our calculations.
+  if (chrome && android) { return -(document.body.getBoundingClientRect().left - parseInt(getComputedStyle(document.body).marginLeft)) }
+  return window.pageXOffset || (document.documentElement || document.body).scrollLeft
+}
+function pageScrollY() {
+  if (chrome && android) { return -(document.body.getBoundingClientRect().top - parseInt(getComputedStyle(document.body).marginTop)) }
+  return window.pageYOffset || (document.documentElement || document.body).scrollTop
+}
+
+// Converts a {top, bottom, left, right} box from line-local
+// coordinates into another coordinate system. Context may be one of
+// "line", "div" (display.lineDiv), "local"./null (editor), "window",
+// or "page".
+function intoCoordSystem(cm, lineObj, rect, context, includeWidgets) {
+  if (!includeWidgets && lineObj.widgets) { for (var i = 0; i < lineObj.widgets.length; ++i) { if (lineObj.widgets[i].above) {
+    var size = widgetHeight(lineObj.widgets[i]);
+    rect.top += size; rect.bottom += size;
+  } } }
+  if (context == "line") { return rect }
+  if (!context) { context = "local"; }
+  var yOff = heightAtLine(lineObj);
+  if (context == "local") { yOff += paddingTop(cm.display); }
+  else { yOff -= cm.display.viewOffset; }
+  if (context == "page" || context == "window") {
+    var lOff = cm.display.lineSpace.getBoundingClientRect();
+    yOff += lOff.top + (context == "window" ? 0 : pageScrollY());
+    var xOff = lOff.left + (context == "window" ? 0 : pageScrollX());
+    rect.left += xOff; rect.right += xOff;
+  }
+  rect.top += yOff; rect.bottom += yOff;
+  return rect
+}
+
+// Coverts a box from "div" coords to another coordinate system.
+// Context may be "window", "page", "div", or "local"./null.
+function fromCoordSystem(cm, coords, context) {
+  if (context == "div") { return coords }
+  var left = coords.left, top = coords.top;
+  // First move into "page" coordinate system
+  if (context == "page") {
+    left -= pageScrollX();
+    top -= pageScrollY();
+  } else if (context == "local" || !context) {
+    var localBox = cm.display.sizer.getBoundingClientRect();
+    left += localBox.left;
+    top += localBox.top;
+  }
+
+  var lineSpaceBox = cm.display.lineSpace.getBoundingClientRect();
+  return {left: left - lineSpaceBox.left, top: top - lineSpaceBox.top}
+}
+
+function charCoords(cm, pos, context, lineObj, bias) {
+  if (!lineObj) { lineObj = getLine(cm.doc, pos.line); }
+  return intoCoordSystem(cm, lineObj, measureChar(cm, lineObj, pos.ch, bias), context)
+}
+
+// Returns a box for a given cursor position, which may have an
+// 'other' property containing the position of the secondary cursor
+// on a bidi boundary.
+// A cursor Pos(line, char, "before") is on the same visual line as `char - 1`
+// and after `char - 1` in writing order of `char - 1`
+// A cursor Pos(line, char, "after") is on the same visual line as `char`
+// and before `char` in writing order of `char`
+// Examples (upper-case letters are RTL, lower-case are LTR):
+//     Pos(0, 1, ...)
+//     before   after
+// ab     a|b     a|b
+// aB     a|B     aB|
+// Ab     |Ab     A|b
+// AB     B|A     B|A
+// Every position after the last character on a line is considered to stick
+// to the last character on the line.
+function cursorCoords(cm, pos, context, lineObj, preparedMeasure, varHeight) {
+  lineObj = lineObj || getLine(cm.doc, pos.line);
+  if (!preparedMeasure) { preparedMeasure = prepareMeasureForLine(cm, lineObj); }
+  function get(ch, right) {
+    var m = measureCharPrepared(cm, preparedMeasure, ch, right ? "right" : "left", varHeight);
+    if (right) { m.left = m.right; } else { m.right = m.left; }
+    return intoCoordSystem(cm, lineObj, m, context)
+  }
+  var order = getOrder(lineObj, cm.doc.direction), ch = pos.ch, sticky = pos.sticky;
+  if (ch >= lineObj.text.length) {
+    ch = lineObj.text.length;
+    sticky = "before";
+  } else if (ch <= 0) {
+    ch = 0;
+    sticky = "after";
+  }
+  if (!order) { return get(sticky == "before" ? ch - 1 : ch, sticky == "before") }
+
+  function getBidi(ch, partPos, invert) {
+    var part = order[partPos], right = (part.level % 2) != 0;
+    return get(invert ? ch - 1 : ch, right != invert)
+  }
+  var partPos = getBidiPartAt(order, ch, sticky);
+  var other = bidiOther;
+  var val = getBidi(ch, partPos, sticky == "before");
+  if (other != null) { val.other = getBidi(ch, other, sticky != "before"); }
+  return val
+}
+
+// Used to cheaply estimate the coordinates for a position. Used for
+// intermediate scroll updates.
+function estimateCoords(cm, pos) {
+  var left = 0;
+  pos = clipPos(cm.doc, pos);
+  if (!cm.options.lineWrapping) { left = charWidth(cm.display) * pos.ch; }
+  var lineObj = getLine(cm.doc, pos.line);
+  var top = heightAtLine(lineObj) + paddingTop(cm.display);
+  return {left: left, right: left, top: top, bottom: top + lineObj.height}
+}
+
+// Positions returned by coordsChar contain some extra information.
+// xRel is the relative x position of the input coordinates compared
+// to the found position (so xRel > 0 means the coordinates are to
+// the right of the character position, for example). When outside
+// is true, that means the coordinates lie outside the line's
+// vertical range.
+function PosWithInfo(line, ch, sticky, outside, xRel) {
+  var pos = Pos(line, ch, sticky);
+  pos.xRel = xRel;
+  if (outside) { pos.outside = true; }
+  return pos
+}
+
+// Compute the character position closest to the given coordinates.
+// Input must be lineSpace-local ("div" coordinate system).
+function coordsChar(cm, x, y) {
+  var doc = cm.doc;
+  y += cm.display.viewOffset;
+  if (y < 0) { return PosWithInfo(doc.first, 0, null, true, -1) }
+  var lineN = lineAtHeight(doc, y), last = doc.first + doc.size - 1;
+  if (lineN > last)
+    { return PosWithInfo(doc.first + doc.size - 1, getLine(doc, last).text.length, null, true, 1) }
+  if (x < 0) { x = 0; }
+
+  var lineObj = getLine(doc, lineN);
+  for (;;) {
+    var found = coordsCharInner(cm, lineObj, lineN, x, y);
+    var merged = collapsedSpanAtEnd(lineObj);
+    var mergedPos = merged && merged.find(0, true);
+    if (merged && (found.ch > mergedPos.from.ch || found.ch == mergedPos.from.ch && found.xRel > 0))
+      { lineN = lineNo(lineObj = mergedPos.to.line); }
+    else
+      { return found }
+  }
+}
+
+function wrappedLineExtent(cm, lineObj, preparedMeasure, y) {
+  var measure = function (ch) { return intoCoordSystem(cm, lineObj, measureCharPrepared(cm, preparedMeasure, ch), "line"); };
+  var end = lineObj.text.length;
+  var begin = findFirst(function (ch) { return measure(ch - 1).bottom <= y; }, end, 0);
+  end = findFirst(function (ch) { return measure(ch).top > y; }, begin, end);
+  return {begin: begin, end: end}
+}
+
+function wrappedLineExtentChar(cm, lineObj, preparedMeasure, target) {
+  var targetTop = intoCoordSystem(cm, lineObj, measureCharPrepared(cm, preparedMeasure, target), "line").top;
+  return wrappedLineExtent(cm, lineObj, preparedMeasure, targetTop)
+}
+
+function coordsCharInner(cm, lineObj, lineNo$$1, x, y) {
+  y -= heightAtLine(lineObj);
+  var begin = 0, end = lineObj.text.length;
+  var preparedMeasure = prepareMeasureForLine(cm, lineObj);
+  var pos;
+  var order = getOrder(lineObj, cm.doc.direction);
+  if (order) {
+    if (cm.options.lineWrapping) {
+      var assign;
+      ((assign = wrappedLineExtent(cm, lineObj, preparedMeasure, y), begin = assign.begin, end = assign.end, assign));
+    }
+    pos = new Pos(lineNo$$1, begin);
+    var beginLeft = cursorCoords(cm, pos, "line", lineObj, preparedMeasure).left;
+    var dir = beginLeft < x ? 1 : -1;
+    var prevDiff, diff = beginLeft - x, prevPos;
+    do {
+      prevDiff = diff;
+      prevPos = pos;
+      pos = moveVisually(cm, lineObj, pos, dir);
+      if (pos == null || pos.ch < begin || end <= (pos.sticky == "before" ? pos.ch - 1 : pos.ch)) {
+        pos = prevPos;
+        break
+      }
+      diff = cursorCoords(cm, pos, "line", lineObj, preparedMeasure).left - x;
+    } while ((dir < 0) != (diff < 0) && (Math.abs(diff) <= Math.abs(prevDiff)))
+    if (Math.abs(diff) > Math.abs(prevDiff)) {
+      if ((diff < 0) == (prevDiff < 0)) { throw new Error("Broke out of infinite loop in coordsCharInner") }
+      pos = prevPos;
+    }
+  } else {
+    var ch = findFirst(function (ch) {
+      var box = intoCoordSystem(cm, lineObj, measureCharPrepared(cm, preparedMeasure, ch), "line");
+      if (box.top > y) {
+        // For the cursor stickiness
+        end = Math.min(ch, end);
+        return true
+      }
+      else if (box.bottom <= y) { return false }
+      else if (box.left > x) { return true }
+      else if (box.right < x) { return false }
+      else { return (x - box.left < box.right - x) }
+    }, begin, end);
+    ch = skipExtendingChars(lineObj.text, ch, 1);
+    pos = new Pos(lineNo$$1, ch, ch == end ? "before" : "after");
+  }
+  var coords = cursorCoords(cm, pos, "line", lineObj, preparedMeasure);
+  if (y < coords.top || coords.bottom < y) { pos.outside = true; }
+  pos.xRel = x < coords.left ? -1 : (x > coords.right ? 1 : 0);
+  return pos
+}
+
+var measureText;
+// Compute the default text height.
+function textHeight(display) {
+  if (display.cachedTextHeight != null) { return display.cachedTextHeight }
+  if (measureText == null) {
+    measureText = elt("pre");
+    // Measure a bunch of lines, for browsers that compute
+    // fractional heights.
+    for (var i = 0; i < 49; ++i) {
+      measureText.appendChild(document.createTextNode("x"));
+      measureText.appendChild(elt("br"));
+    }
+    measureText.appendChild(document.createTextNode("x"));
+  }
+  removeChildrenAndAdd(display.measure, measureText);
+  var height = measureText.offsetHeight / 50;
+  if (height > 3) { display.cachedTextHeight = height; }
+  removeChildren(display.measure);
+  return height || 1
+}
+
+// Compute the default character width.
+function charWidth(display) {
+  if (display.cachedCharWidth != null) { return display.cachedCharWidth }
+  var anchor = elt("span", "xxxxxxxxxx");
+  var pre = elt("pre", [anchor]);
+  removeChildrenAndAdd(display.measure, pre);
+  var rect = anchor.getBoundingClientRect(), width = (rect.right - rect.left) / 10;
+  if (width > 2) { display.cachedCharWidth = width; }
+  return width || 10
+}
+
+// Do a bulk-read of the DOM positions and sizes needed to draw the
+// view, so that we don't interleave reading and writing to the DOM.
+function getDimensions(cm) {
+  var d = cm.display, left = {}, width = {};
+  var gutterLeft = d.gutters.clientLeft;
+  for (var n = d.gutters.firstChild, i = 0; n; n = n.nextSibling, ++i) {
+    left[cm.options.gutters[i]] = n.offsetLeft + n.clientLeft + gutterLeft;
+    width[cm.options.gutters[i]] = n.clientWidth;
+  }
+  return {fixedPos: compensateForHScroll(d),
+          gutterTotalWidth: d.gutters.offsetWidth,
+          gutterLeft: left,
+          gutterWidth: width,
+          wrapperWidth: d.wrapper.clientWidth}
+}
+
+// Computes display.scroller.scrollLeft + display.gutters.offsetWidth,
+// but using getBoundingClientRect to get a sub-pixel-accurate
+// result.
+function compensateForHScroll(display) {
+  return display.scroller.getBoundingClientRect().left - display.sizer.getBoundingClientRect().left
+}
+
+// Returns a function that estimates the height of a line, to use as
+// first approximation until the line becomes visible (and is thus
+// properly measurable).
+function estimateHeight(cm) {
+  var th = textHeight(cm.display), wrapping = cm.options.lineWrapping;
+  var perLine = wrapping && Math.max(5, cm.display.scroller.clientWidth / charWidth(cm.display) - 3);
+  return function (line) {
+    if (lineIsHidden(cm.doc, line)) { return 0 }
+
+    var widgetsHeight = 0;
+    if (line.widgets) { for (var i = 0; i < line.widgets.length; i++) {
+      if (line.widgets[i].height) { widgetsHeight += line.widgets[i].height; }
+    } }
+
+    if (wrapping)
+      { return widgetsHeight + (Math.ceil(line.text.length / perLine) || 1) * th }
+    else
+      { return widgetsHeight + th }
+  }
+}
+
+function estimateLineHeights(cm) {
+  var doc = cm.doc, est = estimateHeight(cm);
+  doc.iter(function (line) {
+    var estHeight = est(line);
+    if (estHeight != line.height) { updateLineHeight(line, estHeight); }
+  });
+}
+
+// Given a mouse event, find the corresponding position. If liberal
+// is false, it checks whether a gutter or scrollbar was clicked,
+// and returns null if it was. forRect is used by rectangular
+// selections, and tries to estimate a character position even for
+// coordinates beyond the right of the text.
+function posFromMouse(cm, e, liberal, forRect) {
+  var display = cm.display;
+  if (!liberal && e_target(e).getAttribute("cm-not-content") == "true") { return null }
+
+  var x, y, space = display.lineSpace.getBoundingClientRect();
+  // Fails unpredictably on IE[67] when mouse is dragged around quickly.
+  try { x = e.clientX - space.left; y = e.clientY - space.top; }
+  catch (e) { return null }
+  var coords = coordsChar(cm, x, y), line;
+  if (forRect && coords.xRel == 1 && (line = getLine(cm.doc, coords.line).text).length == coords.ch) {
+    var colDiff = countColumn(line, line.length, cm.options.tabSize) - line.length;
+    coords = Pos(coords.line, Math.max(0, Math.round((x - paddingH(cm.display).left) / charWidth(cm.display)) - colDiff));
+  }
+  return coords
+}
+
+// Find the view element corresponding to a given line. Return null
+// when the line isn't visible.
+function findViewIndex(cm, n) {
+  if (n >= cm.display.viewTo) { return null }
+  n -= cm.display.viewFrom;
+  if (n < 0) { return null }
+  var view = cm.display.view;
+  for (var i = 0; i < view.length; i++) {
+    n -= view[i].size;
+    if (n < 0) { return i }
+  }
+}
+
+function updateSelection(cm) {
+  cm.display.input.showSelection(cm.display.input.prepareSelection());
+}
+
+function prepareSelection(cm, primary) {
+  var doc = cm.doc, result = {};
+  var curFragment = result.cursors = document.createDocumentFragment();
+  var selFragment = result.selection = document.createDocumentFragment();
+
+  for (var i = 0; i < doc.sel.ranges.length; i++) {
+    if (primary === false && i == doc.sel.primIndex) { continue }
+    var range$$1 = doc.sel.ranges[i];
+    if (range$$1.from().line >= cm.display.viewTo || range$$1.to().line < cm.display.viewFrom) { continue }
+    var collapsed = range$$1.empty();
+    if (collapsed || cm.options.showCursorWhenSelecting)
+      { drawSelectionCursor(cm, range$$1.head, curFragment); }
+    if (!collapsed)
+      { drawSelectionRange(cm, range$$1, selFragment); }
+  }
+  return result
+}
+
+// Draws a cursor for the given range
+function drawSelectionCursor(cm, head, output) {
+  var pos = cursorCoords(cm, head, "div", null, null, !cm.options.singleCursorHeightPerLine);
+
+  var cursor = output.appendChild(elt("div", "\u00a0", "CodeMirror-cursor"));
+  cursor.style.left = pos.left + "px";
+  cursor.style.top = pos.top + "px";
+  cursor.style.height = Math.max(0, pos.bottom - pos.top) * cm.options.cursorHeight + "px";
+
+  if (pos.other) {
+    // Secondary cursor, shown when on a 'jump' in bi-directional text
+    var otherCursor = output.appendChild(elt("div", "\u00a0", "CodeMirror-cursor CodeMirror-secondarycursor"));
+    otherCursor.style.display = "";
+    otherCursor.style.left = pos.other.left + "px";
+    otherCursor.style.top = pos.other.top + "px";
+    otherCursor.style.height = (pos.other.bottom - pos.other.top) * .85 + "px";
+  }
+}
+
+// Draws the given range as a highlighted selection
+function drawSelectionRange(cm, range$$1, output) {
+  var display = cm.display, doc = cm.doc;
+  var fragment = document.createDocumentFragment();
+  var padding = paddingH(cm.display), leftSide = padding.left;
+  var rightSide = Math.max(display.sizerWidth, displayWidth(cm) - display.sizer.offsetLeft) - padding.right;
+
+  function add(left, top, width, bottom) {
+    if (top < 0) { top = 0; }
+    top = Math.round(top);
+    bottom = Math.round(bottom);
+    fragment.appendChild(elt("div", null, "CodeMirror-selected", ("position: absolute; left: " + left + "px;\n                             top: " + top + "px; width: " + (width == null ? rightSide - left : width) + "px;\n                             height: " + (bottom - top) + "px")));
+  }
+
+  function drawForLine(line, fromArg, toArg) {
+    var lineObj = getLine(doc, line);
+    var lineLen = lineObj.text.length;
+    var start, end;
+    function coords(ch, bias) {
+      return charCoords(cm, Pos(line, ch), "div", lineObj, bias)
+    }
+
+    iterateBidiSections(getOrder(lineObj, doc.direction), fromArg || 0, toArg == null ? lineLen : toArg, function (from, to, dir) {
+      var leftPos = coords(from, "left"), rightPos, left, right;
+      if (from == to) {
+        rightPos = leftPos;
+        left = right = leftPos.left;
+      } else {
+        rightPos = coords(to - 1, "right");
+        if (dir == "rtl") { var tmp = leftPos; leftPos = rightPos; rightPos = tmp; }
+        left = leftPos.left;
+        right = rightPos.right;
+      }
+      if (fromArg == null && from == 0) { left = leftSide; }
+      if (rightPos.top - leftPos.top > 3) { // Different lines, draw top part
+        add(left, leftPos.top, null, leftPos.bottom);
+        left = leftSide;
+        if (leftPos.bottom < rightPos.top) { add(left, leftPos.bottom, null, rightPos.top); }
+      }
+      if (toArg == null && to == lineLen) { right = rightSide; }
+      if (!start || leftPos.top < start.top || leftPos.top == start.top && leftPos.left < start.left)
+        { start = leftPos; }
+      if (!end || rightPos.bottom > end.bottom || rightPos.bottom == end.bottom && rightPos.right > end.right)
+        { end = rightPos; }
+      if (left < leftSide + 1) { left = leftSide; }
+      add(left, rightPos.top, right - left, rightPos.bottom);
+    });
+    return {start: start, end: end}
+  }
+
+  var sFrom = range$$1.from(), sTo = range$$1.to();
+  if (sFrom.line == sTo.line) {
+    drawForLine(sFrom.line, sFrom.ch, sTo.ch);
+  } else {
+    var fromLine = getLine(doc, sFrom.line), toLine = getLine(doc, sTo.line);
+    var singleVLine = visualLine(fromLine) == visualLine(toLine);
+    var leftEnd = drawForLine(sFrom.line, sFrom.ch, singleVLine ? fromLine.text.length + 1 : null).end;
+    var rightStart = drawForLine(sTo.line, singleVLine ? 0 : null, sTo.ch).start;
+    if (singleVLine) {
+      if (leftEnd.top < rightStart.top - 2) {
+        add(leftEnd.right, leftEnd.top, null, leftEnd.bottom);
+        add(leftSide, rightStart.top, rightStart.left, rightStart.bottom);
+      } else {
+        add(leftEnd.right, leftEnd.top, rightStart.left - leftEnd.right, leftEnd.bottom);
+      }
+    }
+    if (leftEnd.bottom < rightStart.top)
+      { add(leftSide, leftEnd.bottom, null, rightStart.top); }
+  }
+
+  output.appendChild(fragment);
+}
+
+// Cursor-blinking
+function restartBlink(cm) {
+  if (!cm.state.focused) { return }
+  var display = cm.display;
+  clearInterval(display.blinker);
+  var on = true;
+  display.cursorDiv.style.visibility = "";
+  if (cm.options.cursorBlinkRate > 0)
+    { display.blinker = setInterval(function () { return display.cursorDiv.style.visibility = (on = !on) ? "" : "hidden"; },
+      cm.options.cursorBlinkRate); }
+  else if (cm.options.cursorBlinkRate < 0)
+    { display.cursorDiv.style.visibility = "hidden"; }
+}
+
+function ensureFocus(cm) {
+  if (!cm.state.focused) { cm.display.input.focus(); onFocus(cm); }
+}
+
+function delayBlurEvent(cm) {
+  cm.state.delayingBlurEvent = true;
+  setTimeout(function () { if (cm.state.delayingBlurEvent) {
+    cm.state.delayingBlurEvent = false;
+    onBlur(cm);
+  } }, 100);
+}
+
+function onFocus(cm, e) {
+  if (cm.state.delayingBlurEvent) { cm.state.delayingBlurEvent = false; }
+
+  if (cm.options.readOnly == "nocursor") { return }
+  if (!cm.state.focused) {
+    signal(cm, "focus", cm, e);
+    cm.state.focused = true;
+    addClass(cm.display.wrapper, "CodeMirror-focused");
+    // This test prevents this from firing when a context
+    // menu is closed (since the input reset would kill the
+    // select-all detection hack)
+    if (!cm.curOp && cm.display.selForContextMenu != cm.doc.sel) {
+      cm.display.input.reset();
+      if (webkit) { setTimeout(function () { return cm.display.input.reset(true); }, 20); } // Issue #1730
+    }
+    cm.display.input.receivedFocus();
+  }
+  restartBlink(cm);
+}
+function onBlur(cm, e) {
+  if (cm.state.delayingBlurEvent) { return }
+
+  if (cm.state.focused) {
+    signal(cm, "blur", cm, e);
+    cm.state.focused = false;
+    rmClass(cm.display.wrapper, "CodeMirror-focused");
+  }
+  clearInterval(cm.display.blinker);
+  setTimeout(function () { if (!cm.state.focused) { cm.display.shift = false; } }, 150);
+}
+
+// Re-align line numbers and gutter marks to compensate for
+// horizontal scrolling.
+function alignHorizontally(cm) {
+  var display = cm.display, view = display.view;
+  if (!display.alignWidgets && (!display.gutters.firstChild || !cm.options.fixedGutter)) { return }
+  var comp = compensateForHScroll(display) - display.scroller.scrollLeft + cm.doc.scrollLeft;
+  var gutterW = display.gutters.offsetWidth, left = comp + "px";
+  for (var i = 0; i < view.length; i++) { if (!view[i].hidden) {
+    if (cm.options.fixedGutter) {
+      if (view[i].gutter)
+        { view[i].gutter.style.left = left; }
+      if (view[i].gutterBackground)
+        { view[i].gutterBackground.style.left = left; }
+    }
+    var align = view[i].alignable;
+    if (align) { for (var j = 0; j < align.length; j++)
+      { align[j].style.left = left; } }
+  } }
+  if (cm.options.fixedGutter)
+    { display.gutters.style.left = (comp + gutterW) + "px"; }
+}
+
+// Used to ensure that the line number gutter is still the right
+// size for the current document size. Returns true when an update
+// is needed.
+function maybeUpdateLineNumberWidth(cm) {
+  if (!cm.options.lineNumbers) { return false }
+  var doc = cm.doc, last = lineNumberFor(cm.options, doc.first + doc.size - 1), display = cm.display;
+  if (last.length != display.lineNumChars) {
+    var test = display.measure.appendChild(elt("div", [elt("div", last)],
+                                               "CodeMirror-linenumber CodeMirror-gutter-elt"));
+    var innerW = test.firstChild.offsetWidth, padding = test.offsetWidth - innerW;
+    display.lineGutter.style.width = "";
+    display.lineNumInnerWidth = Math.max(innerW, display.lineGutter.offsetWidth - padding) + 1;
+    display.lineNumWidth = display.lineNumInnerWidth + padding;
+    display.lineNumChars = display.lineNumInnerWidth ? last.length : -1;
+    display.lineGutter.style.width = display.lineNumWidth + "px";
+    updateGutterSpace(cm);
+    return true
+  }
+  return false
+}
+
+// Read the actual heights of the rendered lines, and update their
+// stored heights to match.
+function updateHeightsInViewport(cm) {
+  var display = cm.display;
+  var prevBottom = display.lineDiv.offsetTop;
+  for (var i = 0; i < display.view.length; i++) {
+    var cur = display.view[i], height = (void 0);
+    if (cur.hidden) { continue }
+    if (ie && ie_version < 8) {
+      var bot = cur.node.offsetTop + cur.node.offsetHeight;
+      height = bot - prevBottom;
+      prevBottom = bot;
+    } else {
+      var box = cur.node.getBoundingClientRect();
+      height = box.bottom - box.top;
+    }
+    var diff = cur.line.height - height;
+    if (height < 2) { height = textHeight(display); }
+    if (diff > .001 || diff < -.001) {
+      updateLineHeight(cur.line, height);
+      updateWidgetHeight(cur.line);
+      if (cur.rest) { for (var j = 0; j < cur.rest.length; j++)
+        { updateWidgetHeight(cur.rest[j]); } }
+    }
+  }
+}
+
+// Read and store the height of line widgets associated with the
+// given line.
+function updateWidgetHeight(line) {
+  if (line.widgets) { for (var i = 0; i < line.widgets.length; ++i)
+    { line.widgets[i].height = line.widgets[i].node.parentNode.offsetHeight; } }
+}
+
+// Compute the lines that are visible in a given viewport (defaults
+// the the current scroll position). viewport may contain top,
+// height, and ensure (see op.scrollToPos) properties.
+function visibleLines(display, doc, viewport) {
+  var top = viewport && viewport.top != null ? Math.max(0, viewport.top) : display.scroller.scrollTop;
+  top = Math.floor(top - paddingTop(display));
+  var bottom = viewport && viewport.bottom != null ? viewport.bottom : top + display.wrapper.clientHeight;
+
+  var from = lineAtHeight(doc, top), to = lineAtHeight(doc, bottom);
+  // Ensure is a {from: {line, ch}, to: {line, ch}} object, and
+  // forces those lines into the viewport (if possible).
+  if (viewport && viewport.ensure) {
+    var ensureFrom = viewport.ensure.from.line, ensureTo = viewport.ensure.to.line;
+    if (ensureFrom < from) {
+      from = ensureFrom;
+      to = lineAtHeight(doc, heightAtLine(getLine(doc, ensureFrom)) + display.wrapper.clientHeight);
+    } else if (Math.min(ensureTo, doc.lastLine()) >= to) {
+      from = lineAtHeight(doc, heightAtLine(getLine(doc, ensureTo)) - display.wrapper.clientHeight);
+      to = ensureTo;
+    }
+  }
+  return {from: from, to: Math.max(to, from + 1)}
+}
+
+// Sync the scrollable area and scrollbars, ensure the viewport
+// covers the visible area.
+function setScrollTop(cm, val) {
+  if (Math.abs(cm.doc.scrollTop - val) < 2) { return }
+  cm.doc.scrollTop = val;
+  if (!gecko) { updateDisplaySimple(cm, {top: val}); }
+  if (cm.display.scroller.scrollTop != val) { cm.display.scroller.scrollTop = val; }
+  cm.display.scrollbars.setScrollTop(val);
+  if (gecko) { updateDisplaySimple(cm); }
+  startWorker(cm, 100);
+}
+// Sync scroller and scrollbar, ensure the gutter elements are
+// aligned.
+function setScrollLeft(cm, val, isScroller) {
+  if (isScroller ? val == cm.doc.scrollLeft : Math.abs(cm.doc.scrollLeft - val) < 2) { return }
+  val = Math.min(val, cm.display.scroller.scrollWidth - cm.display.scroller.clientWidth);
+  cm.doc.scrollLeft = val;
+  alignHorizontally(cm);
+  if (cm.display.scroller.scrollLeft != val) { cm.display.scroller.scrollLeft = val; }
+  cm.display.scrollbars.setScrollLeft(val);
+}
+
+// Since the delta values reported on mouse wheel events are
+// unstandardized between browsers and even browser versions, and
+// generally horribly unpredictable, this code starts by measuring
+// the scroll effect that the first few mouse wheel events have,
+// and, from that, detects the way it can convert deltas to pixel
+// offsets afterwards.
+//
+// The reason we want to know the amount a wheel event will scroll
+// is that it gives us a chance to update the display before the
+// actual scrolling happens, reducing flickering.
+
+var wheelSamples = 0;
+var wheelPixelsPerUnit = null;
+// Fill in a browser-detected starting value on browsers where we
+// know one. These don't have to be accurate -- the result of them
+// being wrong would just be a slight flicker on the first wheel
+// scroll (if it is large enough).
+if (ie) { wheelPixelsPerUnit = -.53; }
+else if (gecko) { wheelPixelsPerUnit = 15; }
+else if (chrome) { wheelPixelsPerUnit = -.7; }
+else if (safari) { wheelPixelsPerUnit = -1/3; }
+
+function wheelEventDelta(e) {
+  var dx = e.wheelDeltaX, dy = e.wheelDeltaY;
+  if (dx == null && e.detail && e.axis == e.HORIZONTAL_AXIS) { dx = e.detail; }
+  if (dy == null && e.detail && e.axis == e.VERTICAL_AXIS) { dy = e.detail; }
+  else if (dy == null) { dy = e.wheelDelta; }
+  return {x: dx, y: dy}
+}
+function wheelEventPixels(e) {
+  var delta = wheelEventDelta(e);
+  delta.x *= wheelPixelsPerUnit;
+  delta.y *= wheelPixelsPerUnit;
+  return delta
+}
+
+function onScrollWheel(cm, e) {
+  var delta = wheelEventDelta(e), dx = delta.x, dy = delta.y;
+
+  var display = cm.display, scroll = display.scroller;
+  // Quit if there's nothing to scroll here
+  var canScrollX = scroll.scrollWidth > scroll.clientWidth;
+  var canScrollY = scroll.scrollHeight > scroll.clientHeight;
+  if (!(dx && canScrollX || dy && canScrollY)) { return }
+
+  // Webkit browsers on OS X abort momentum scrolls when the target
+  // of the scroll event is removed from the scrollable element.
+  // This hack (see related code in patchDisplay) makes sure the
+  // element is kept around.
+  if (dy && mac && webkit) {
+    outer: for (var cur = e.target, view = display.view; cur != scroll; cur = cur.parentNode) {
+      for (var i = 0; i < view.length; i++) {
+        if (view[i].node == cur) {
+          cm.display.currentWheelTarget = cur;
+          break outer
+        }
+      }
+    }
+  }
+
+  // On some browsers, horizontal scrolling will cause redraws to
+  // happen before the gutter has been realigned, causing it to
+  // wriggle around in a most unseemly way. When we have an
+  // estimated pixels/delta value, we just handle horizontal
+  // scrolling entirely here. It'll be slightly off from native, but
+  // better than glitching out.
+  if (dx && !gecko && !presto && wheelPixelsPerUnit != null) {
+    if (dy && canScrollY)
+      { setScrollTop(cm, Math.max(0, Math.min(scroll.scrollTop + dy * wheelPixelsPerUnit, scroll.scrollHeight - scroll.clientHeight))); }
+    setScrollLeft(cm, Math.max(0, Math.min(scroll.scrollLeft + dx * wheelPixelsPerUnit, scroll.scrollWidth - scroll.clientWidth)));
+    // Only prevent default scrolling if vertical scrolling is
+    // actually possible. Otherwise, it causes vertical scroll
+    // jitter on OSX trackpads when deltaX is small and deltaY
+    // is large (issue #3579)
+    if (!dy || (dy && canScrollY))
+      { e_preventDefault(e); }
+    display.wheelStartX = null; // Abort measurement, if in progress
+    return
+  }
+
+  // 'Project' the visible viewport to cover the area that is being
+  // scrolled into view (if we know enough to estimate it).
+  if (dy && wheelPixelsPerUnit != null) {
+    var pixels = dy * wheelPixelsPerUnit;
+    var top = cm.doc.scrollTop, bot = top + display.wrapper.clientHeight;
+    if (pixels < 0) { top = Math.max(0, top + pixels - 50); }
+    else { bot = Math.min(cm.doc.height, bot + pixels + 50); }
+    updateDisplaySimple(cm, {top: top, bottom: bot});
+  }
+
+  if (wheelSamples < 20) {
+    if (display.wheelStartX == null) {
+      display.wheelStartX = scroll.scrollLeft; display.wheelStartY = scroll.scrollTop;
+      display.wheelDX = dx; display.wheelDY = dy;
+      setTimeout(function () {
+        if (display.wheelStartX == null) { return }
+        var movedX = scroll.scrollLeft - display.wheelStartX;
+        var movedY = scroll.scrollTop - display.wheelStartY;
+        var sample = (movedY && display.wheelDY && movedY / display.wheelDY) ||
+          (movedX && display.wheelDX && movedX / display.wheelDX);
+        display.wheelStartX = display.wheelStartY = null;
+        if (!sample) { return }
+        wheelPixelsPerUnit = (wheelPixelsPerUnit * wheelSamples + sample) / (wheelSamples + 1);
+        ++wheelSamples;
+      }, 200);
+    } else {
+      display.wheelDX += dx; display.wheelDY += dy;
+    }
+  }
+}
+
+// SCROLLBARS
+
+// Prepare DOM reads needed to update the scrollbars. Done in one
+// shot to minimize update/measure roundtrips.
+function measureForScrollbars(cm) {
+  var d = cm.display, gutterW = d.gutters.offsetWidth;
+  var docH = Math.round(cm.doc.height + paddingVert(cm.display));
+  return {
+    clientHeight: d.scroller.clientHeight,
+    viewHeight: d.wrapper.clientHeight,
+    scrollWidth: d.scroller.scrollWidth, clientWidth: d.scroller.clientWidth,
+    viewWidth: d.wrapper.clientWidth,
+    barLeft: cm.options.fixedGutter ? gutterW : 0,
+    docHeight: docH,
+    scrollHeight: docH + scrollGap(cm) + d.barHeight,
+    nativeBarWidth: d.nativeBarWidth,
+    gutterWidth: gutterW
+  }
+}
+
+var NativeScrollbars = function(place, scroll, cm) {
+  this.cm = cm;
+  var vert = this.vert = elt("div", [elt("div", null, null, "min-width: 1px")], "CodeMirror-vscrollbar");
+  var horiz = this.horiz = elt("div", [elt("div", null, null, "height: 100%; min-height: 1px")], "CodeMirror-hscrollbar");
+  place(vert); place(horiz);
+
+  on(vert, "scroll", function () {
+    if (vert.clientHeight) { scroll(vert.scrollTop, "vertical"); }
+  });
+  on(horiz, "scroll", function () {
+    if (horiz.clientWidth) { scroll(horiz.scrollLeft, "horizontal"); }
+  });
+
+  this.checkedZeroWidth = false;
+  // Need to set a minimum width to see the scrollbar on IE7 (but must not set it on IE8).
+  if (ie && ie_version < 8) { this.horiz.style.minHeight = this.vert.style.minWidth = "18px"; }
+};
+
+NativeScrollbars.prototype.update = function (measure) {
+  var needsH = measure.scrollWidth > measure.clientWidth + 1;
+  var needsV = measure.scrollHeight > measure.clientHeight + 1;
+  var sWidth = measure.nativeBarWidth;
+
+  if (needsV) {
+    this.vert.style.display = "block";
+    this.vert.style.bottom = needsH ? sWidth + "px" : "0";
+    var totalHeight = measure.viewHeight - (needsH ? sWidth : 0);
+    // A bug in IE8 can cause this value to be negative, so guard it.
+    this.vert.firstChild.style.height =
+      Math.max(0, measure.scrollHeight - measure.clientHeight + totalHeight) + "px";
+  } else {
+    this.vert.style.display = "";
+    this.vert.firstChild.style.height = "0";
+  }
+
+  if (needsH) {
+    this.horiz.style.display = "block";
+    this.horiz.style.right = needsV ? sWidth + "px" : "0";
+    this.horiz.style.left = measure.barLeft + "px";
+    var totalWidth = measure.viewWidth - measure.barLeft - (needsV ? sWidth : 0);
+    this.horiz.firstChild.style.width =
+      Math.max(0, measure.scrollWidth - measure.clientWidth + totalWidth) + "px";
+  } else {
+    this.horiz.style.display = "";
+    this.horiz.firstChild.style.width = "0";
+  }
+
+  if (!this.checkedZeroWidth && measure.clientHeight > 0) {
+    if (sWidth == 0) { this.zeroWidthHack(); }
+    this.checkedZeroWidth = true;
+  }
+
+  return {right: needsV ? sWidth : 0, bottom: needsH ? sWidth : 0}
+};
+
+NativeScrollbars.prototype.setScrollLeft = function (pos) {
+  if (this.horiz.scrollLeft != pos) { this.horiz.scrollLeft = pos; }
+  if (this.disableHoriz) { this.enableZeroWidthBar(this.horiz, this.disableHoriz, "horiz"); }
+};
+
+NativeScrollbars.prototype.setScrollTop = function (pos) {
+  if (this.vert.scrollTop != pos) { this.vert.scrollTop = pos; }
+  if (this.disableVert) { this.enableZeroWidthBar(this.vert, this.disableVert, "vert"); }
+};
+
+NativeScrollbars.prototype.zeroWidthHack = function () {
+  var w = mac && !mac_geMountainLion ? "12px" : "18px";
+  this.horiz.style.height = this.vert.style.width = w;
+  this.horiz.style.pointerEvents = this.vert.style.pointerEvents = "none";
+  this.disableHoriz = new Delayed;
+  this.disableVert = new Delayed;
+};
+
+NativeScrollbars.prototype.enableZeroWidthBar = function (bar, delay, type) {
+  bar.style.pointerEvents = "auto";
+  function maybeDisable() {
+    // To find out whether the scrollbar is still visible, we
+    // check whether the element under the pixel in the bottom
+    // right corner of the scrollbar box is the scrollbar box
+    // itself (when the bar is still visible) or its filler child
+    // (when the bar is hidden). If it is still visible, we keep
+    // it enabled, if it's hidden, we disable pointer events.
+    var box = bar.getBoundingClientRect();
+    var elt$$1 = type == "vert" ? document.elementFromPoint(box.right - 1, (box.top + box.bottom) / 2)
+        : document.elementFromPoint((box.right + box.left) / 2, box.bottom - 1);
+    if (elt$$1 != bar) { bar.style.pointerEvents = "none"; }
+    else { delay.set(1000, maybeDisable); }
+  }
+  delay.set(1000, maybeDisable);
+};
+
+NativeScrollbars.prototype.clear = function () {
+  var parent = this.horiz.parentNode;
+  parent.removeChild(this.horiz);
+  parent.removeChild(this.vert);
+};
+
+var NullScrollbars = function () {};
+
+NullScrollbars.prototype.update = function () { return {bottom: 0, right: 0} };
+NullScrollbars.prototype.setScrollLeft = function () {};
+NullScrollbars.prototype.setScrollTop = function () {};
+NullScrollbars.prototype.clear = function () {};
+
+function updateScrollbars(cm, measure) {
+  if (!measure) { measure = measureForScrollbars(cm); }
+  var startWidth = cm.display.barWidth, startHeight = cm.display.barHeight;
+  updateScrollbarsInner(cm, measure);
+  for (var i = 0; i < 4 && startWidth != cm.display.barWidth || startHeight != cm.display.barHeight; i++) {
+    if (startWidth != cm.display.barWidth && cm.options.lineWrapping)
+      { updateHeightsInViewport(cm); }
+    updateScrollbarsInner(cm, measureForScrollbars(cm));
+    startWidth = cm.display.barWidth; startHeight = cm.display.barHeight;
+  }
+}
+
+// Re-synchronize the fake scrollbars with the actual size of the
+// content.
+function updateScrollbarsInner(cm, measure) {
+  var d = cm.display;
+  var sizes = d.scrollbars.update(measure);
+
+  d.sizer.style.paddingRight = (d.barWidth = sizes.right) + "px";
+  d.sizer.style.paddingBottom = (d.barHeight = sizes.bottom) + "px";
+  d.heightForcer.style.borderBottom = sizes.bottom + "px solid transparent";
+
+  if (sizes.right && sizes.bottom) {
+    d.scrollbarFiller.style.display = "block";
+    d.scrollbarFiller.style.height = sizes.bottom + "px";
+    d.scrollbarFiller.style.width = sizes.right + "px";
+  } else { d.scrollbarFiller.style.display = ""; }
+  if (sizes.bottom && cm.options.coverGutterNextToScrollbar && cm.options.fixedGutter) {
+    d.gutterFiller.style.display = "block";
+    d.gutterFiller.style.height = sizes.bottom + "px";
+    d.gutterFiller.style.width = measure.gutterWidth + "px";
+  } else { d.gutterFiller.style.display = ""; }
+}
+
+var scrollbarModel = {"native": NativeScrollbars, "null": NullScrollbars};
+
+function initScrollbars(cm) {
+  if (cm.display.scrollbars) {
+    cm.display.scrollbars.clear();
+    if (cm.display.scrollbars.addClass)
+      { rmClass(cm.display.wrapper, cm.display.scrollbars.addClass); }
+  }
+
+  cm.display.scrollbars = new scrollbarModel[cm.options.scrollbarStyle](function (node) {
+    cm.display.wrapper.insertBefore(node, cm.display.scrollbarFiller);
+    // Prevent clicks in the scrollbars from killing focus
+    on(node, "mousedown", function () {
+      if (cm.state.focused) { setTimeout(function () { return cm.display.input.focus(); }, 0); }
+    });
+    node.setAttribute("cm-not-content", "true");
+  }, function (pos, axis) {
+    if (axis == "horizontal") { setScrollLeft(cm, pos); }
+    else { setScrollTop(cm, pos); }
+  }, cm);
+  if (cm.display.scrollbars.addClass)
+    { addClass(cm.display.wrapper, cm.display.scrollbars.addClass); }
+}
+
+// SCROLLING THINGS INTO VIEW
+
+// If an editor sits on the top or bottom of the window, partially
+// scrolled out of view, this ensures that the cursor is visible.
+function maybeScrollWindow(cm, rect) {
+  if (signalDOMEvent(cm, "scrollCursorIntoView")) { return }
+
+  var display = cm.display, box = display.sizer.getBoundingClientRect(), doScroll = null;
+  if (rect.top + box.top < 0) { doScroll = true; }
+  else if (rect.bottom + box.top > (window.innerHeight || document.documentElement.clientHeight)) { doScroll = false; }
+  if (doScroll != null && !phantom) {
+    var scrollNode = elt("div", "\u200b", null, ("position: absolute;\n                         top: " + (rect.top - display.viewOffset - paddingTop(cm.display)) + "px;\n                         height: " + (rect.bottom - rect.top + scrollGap(cm) + display.barHeight) + "px;\n                         left: " + (rect.left) + "px; width: " + (Math.max(2, rect.right - rect.left)) + "px;"));
+    cm.display.lineSpace.appendChild(scrollNode);
+    scrollNode.scrollIntoView(doScroll);
+    cm.display.lineSpace.removeChild(scrollNode);
+  }
+}
+
+// Scroll a given position into view (immediately), verifying that
+// it actually became visible (as line heights are accurately
+// measured, the position of something may 'drift' during drawing).
+function scrollPosIntoView(cm, pos, end, margin) {
+  if (margin == null) { margin = 0; }
+  var rect;
+  for (var limit = 0; limit < 5; limit++) {
+    var changed = false;
+    var coords = cursorCoords(cm, pos);
+    var endCoords = !end || end == pos ? coords : cursorCoords(cm, end);
+    rect = {left: Math.min(coords.left, endCoords.left),
+            top: Math.min(coords.top, endCoords.top) - margin,
+            right: Math.max(coords.left, endCoords.left),
+            bottom: Math.max(coords.bottom, endCoords.bottom) + margin};
+    var scrollPos = calculateScrollPos(cm, rect);
+    var startTop = cm.doc.scrollTop, startLeft = cm.doc.scrollLeft;
+    if (scrollPos.scrollTop != null) {
+      setScrollTop(cm, scrollPos.scrollTop);
+      if (Math.abs(cm.doc.scrollTop - startTop) > 1) { changed = true; }
+    }
+    if (scrollPos.scrollLeft != null) {
+      setScrollLeft(cm, scrollPos.scrollLeft);
+      if (Math.abs(cm.doc.scrollLeft - startLeft) > 1) { changed = true; }
+    }
+    if (!changed) { break }
+  }
+  return rect
+}
+
+// Scroll a given set of coordinates into view (immediately).
+function scrollIntoView(cm, rect) {
+  var scrollPos = calculateScrollPos(cm, rect);
+  if (scrollPos.scrollTop != null) { setScrollTop(cm, scrollPos.scrollTop); }
+  if (scrollPos.scrollLeft != null) { setScrollLeft(cm, scrollPos.scrollLeft); }
+}
+
+// Calculate a new scroll position needed to scroll the given
+// rectangle into view. Returns an object with scrollTop and
+// scrollLeft properties. When these are undefined, the
+// vertical/horizontal position does not need to be adjusted.
+function calculateScrollPos(cm, rect) {
+  var display = cm.display, snapMargin = textHeight(cm.display);
+  if (rect.top < 0) { rect.top = 0; }
+  var screentop = cm.curOp && cm.curOp.scrollTop != null ? cm.curOp.scrollTop : display.scroller.scrollTop;
+  var screen = displayHeight(cm), result = {};
+  if (rect.bottom - rect.top > screen) { rect.bottom = rect.top + screen; }
+  var docBottom = cm.doc.height + paddingVert(display);
+  var atTop = rect.top < snapMargin, atBottom = rect.bottom > docBottom - snapMargin;
+  if (rect.top < screentop) {
+    result.scrollTop = atTop ? 0 : rect.top;
+  } else if (rect.bottom > screentop + screen) {
+    var newTop = Math.min(rect.top, (atBottom ? docBottom : rect.bottom) - screen);
+    if (newTop != screentop) { result.scrollTop = newTop; }
+  }
+
+  var screenleft = cm.curOp && cm.curOp.scrollLeft != null ? cm.curOp.scrollLeft : display.scroller.scrollLeft;
+  var screenw = displayWidth(cm) - (cm.options.fixedGutter ? display.gutters.offsetWidth : 0);
+  var tooWide = rect.right - rect.left > screenw;
+  if (tooWide) { rect.right = rect.left + screenw; }
+  if (rect.left < 10)
+    { result.scrollLeft = 0; }
+  else if (rect.left < screenleft)
+    { result.scrollLeft = Math.max(0, rect.left - (tooWide ? 0 : 10)); }
+  else if (rect.right > screenw + screenleft - 3)
+    { result.scrollLeft = rect.right + (tooWide ? 0 : 10) - screenw; }
+  return result
+}
+
+// Store a relative adjustment to the scroll position in the current
+// operation (to be applied when the operation finishes).
+function addToScrollPos(cm, left, top) {
+  if (left != null || top != null) { resolveScrollToPos(cm); }
+  if (left != null)
+    { cm.curOp.scrollLeft = (cm.curOp.scrollLeft == null ? cm.doc.scrollLeft : cm.curOp.scrollLeft) + left; }
+  if (top != null)
+    { cm.curOp.scrollTop = (cm.curOp.scrollTop == null ? cm.doc.scrollTop : cm.curOp.scrollTop) + top; }
+}
+
+// Make sure that at the end of the operation the current cursor is
+// shown.
+function ensureCursorVisible(cm) {
+  resolveScrollToPos(cm);
+  var cur = cm.getCursor(), from = cur, to = cur;
+  if (!cm.options.lineWrapping) {
+    from = cur.ch ? Pos(cur.line, cur.ch - 1) : cur;
+    to = Pos(cur.line, cur.ch + 1);
+  }
+  cm.curOp.scrollToPos = {from: from, to: to, margin: cm.options.cursorScrollMargin};
+}
+
+// When an operation has its scrollToPos property set, and another
+// scroll action is applied before the end of the operation, this
+// 'simulates' scrolling that position into view in a cheap way, so
+// that the effect of intermediate scroll commands is not ignored.
+function resolveScrollToPos(cm) {
+  var range$$1 = cm.curOp.scrollToPos;
+  if (range$$1) {
+    cm.curOp.scrollToPos = null;
+    var from = estimateCoords(cm, range$$1.from), to = estimateCoords(cm, range$$1.to);
+    var sPos = calculateScrollPos(cm, {
+      left: Math.min(from.left, to.left),
+      top: Math.min(from.top, to.top) - range$$1.margin,
+      right: Math.max(from.right, to.right),
+      bottom: Math.max(from.bottom, to.bottom) + range$$1.margin
+    });
+    cm.scrollTo(sPos.scrollLeft, sPos.scrollTop);
+  }
+}
+
+// Operations are used to wrap a series of changes to the editor
+// state in such a way that each change won't have to update the
+// cursor and display (which would be awkward, slow, and
+// error-prone). Instead, display updates are batched and then all
+// combined and executed at once.
+
+var nextOpId = 0;
+// Start a new operation.
+function startOperation(cm) {
+  cm.curOp = {
+    cm: cm,
+    viewChanged: false,      // Flag that indicates that lines might need to be redrawn
+    startHeight: cm.doc.height, // Used to detect need to update scrollbar
+    forceUpdate: false,      // Used to force a redraw
+    updateInput: null,       // Whether to reset the input textarea
+    typing: false,           // Whether this reset should be careful to leave existing text (for compositing)
+    changeObjs: null,        // Accumulated changes, for firing change events
+    cursorActivityHandlers: null, // Set of handlers to fire cursorActivity on
+    cursorActivityCalled: 0, // Tracks which cursorActivity handlers have been called already
+    selectionChanged: false, // Whether the selection needs to be redrawn
+    updateMaxLine: false,    // Set when the widest line needs to be determined anew
+    scrollLeft: null, scrollTop: null, // Intermediate scroll position, not pushed to DOM yet
+    scrollToPos: null,       // Used to scroll to a specific position
+    focus: false,
+    id: ++nextOpId           // Unique ID
+  };
+  pushOperation(cm.curOp);
+}
+
+// Finish an operation, updating the display and signalling delayed events
+function endOperation(cm) {
+  var op = cm.curOp;
+  finishOperation(op, function (group) {
+    for (var i = 0; i < group.ops.length; i++)
+      { group.ops[i].cm.curOp = null; }
+    endOperations(group);
+  });
+}
+
+// The DOM updates done when an operation finishes are batched so
+// that the minimum number of relayouts are required.
+function endOperations(group) {
+  var ops = group.ops;
+  for (var i = 0; i < ops.length; i++) // Read DOM
+    { endOperation_R1(ops[i]); }
+  for (var i$1 = 0; i$1 < ops.length; i$1++) // Write DOM (maybe)
+    { endOperation_W1(ops[i$1]); }
+  for (var i$2 = 0; i$2 < ops.length; i$2++) // Read DOM
+    { endOperation_R2(ops[i$2]); }
+  for (var i$3 = 0; i$3 < ops.length; i$3++) // Write DOM (maybe)
+    { endOperation_W2(ops[i$3]); }
+  for (var i$4 = 0; i$4 < ops.length; i$4++) // Read DOM
+    { endOperation_finish(ops[i$4]); }
+}
+
+function endOperation_R1(op) {
+  var cm = op.cm, display = cm.display;
+  maybeClipScrollbars(cm);
+  if (op.updateMaxLine) { findMaxLine(cm); }
+
+  op.mustUpdate = op.viewChanged || op.forceUpdate || op.scrollTop != null ||
+    op.scrollToPos && (op.scrollToPos.from.line < display.viewFrom ||
+                       op.scrollToPos.to.line >= display.viewTo) ||
+    display.maxLineChanged && cm.options.lineWrapping;
+  op.update = op.mustUpdate &&
+    new DisplayUpdate(cm, op.mustUpdate && {top: op.scrollTop, ensure: op.scrollToPos}, op.forceUpdate);
+}
+
+function endOperation_W1(op) {
+  op.updatedDisplay = op.mustUpdate && updateDisplayIfNeeded(op.cm, op.update);
+}
+
+function endOperation_R2(op) {
+  var cm = op.cm, display = cm.display;
+  if (op.updatedDisplay) { updateHeightsInViewport(cm); }
+
+  op.barMeasure = measureForScrollbars(cm);
+
+  // If the max line changed since it was last measured, measure it,
+  // and ensure the document's width matches it.
+  // updateDisplay_W2 will use these properties to do the actual resizing
+  if (display.maxLineChanged && !cm.options.lineWrapping) {
+    op.adjustWidthTo = measureChar(cm, display.maxLine, display.maxLine.text.length).left + 3;
+    cm.display.sizerWidth = op.adjustWidthTo;
+    op.barMeasure.scrollWidth =
+      Math.max(display.scroller.clientWidth, display.sizer.offsetLeft + op.adjustWidthTo + scrollGap(cm) + cm.display.barWidth);
+    op.maxScrollLeft = Math.max(0, display.sizer.offsetLeft + op.adjustWidthTo - displayWidth(cm));
+  }
+
+  if (op.updatedDisplay || op.selectionChanged)
+    { op.preparedSelection = display.input.prepareSelection(op.focus); }
+}
+
+function endOperation_W2(op) {
+  var cm = op.cm;
+
+  if (op.adjustWidthTo != null) {
+    cm.display.sizer.style.minWidth = op.adjustWidthTo + "px";
+    if (op.maxScrollLeft < cm.doc.scrollLeft)
+      { setScrollLeft(cm, Math.min(cm.display.scroller.scrollLeft, op.maxScrollLeft), true); }
+    cm.display.maxLineChanged = false;
+  }
+
+  var takeFocus = op.focus && op.focus == activeElt() && (!document.hasFocus || document.hasFocus());
+  if (op.preparedSelection)
+    { cm.display.input.showSelection(op.preparedSelection, takeFocus); }
+  if (op.updatedDisplay || op.startHeight != cm.doc.height)
+    { updateScrollbars(cm, op.barMeasure); }
+  if (op.updatedDisplay)
+    { setDocumentHeight(cm, op.barMeasure); }
+
+  if (op.selectionChanged) { restartBlink(cm); }
+
+  if (cm.state.focused && op.updateInput)
+    { cm.display.input.reset(op.typing); }
+  if (takeFocus) { ensureFocus(op.cm); }
+}
+
+function endOperation_finish(op) {
+  var cm = op.cm, display = cm.display, doc = cm.doc;
+
+  if (op.updatedDisplay) { postUpdateDisplay(cm, op.update); }
+
+  // Abort mouse wheel delta measurement, when scrolling explicitly
+  if (display.wheelStartX != null && (op.scrollTop != null || op.scrollLeft != null || op.scrollToPos))
+    { display.wheelStartX = display.wheelStartY = null; }
+
+  // Propagate the scroll position to the actual DOM scroller
+  if (op.scrollTop != null && (display.scroller.scrollTop != op.scrollTop || op.forceScroll)) {
+    doc.scrollTop = Math.max(0, Math.min(display.scroller.scrollHeight - display.scroller.clientHeight, op.scrollTop));
+    display.scrollbars.setScrollTop(doc.scrollTop);
+    display.scroller.scrollTop = doc.scrollTop;
+  }
+  if (op.scrollLeft != null && (display.scroller.scrollLeft != op.scrollLeft || op.forceScroll)) {
+    doc.scrollLeft = Math.max(0, Math.min(display.scroller.scrollWidth - display.scroller.clientWidth, op.scrollLeft));
+    display.scrollbars.setScrollLeft(doc.scrollLeft);
+    display.scroller.scrollLeft = doc.scrollLeft;
+    alignHorizontally(cm);
+  }
+  // If we need to scroll a specific position into view, do so.
+  if (op.scrollToPos) {
+    var rect = scrollPosIntoView(cm, clipPos(doc, op.scrollToPos.from),
+                                 clipPos(doc, op.scrollToPos.to), op.scrollToPos.margin);
+    maybeScrollWindow(cm, rect);
+  }
+
+  // Fire events for markers that are hidden/unidden by editing or
+  // undoing
+  var hidden = op.maybeHiddenMarkers, unhidden = op.maybeUnhiddenMarkers;
+  if (hidden) { for (var i = 0; i < hidden.length; ++i)
+    { if (!hidden[i].lines.length) { signal(hidden[i], "hide"); } } }
+  if (unhidden) { for (var i$1 = 0; i$1 < unhidden.length; ++i$1)
+    { if (unhidden[i$1].lines.length) { signal(unhidden[i$1], "unhide"); } } }
+
+  if (display.wrapper.offsetHeight)
+    { doc.scrollTop = cm.display.scroller.scrollTop; }
+
+  // Fire change events, and delayed event handlers
+  if (op.changeObjs)
+    { signal(cm, "changes", cm, op.changeObjs); }
+  if (op.update)
+    { op.update.finish(); }
+}
+
+// Run the given function in an operation
+function runInOp(cm, f) {
+  if (cm.curOp) { return f() }
+  startOperation(cm);
+  try { return f() }
+  finally { endOperation(cm); }
+}
+// Wraps a function in an operation. Returns the wrapped function.
+function operation(cm, f) {
+  return function() {
+    if (cm.curOp) { return f.apply(cm, arguments) }
+    startOperation(cm);
+    try { return f.apply(cm, arguments) }
+    finally { endOperation(cm); }
+  }
+}
+// Used to add methods to editor and doc instances, wrapping them in
+// operations.
+function methodOp(f) {
+  return function() {
+    if (this.curOp) { return f.apply(this, arguments) }
+    startOperation(this);
+    try { return f.apply(this, arguments) }
+    finally { endOperation(this); }
+  }
+}
+function docMethodOp(f) {
+  return function() {
+    var cm = this.cm;
+    if (!cm || cm.curOp) { return f.apply(this, arguments) }
+    startOperation(cm);
+    try { return f.apply(this, arguments) }
+    finally { endOperation(cm); }
+  }
+}
+
+// Updates the display.view data structure for a given change to the
+// document. From and to are in pre-change coordinates. Lendiff is
+// the amount of lines added or subtracted by the change. This is
+// used for changes that span multiple lines, or change the way
+// lines are divided into visual lines. regLineChange (below)
+// registers single-line changes.
+function regChange(cm, from, to, lendiff) {
+  if (from == null) { from = cm.doc.first; }
+  if (to == null) { to = cm.doc.first + cm.doc.size; }
+  if (!lendiff) { lendiff = 0; }
+
+  var display = cm.display;
+  if (lendiff && to < display.viewTo &&
+      (display.updateLineNumbers == null || display.updateLineNumbers > from))
+    { display.updateLineNumbers = from; }
+
+  cm.curOp.viewChanged = true;
+
+  if (from >= display.viewTo) { // Change after
+    if (sawCollapsedSpans && visualLineNo(cm.doc, from) < display.viewTo)
+      { resetView(cm); }
+  } else if (to <= display.viewFrom) { // Change before
+    if (sawCollapsedSpans && visualLineEndNo(cm.doc, to + lendiff) > display.viewFrom) {
+      resetView(cm);
+    } else {
+      display.viewFrom += lendiff;
+      display.viewTo += lendiff;
+    }
+  } else if (from <= display.viewFrom && to >= display.viewTo) { // Full overlap
+    resetView(cm);
+  } else if (from <= display.viewFrom) { // Top overlap
+    var cut = viewCuttingPoint(cm, to, to + lendiff, 1);
+    if (cut) {
+      display.view = display.view.slice(cut.index);
+      display.viewFrom = cut.lineN;
+      display.viewTo += lendiff;
+    } else {
+      resetView(cm);
+    }
+  } else if (to >= display.viewTo) { // Bottom overlap
+    var cut$1 = viewCuttingPoint(cm, from, from, -1);
+    if (cut$1) {
+      display.view = display.view.slice(0, cut$1.index);
+      display.viewTo = cut$1.lineN;
+    } else {
+      resetView(cm);
+    }
+  } else { // Gap in the middle
+    var cutTop = viewCuttingPoint(cm, from, from, -1);
+    var cutBot = viewCuttingPoint(cm, to, to + lendiff, 1);
+    if (cutTop && cutBot) {
+      display.view = display.view.slice(0, cutTop.index)
+        .concat(buildViewArray(cm, cutTop.lineN, cutBot.lineN))
+        .concat(display.view.slice(cutBot.index));
+      display.viewTo += lendiff;
+    } else {
+      resetView(cm);
+    }
+  }
+
+  var ext = display.externalMeasured;
+  if (ext) {
+    if (to < ext.lineN)
+      { ext.lineN += lendiff; }
+    else if (from < ext.lineN + ext.size)
+      { display.externalMeasured = null; }
+  }
+}
+
+// Register a change to a single line. Type must be one of "text",
+// "gutter", "class", "widget"
+function regLineChange(cm, line, type) {
+  cm.curOp.viewChanged = true;
+  var display = cm.display, ext = cm.display.externalMeasured;
+  if (ext && line >= ext.lineN && line < ext.lineN + ext.size)
+    { display.externalMeasured = null; }
+
+  if (line < display.viewFrom || line >= display.viewTo) { return }
+  var lineView = display.view[findViewIndex(cm, line)];
+  if (lineView.node == null) { return }
+  var arr = lineView.changes || (lineView.changes = []);
+  if (indexOf(arr, type) == -1) { arr.push(type); }
+}
+
+// Clear the view.
+function resetView(cm) {
+  cm.display.viewFrom = cm.display.viewTo = cm.doc.first;
+  cm.display.view = [];
+  cm.display.viewOffset = 0;
+}
+
+function viewCuttingPoint(cm, oldN, newN, dir) {
+  var index = findViewIndex(cm, oldN), diff, view = cm.display.view;
+  if (!sawCollapsedSpans || newN == cm.doc.first + cm.doc.size)
+    { return {index: index, lineN: newN} }
+  var n = cm.display.viewFrom;
+  for (var i = 0; i < index; i++)
+    { n += view[i].size; }
+  if (n != oldN) {
+    if (dir > 0) {
+      if (index == view.length - 1) { return null }
+      diff = (n + view[index].size) - oldN;
+      index++;
+    } else {
+      diff = n - oldN;
+    }
+    oldN += diff; newN += diff;
+  }
+  while (visualLineNo(cm.doc, newN) != newN) {
+    if (index == (dir < 0 ? 0 : view.length - 1)) { return null }
+    newN += dir * view[index - (dir < 0 ? 1 : 0)].size;
+    index += dir;
+  }
+  return {index: index, lineN: newN}
+}
+
+// Force the view to cover a given range, adding empty view element
+// or clipping off existing ones as needed.
+function adjustView(cm, from, to) {
+  var display = cm.display, view = display.view;
+  if (view.length == 0 || from >= display.viewTo || to <= display.viewFrom) {
+    display.view = buildViewArray(cm, from, to);
+    display.viewFrom = from;
+  } else {
+    if (display.viewFrom > from)
+      { display.view = buildViewArray(cm, from, display.viewFrom).concat(display.view); }
+    else if (display.viewFrom < from)
+      { display.view = display.view.slice(findViewIndex(cm, from)); }
+    display.viewFrom = from;
+    if (display.viewTo < to)
+      { display.view = display.view.concat(buildViewArray(cm, display.viewTo, to)); }
+    else if (display.viewTo > to)
+      { display.view = display.view.slice(0, findViewIndex(cm, to)); }
+  }
+  display.viewTo = to;
+}
+
+// Count the number of lines in the view whose DOM representation is
+// out of date (or nonexistent).
+function countDirtyView(cm) {
+  var view = cm.display.view, dirty = 0;
+  for (var i = 0; i < view.length; i++) {
+    var lineView = view[i];
+    if (!lineView.hidden && (!lineView.node || lineView.changes)) { ++dirty; }
+  }
+  return dirty
+}
+
+// HIGHLIGHT WORKER
+
+function startWorker(cm, time) {
+  if (cm.doc.mode.startState && cm.doc.frontier < cm.display.viewTo)
+    { cm.state.highlight.set(time, bind(highlightWorker, cm)); }
+}
+
+function highlightWorker(cm) {
+  var doc = cm.doc;
+  if (doc.frontier < doc.first) { doc.frontier = doc.first; }
+  if (doc.frontier >= cm.display.viewTo) { return }
+  var end = +new Date + cm.options.workTime;
+  var state = copyState(doc.mode, getStateBefore(cm, doc.frontier));
+  var changedLines = [];
+
+  doc.iter(doc.frontier, Math.min(doc.first + doc.size, cm.display.viewTo + 500), function (line) {
+    if (doc.frontier >= cm.display.viewFrom) { // Visible
+      var oldStyles = line.styles, tooLong = line.text.length > cm.options.maxHighlightLength;
+      var highlighted = highlightLine(cm, line, tooLong ? copyState(doc.mode, state) : state, true);
+      line.styles = highlighted.styles;
+      var oldCls = line.styleClasses, newCls = highlighted.classes;
+      if (newCls) { line.styleClasses = newCls; }
+      else if (oldCls) { line.styleClasses = null; }
+      var ischange = !oldStyles || oldStyles.length != line.styles.length ||
+        oldCls != newCls && (!oldCls || !newCls || oldCls.bgClass != newCls.bgClass || oldCls.textClass != newCls.textClass);
+      for (var i = 0; !ischange && i < oldStyles.length; ++i) { ischange = oldStyles[i] != line.styles[i]; }
+      if (ischange) { changedLines.push(doc.frontier); }
+      line.stateAfter = tooLong ? state : copyState(doc.mode, state);
+    } else {
+      if (line.text.length <= cm.options.maxHighlightLength)
+        { processLine(cm, line.text, state); }
+      line.stateAfter = doc.frontier % 5 == 0 ? copyState(doc.mode, state) : null;
+    }
+    ++doc.frontier;
+    if (+new Date > end) {
+      startWorker(cm, cm.options.workDelay);
+      return true
+    }
+  });
+  if (changedLines.length) { runInOp(cm, function () {
+    for (var i = 0; i < changedLines.length; i++)
+      { regLineChange(cm, changedLines[i], "text"); }
+  }); }
+}
+
+// DISPLAY DRAWING
+
+var DisplayUpdate = function(cm, viewport, force) {
+  var display = cm.display;
+
+  this.viewport = viewport;
+  // Store some values that we'll need later (but don't want to force a relayout for)
+  this.visible = visibleLines(display, cm.doc, viewport);
+  this.editorIsHidden = !display.wrapper.offsetWidth;
+  this.wrapperHeight = display.wrapper.clientHeight;
+  this.wrapperWidth = display.wrapper.clientWidth;
+  this.oldDisplayWidth = displayWidth(cm);
+  this.force = force;
+  this.dims = getDimensions(cm);
+  this.events = [];
+};
+
+DisplayUpdate.prototype.signal = function (emitter, type) {
+  if (hasHandler(emitter, type))
+    { this.events.push(arguments); }
+};
+DisplayUpdate.prototype.finish = function () {
+    var this$1 = this;
+
+  for (var i = 0; i < this.events.length; i++)
+    { signal.apply(null, this$1.events[i]); }
+};
+
+function maybeClipScrollbars(cm) {
+  var display = cm.display;
+  if (!display.scrollbarsClipped && display.scroller.offsetWidth) {
+    display.nativeBarWidth = display.scroller.offsetWidth - display.scroller.clientWidth;
+    display.heightForcer.style.height = scrollGap(cm) + "px";
+    display.sizer.style.marginBottom = -display.nativeBarWidth + "px";
+    display.sizer.style.borderRightWidth = scrollGap(cm) + "px";
+    display.scrollbarsClipped = true;
+  }
+}
+
+// Does the actual updating of the line display. Bails out
+// (returning false) when there is nothing to be done and forced is
+// false.
+function updateDisplayIfNeeded(cm, update) {
+  var display = cm.display, doc = cm.doc;
+
+  if (update.editorIsHidden) {
+    resetView(cm);
+    return false
+  }
+
+  // Bail out if the visible area is already rendered and nothing changed.
+  if (!update.force &&
+      update.visible.from >= display.viewFrom && update.visible.to <= display.viewTo &&
+      (display.updateLineNumbers == null || display.updateLineNumbers >= display.viewTo) &&
+      display.renderedView == display.view && countDirtyView(cm) == 0)
+    { return false }
+
+  if (maybeUpdateLineNumberWidth(cm)) {
+    resetView(cm);
+    update.dims = getDimensions(cm);
+  }
+
+  // Compute a suitable new viewport (from & to)
+  var end = doc.first + doc.size;
+  var from = Math.max(update.visible.from - cm.options.viewportMargin, doc.first);
+  var to = Math.min(end, update.visible.to + cm.options.viewportMargin);
+  if (display.viewFrom < from && from - display.viewFrom < 20) { from = Math.max(doc.first, display.viewFrom); }
+  if (display.viewTo > to && display.viewTo - to < 20) { to = Math.min(end, display.viewTo); }
+  if (sawCollapsedSpans) {
+    from = visualLineNo(cm.doc, from);
+    to = visualLineEndNo(cm.doc, to);
+  }
+
+  var different = from != display.viewFrom || to != display.viewTo ||
+    display.lastWrapHeight != update.wrapperHeight || display.lastWrapWidth != update.wrapperWidth;
+  adjustView(cm, from, to);
+
+  display.viewOffset = heightAtLine(getLine(cm.doc, display.viewFrom));
+  // Position the mover div to align with the current scroll position
+  cm.display.mover.style.top = display.viewOffset + "px";
+
+  var toUpdate = countDirtyView(cm);
+  if (!different && toUpdate == 0 && !update.force && display.renderedView == display.view &&
+      (display.updateLineNumbers == null || display.updateLineNumbers >= display.viewTo))
+    { return false }
+
+  // For big changes, we hide the enclosing element during the
+  // update, since that speeds up the operations on most browsers.
+  var focused = activeElt();
+  if (toUpdate > 4) { display.lineDiv.style.display = "none"; }
+  patchDisplay(cm, display.updateLineNumbers, update.dims);
+  if (toUpdate > 4) { display.lineDiv.style.display = ""; }
+  display.renderedView = display.view;
+  // There might have been a widget with a focused element that got
+  // hidden or updated, if so re-focus it.
+  if (focused && activeElt() != focused && focused.offsetHeight) { focused.focus(); }
+
+  // Prevent selection and cursors from interfering with the scroll
+  // width and height.
+  removeChildren(display.cursorDiv);
+  removeChildren(display.selectionDiv);
+  display.gutters.style.height = display.sizer.style.minHeight = 0;
+
+  if (different) {
+    display.lastWrapHeight = update.wrapperHeight;
+    display.lastWrapWidth = update.wrapperWidth;
+    startWorker(cm, 400);
+  }
+
+  display.updateLineNumbers = null;
+
+  return true
+}
+
+function postUpdateDisplay(cm, update) {
+  var viewport = update.viewport;
+
+  for (var first = true;; first = false) {
+    if (!first || !cm.options.lineWrapping || update.oldDisplayWidth == displayWidth(cm)) {
+      // Clip forced viewport to actual scrollable area.
+      if (viewport && viewport.top != null)
+        { viewport = {top: Math.min(cm.doc.height + paddingVert(cm.display) - displayHeight(cm), viewport.top)}; }
+      // Updated line heights might result in the drawn area not
+      // actually covering the viewport. Keep looping until it does.
+      update.visible = visibleLines(cm.display, cm.doc, viewport);
+      if (update.visible.from >= cm.display.viewFrom && update.visible.to <= cm.display.viewTo)
+        { break }
+    }
+    if (!updateDisplayIfNeeded(cm, update)) { break }
+    updateHeightsInViewport(cm);
+    var barMeasure = measureForScrollbars(cm);
+    updateSelection(cm);
+    updateScrollbars(cm, barMeasure);
+    setDocumentHeight(cm, barMeasure);
+  }
+
+  update.signal(cm, "update", cm);
+  if (cm.display.viewFrom != cm.display.reportedViewFrom || cm.display.viewTo != cm.display.reportedViewTo) {
+    update.signal(cm, "viewportChange", cm, cm.display.viewFrom, cm.display.viewTo);
+    cm.display.reportedViewFrom = cm.display.viewFrom; cm.display.reportedViewTo = cm.display.viewTo;
+  }
+}
+
+function updateDisplaySimple(cm, viewport) {
+  var update = new DisplayUpdate(cm, viewport);
+  if (updateDisplayIfNeeded(cm, update)) {
+    updateHeightsInViewport(cm);
+    postUpdateDisplay(cm, update);
+    var barMeasure = measureForScrollbars(cm);
+    updateSelection(cm);
+    updateScrollbars(cm, barMeasure);
+    setDocumentHeight(cm, barMeasure);
+    update.finish();
+  }
+}
+
+// Sync the actual display DOM structure with display.view, removing
+// nodes for lines that are no longer in view, and creating the ones
+// that are not there yet, and updating the ones that are out of
+// date.
+function patchDisplay(cm, updateNumbersFrom, dims) {
+  var display = cm.display, lineNumbers = cm.options.lineNumbers;
+  var container = display.lineDiv, cur = container.firstChild;
+
+  function rm(node) {
+    var next = node.nextSibling;
+    // Works around a throw-scroll bug in OS X Webkit
+    if (webkit && mac && cm.display.currentWheelTarget == node)
+      { node.style.display = "none"; }
+    else
+      { node.parentNode.removeChild(node); }
+    return next
+  }
+
+  var view = display.view, lineN = display.viewFrom;
+  // Loop over the elements in the view, syncing cur (the DOM nodes
+  // in display.lineDiv) with the view as we go.
+  for (var i = 0; i < view.length; i++) {
+    var lineView = view[i];
+    if (lineView.hidden) {
+    } else if (!lineView.node || lineView.node.parentNode != container) { // Not drawn yet
+      var node = buildLineElement(cm, lineView, lineN, dims);
+      container.insertBefore(node, cur);
+    } else { // Already drawn
+      while (cur != lineView.node) { cur = rm(cur); }
+      var updateNumber = lineNumbers && updateNumbersFrom != null &&
+        updateNumbersFrom <= lineN && lineView.lineNumber;
+      if (lineView.changes) {
+        if (indexOf(lineView.changes, "gutter") > -1) { updateNumber = false; }
+        updateLineForChanges(cm, lineView, lineN, dims);
+      }
+      if (updateNumber) {
+        removeChildren(lineView.lineNumber);
+        lineView.lineNumber.appendChild(document.createTextNode(lineNumberFor(cm.options, lineN)));
+      }
+      cur = lineView.node.nextSibling;
+    }
+    lineN += lineView.size;
+  }
+  while (cur) { cur = rm(cur); }
+}
+
+function updateGutterSpace(cm) {
+  var width = cm.display.gutters.offsetWidth;
+  cm.display.sizer.style.marginLeft = width + "px";
+}
+
+function setDocumentHeight(cm, measure) {
+  cm.display.sizer.style.minHeight = measure.docHeight + "px";
+  cm.display.heightForcer.style.top = measure.docHeight + "px";
+  cm.display.gutters.style.height = (measure.docHeight + cm.display.barHeight + scrollGap(cm)) + "px";
+}
+
+// Rebuild the gutter elements, ensure the margin to the left of the
+// code matches their width.
+function updateGutters(cm) {
+  var gutters = cm.display.gutters, specs = cm.options.gutters;
+  removeChildren(gutters);
+  var i = 0;
+  for (; i < specs.length; ++i) {
+    var gutterClass = specs[i];
+    var gElt = gutters.appendChild(elt("div", null, "CodeMirror-gutter " + gutterClass));
+    if (gutterClass == "CodeMirror-linenumbers") {
+      cm.display.lineGutter = gElt;
+      gElt.style.width = (cm.display.lineNumWidth || 1) + "px";
+    }
+  }
+  gutters.style.display = i ? "" : "none";
+  updateGutterSpace(cm);
+}
+
+// Make sure the gutters options contains the element
+// "CodeMirror-linenumbers" when the lineNumbers option is true.
+function setGuttersForLineNumbers(options) {
+  var found = indexOf(options.gutters, "CodeMirror-linenumbers");
+  if (found == -1 && options.lineNumbers) {
+    options.gutters = options.gutters.concat(["CodeMirror-linenumbers"]);
+  } else if (found > -1 && !options.lineNumbers) {
+    options.gutters = options.gutters.slice(0);
+    options.gutters.splice(found, 1);
+  }
+}
+
+// Selection objects are immutable. A new one is created every time
+// the selection changes. A selection is one or more non-overlapping
+// (and non-touching) ranges, sorted, and an integer that indicates
+// which one is the primary selection (the one that's scrolled into
+// view, that getCursor returns, etc).
+var Selection = function(ranges, primIndex) {
+  this.ranges = ranges;
+  this.primIndex = primIndex;
+};
+
+Selection.prototype.primary = function () { return this.ranges[this.primIndex] };
+
+Selection.prototype.equals = function (other) {
+    var this$1 = this;
+
+  if (other == this) { return true }
+  if (other.primIndex != this.primIndex || other.ranges.length != this.ranges.length) { return false }
+  for (var i = 0; i < this.ranges.length; i++) {
+    var here = this$1.ranges[i], there = other.ranges[i];
+    if (!equalCursorPos(here.anchor, there.anchor) || !equalCursorPos(here.head, there.head)) { return false }
+  }
+  return true
+};
+
+Selection.prototype.deepCopy = function () {
+    var this$1 = this;
+
+  var out = [];
+  for (var i = 0; i < this.ranges.length; i++)
+    { out[i] = new Range(copyPos(this$1.ranges[i].anchor), copyPos(this$1.ranges[i].head)); }
+  return new Selection(out, this.primIndex)
+};
+
+Selection.prototype.somethingSelected = function () {
+    var this$1 = this;
+
+  for (var i = 0; i < this.ranges.length; i++)
+    { if (!this$1.ranges[i].empty()) { return true } }
+  return false
+};
+
+Selection.prototype.contains = function (pos, end) {
+    var this$1 = this;
+
+  if (!end) { end = pos; }
+  for (var i = 0; i < this.ranges.length; i++) {
+    var range = this$1.ranges[i];
+    if (cmp(end, range.from()) >= 0 && cmp(pos, range.to()) <= 0)
+      { return i }
+  }
+  return -1
+};
+
+var Range = function(anchor, head) {
+  this.anchor = anchor; this.head = head;
+};
+
+Range.prototype.from = function () { return minPos(this.anchor, this.head) };
+Range.prototype.to = function () { return maxPos(this.anchor, this.head) };
+Range.prototype.empty = function () { return this.head.line == this.anchor.line && this.head.ch == this.anchor.ch };
+
+// Take an unsorted, potentially overlapping set of ranges, and
+// build a selection out of it. 'Consumes' ranges array (modifying
+// it).
+function normalizeSelection(ranges, primIndex) {
+  var prim = ranges[primIndex];
+  ranges.sort(function (a, b) { return cmp(a.from(), b.from()); });
+  primIndex = indexOf(ranges, prim);
+  for (var i = 1; i < ranges.length; i++) {
+    var cur = ranges[i], prev = ranges[i - 1];
+    if (cmp(prev.to(), cur.from()) >= 0) {
+      var from = minPos(prev.from(), cur.from()), to = maxPos(prev.to(), cur.to());
+      var inv = prev.empty() ? cur.from() == cur.head : prev.from() == prev.head;
+      if (i <= primIndex) { --primIndex; }
+      ranges.splice(--i, 2, new Range(inv ? to : from, inv ? from : to));
+    }
+  }
+  return new Selection(ranges, primIndex)
+}
+
+function simpleSelection(anchor, head) {
+  return new Selection([new Range(anchor, head || anchor)], 0)
+}
+
+// Compute the position of the end of a change (its 'to' property
+// refers to the pre-change end).
+function changeEnd(change) {
+  if (!change.text) { return change.to }
+  return Pos(change.from.line + change.text.length - 1,
+             lst(change.text).length + (change.text.length == 1 ? change.from.ch : 0))
+}
+
+// Adjust a position to refer to the post-change position of the
+// same text, or the end of the change if the change covers it.
+function adjustForChange(pos, change) {
+  if (cmp(pos, change.from) < 0) { return pos }
+  if (cmp(pos, change.to) <= 0) { return changeEnd(change) }
+
+  var line = pos.line + change.text.length - (change.to.line - change.from.line) - 1, ch = pos.ch;
+  if (pos.line == change.to.line) { ch += changeEnd(change).ch - change.to.ch; }
+  return Pos(line, ch)
+}
+
+function computeSelAfterChange(doc, change) {
+  var out = [];
+  for (var i = 0; i < doc.sel.ranges.length; i++) {
+    var range = doc.sel.ranges[i];
+    out.push(new Range(adjustForChange(range.anchor, change),
+                       adjustForChange(range.head, change)));
+  }
+  return normalizeSelection(out, doc.sel.primIndex)
+}
+
+function offsetPos(pos, old, nw) {
+  if (pos.line == old.line)
+    { return Pos(nw.line, pos.ch - old.ch + nw.ch) }
+  else
+    { return Pos(nw.line + (pos.line - old.line), pos.ch) }
+}
+
+// Used by replaceSelections to allow moving the selection to the
+// start or around the replaced test. Hint may be "start" or "around".
+function computeReplacedSel(doc, changes, hint) {
+  var out = [];
+  var oldPrev = Pos(doc.first, 0), newPrev = oldPrev;
+  for (var i = 0; i < changes.length; i++) {
+    var change = changes[i];
+    var from = offsetPos(change.from, oldPrev, newPrev);
+    var to = offsetPos(changeEnd(change), oldPrev, newPrev);
+    oldPrev = change.to;
+    newPrev = to;
+    if (hint == "around") {
+      var range = doc.sel.ranges[i], inv = cmp(range.head, range.anchor) < 0;
+      out[i] = new Range(inv ? to : from, inv ? from : to);
+    } else {
+      out[i] = new Range(from, from);
+    }
+  }
+  return new Selection(out, doc.sel.primIndex)
+}
+
+// Used to get the editor into a consistent state again when options change.
+
+function loadMode(cm) {
+  cm.doc.mode = getMode(cm.options, cm.doc.modeOption);
+  resetModeState(cm);
+}
+
+function resetModeState(cm) {
+  cm.doc.iter(function (line) {
+    if (line.stateAfter) { line.stateAfter = null; }
+    if (line.styles) { line.styles = null; }
+  });
+  cm.doc.frontier = cm.doc.first;
+  startWorker(cm, 100);
+  cm.state.modeGen++;
+  if (cm.curOp) { regChange(cm); }
+}
+
+// DOCUMENT DATA STRUCTURE
+
+// By default, updates that start and end at the beginning of a line
+// are treated specially, in order to make the association of line
+// widgets and marker elements with the text behave more intuitive.
+function isWholeLineUpdate(doc, change) {
+  return change.from.ch == 0 && change.to.ch == 0 && lst(change.text) == "" &&
+    (!doc.cm || doc.cm.options.wholeLineUpdateBefore)
+}
+
+// Perform a change on the document data structure.
+function updateDoc(doc, change, markedSpans, estimateHeight$$1) {
+  function spansFor(n) {return markedSpans ? markedSpans[n] : null}
+  function update(line, text, spans) {
+    updateLine(line, text, spans, estimateHeight$$1);
+    signalLater(line, "change", line, change);
+  }
+  function linesFor(start, end) {
+    var result = [];
+    for (var i = start; i < end; ++i)
+      { result.push(new Line(text[i], spansFor(i), estimateHeight$$1)); }
+    return result
+  }
+
+  var from = change.from, to = change.to, text = change.text;
+  var firstLine = getLine(doc, from.line), lastLine = getLine(doc, to.line);
+  var lastText = lst(text), lastSpans = spansFor(text.length - 1), nlines = to.line - from.line;
+
+  // Adjust the line structure
+  if (change.full) {
+    doc.insert(0, linesFor(0, text.length));
+    doc.remove(text.length, doc.size - text.length);
+  } else if (isWholeLineUpdate(doc, change)) {
+    // This is a whole-line replace. Treated specially to make
+    // sure line objects move the way they are supposed to.
+    var added = linesFor(0, text.length - 1);
+    update(lastLine, lastLine.text, lastSpans);
+    if (nlines) { doc.remove(from.line, nlines); }
+    if (added.length) { doc.insert(from.line, added); }
+  } else if (firstLine == lastLine) {
+    if (text.length == 1) {
+      update(firstLine, firstLine.text.slice(0, from.ch) + lastText + firstLine.text.slice(to.ch), lastSpans);
+    } else {
+      var added$1 = linesFor(1, text.length - 1);
+      added$1.push(new Line(lastText + firstLine.text.slice(to.ch), lastSpans, estimateHeight$$1));
+      update(firstLine, firstLine.text.slice(0, from.ch) + text[0], spansFor(0));
+      doc.insert(from.line + 1, added$1);
+    }
+  } else if (text.length == 1) {
+    update(firstLine, firstLine.text.slice(0, from.ch) + text[0] + lastLine.text.slice(to.ch), spansFor(0));
+    doc.remove(from.line + 1, nlines);
+  } else {
+    update(firstLine, firstLine.text.slice(0, from.ch) + text[0], spansFor(0));
+    update(lastLine, lastText + lastLine.text.slice(to.ch), lastSpans);
+    var added$2 = linesFor(1, text.length - 1);
+    if (nlines > 1) { doc.remove(from.line + 1, nlines - 1); }
+    doc.insert(from.line + 1, added$2);
+  }
+
+  signalLater(doc, "change", doc, change);
+}
+
+// Call f for all linked documents.
+function linkedDocs(doc, f, sharedHistOnly) {
+  function propagate(doc, skip, sharedHist) {
+    if (doc.linked) { for (var i = 0; i < doc.linked.length; ++i) {
+      var rel = doc.linked[i];
+      if (rel.doc == skip) { continue }
+      var shared = sharedHist && rel.sharedHist;
+      if (sharedHistOnly && !shared) { continue }
+      f(rel.doc, shared);
+      propagate(rel.doc, doc, shared);
+    } }
+  }
+  propagate(doc, null, true);
+}
+
+// Attach a document to an editor.
+function attachDoc(cm, doc) {
+  if (doc.cm) { throw new Error("This document is already in use.") }
+  cm.doc = doc;
+  doc.cm = cm;
+  estimateLineHeights(cm);
+  loadMode(cm);
+  setDirectionClass(cm);
+  if (!cm.options.lineWrapping) { findMaxLine(cm); }
+  cm.options.mode = doc.modeOption;
+  regChange(cm);
+}
+
+function setDirectionClass(cm) {
+  (cm.doc.direction == "rtl" ? addClass : rmClass)(cm.display.lineDiv, "CodeMirror-rtl");
+}
+
+function directionChanged(cm) {
+  runInOp(cm, function () {
+    setDirectionClass(cm);
+    regChange(cm);
+  });
+}
+
+function History(startGen) {
+  // Arrays of change events and selections. Doing something adds an
+  // event to done and clears undo. Undoing moves events from done
+  // to undone, redoing moves them in the other direction.
+  this.done = []; this.undone = [];
+  this.undoDepth = Infinity;
+  // Used to track when changes can be merged into a single undo
+  // event
+  this.lastModTime = this.lastSelTime = 0;
+  this.lastOp = this.lastSelOp = null;
+  this.lastOrigin = this.lastSelOrigin = null;
+  // Used by the isClean() method
+  this.generation = this.maxGeneration = startGen || 1;
+}
+
+// Create a history change event from an updateDoc-style change
+// object.
+function historyChangeFromChange(doc, change) {
+  var histChange = {from: copyPos(change.from), to: changeEnd(change), text: getBetween(doc, change.from, change.to)};
+  attachLocalSpans(doc, histChange, change.from.line, change.to.line + 1);
+  linkedDocs(doc, function (doc) { return attachLocalSpans(doc, histChange, change.from.line, change.to.line + 1); }, true);
+  return histChange
+}
+
+// Pop all selection events off the end of a history array. Stop at
+// a change event.
+function clearSelectionEvents(array) {
+  while (array.length) {
+    var last = lst(array);
+    if (last.ranges) { array.pop(); }
+    else { break }
+  }
+}
+
+// Find the top change event in the history. Pop off selection
+// events that are in the way.
+function lastChangeEvent(hist, force) {
+  if (force) {
+    clearSelectionEvents(hist.done);
+    return lst(hist.done)
+  } else if (hist.done.length && !lst(hist.done).ranges) {
+    return lst(hist.done)
+  } else if (hist.done.length > 1 && !hist.done[hist.done.length - 2].ranges) {
+    hist.done.pop();
+    return lst(hist.done)
+  }
+}
+
+// Register a change in the history. Merges changes that are within
+// a single operation, or are close together with an origin that
+// allows merging (starting with "+") into a single event.
+function addChangeToHistory(doc, change, selAfter, opId) {
+  var hist = doc.history;
+  hist.undone.length = 0;
+  var time = +new Date, cur;
+  var last;
+
+  if ((hist.lastOp == opId ||
+       hist.lastOrigin == change.origin && change.origin &&
+       ((change.origin.charAt(0) == "+" && doc.cm && hist.lastModTime > time - doc.cm.options.historyEventDelay) ||
+        change.origin.charAt(0) == "*")) &&
+      (cur = lastChangeEvent(hist, hist.lastOp == opId))) {
+    // Merge this change into the last event
+    last = lst(cur.changes);
+    if (cmp(change.from, change.to) == 0 && cmp(change.from, last.to) == 0) {
+      // Optimized case for simple insertion -- don't want to add
+      // new changesets for every character typed
+      last.to = changeEnd(change);
+    } else {
+      // Add new sub-event
+      cur.changes.push(historyChangeFromChange(doc, change));
+    }
+  } else {
+    // Can not be merged, start a new event.
+    var before = lst(hist.done);
+    if (!before || !before.ranges)
+      { pushSelectionToHistory(doc.sel, hist.done); }
+    cur = {changes: [historyChangeFromChange(doc, change)],
+           generation: hist.generation};
+    hist.done.push(cur);
+    while (hist.done.length > hist.undoDepth) {
+      hist.done.shift();
+      if (!hist.done[0].ranges) { hist.done.shift(); }
+    }
+  }
+  hist.done.push(selAfter);
+  hist.generation = ++hist.maxGeneration;
+  hist.lastModTime = hist.lastSelTime = time;
+  hist.lastOp = hist.lastSelOp = opId;
+  hist.lastOrigin = hist.lastSelOrigin = change.origin;
+
+  if (!last) { signal(doc, "historyAdded"); }
+}
+
+function selectionEventCanBeMerged(doc, origin, prev, sel) {
+  var ch = origin.charAt(0);
+  return ch == "*" ||
+    ch == "+" &&
+    prev.ranges.length == sel.ranges.length &&
+    prev.somethingSelected() == sel.somethingSelected() &&
+    new Date - doc.history.lastSelTime <= (doc.cm ? doc.cm.options.historyEventDelay : 500)
+}
+
+// Called whenever the selection changes, sets the new selection as
+// the pending selection in the history, and pushes the old pending
+// selection into the 'done' array when it was significantly
+// different (in number of selected ranges, emptiness, or time).
+function addSelectionToHistory(doc, sel, opId, options) {
+  var hist = doc.history, origin = options && options.origin;
+
+  // A new event is started when the previous origin does not match
+  // the current, or the origins don't allow matching. Origins
+  // starting with * are always merged, those starting with + are
+  // merged when similar and close together in time.
+  if (opId == hist.lastSelOp ||
+      (origin && hist.lastSelOrigin == origin &&
+       (hist.lastModTime == hist.lastSelTime && hist.lastOrigin == origin ||
+        selectionEventCanBeMerged(doc, origin, lst(hist.done), sel))))
+    { hist.done[hist.done.length - 1] = sel; }
+  else
+    { pushSelectionToHistory(sel, hist.done); }
+
+  hist.lastSelTime = +new Date;
+  hist.lastSelOrigin = origin;
+  hist.lastSelOp = opId;
+  if (options && options.clearRedo !== false)
+    { clearSelectionEvents(hist.undone); }
+}
+
+function pushSelectionToHistory(sel, dest) {
+  var top = lst(dest);
+  if (!(top && top.ranges && top.equals(sel)))
+    { dest.push(sel); }
+}
+
+// Used to store marked span information in the history.
+function attachLocalSpans(doc, change, from, to) {
+  var existing = change["spans_" + doc.id], n = 0;
+  doc.iter(Math.max(doc.first, from), Math.min(doc.first + doc.size, to), function (line) {
+    if (line.markedSpans)
+      { (existing || (existing = change["spans_" + doc.id] = {}))[n] = line.markedSpans; }
+    ++n;
+  });
+}
+
+// When un/re-doing restores text containing marked spans, those
+// that have been explicitly cleared should not be restored.
+function removeClearedSpans(spans) {
+  if (!spans) { return null }
+  var out;
+  for (var i = 0; i < spans.length; ++i) {
+    if (spans[i].marker.explicitlyCleared) { if (!out) { out = spans.slice(0, i); } }
+    else if (out) { out.push(spans[i]); }
+  }
+  return !out ? spans : out.length ? out : null
+}
+
+// Retrieve and filter the old marked spans stored in a change event.
+function getOldSpans(doc, change) {
+  var found = change["spans_" + doc.id];
+  if (!found) { return null }
+  var nw = [];
+  for (var i = 0; i < change.text.length; ++i)
+    { nw.push(removeClearedSpans(found[i])); }
+  return nw
+}
+
+// Used for un/re-doing changes from the history. Combines the
+// result of computing the existing spans with the set of spans that
+// existed in the history (so that deleting around a span and then
+// undoing brings back the span).
+function mergeOldSpans(doc, change) {
+  var old = getOldSpans(doc, change);
+  var stretched = stretchSpansOverChange(doc, change);
+  if (!old) { return stretched }
+  if (!stretched) { return old }
+
+  for (var i = 0; i < old.length; ++i) {
+    var oldCur = old[i], stretchCur = stretched[i];
+    if (oldCur && stretchCur) {
+      spans: for (var j = 0; j < stretchCur.length; ++j) {
+        var span = stretchCur[j];
+        for (var k = 0; k < oldCur.length; ++k)
+          { if (oldCur[k].marker == span.marker) { continue spans } }
+        oldCur.push(span);
+      }
+    } else if (stretchCur) {
+      old[i] = stretchCur;
+    }
+  }
+  return old
+}
+
+// Used both to provide a JSON-safe object in .getHistory, and, when
+// detaching a document, to split the history in two
+function copyHistoryArray(events, newGroup, instantiateSel) {
+  var copy = [];
+  for (var i = 0; i < events.length; ++i) {
+    var event = events[i];
+    if (event.ranges) {
+      copy.push(instantiateSel ? Selection.prototype.deepCopy.call(event) : event);
+      continue
+    }
+    var changes = event.changes, newChanges = [];
+    copy.push({changes: newChanges});
+    for (var j = 0; j < changes.length; ++j) {
+      var change = changes[j], m = (void 0);
+      newChanges.push({from: change.from, to: change.to, text: change.text});
+      if (newGroup) { for (var prop in change) { if (m = prop.match(/^spans_(\d+)$/)) {
+        if (indexOf(newGroup, Number(m[1])) > -1) {
+          lst(newChanges)[prop] = change[prop];
+          delete change[prop];
+        }
+      } } }
+    }
+  }
+  return copy
+}
+
+// The 'scroll' parameter given to many of these indicated whether
+// the new cursor position should be scrolled into view after
+// modifying the selection.
+
+// If shift is held or the extend flag is set, extends a range to
+// include a given position (and optionally a second position).
+// Otherwise, simply returns the range between the given positions.
+// Used for cursor motion and such.
+function extendRange(doc, range, head, other) {
+  if (doc.cm && doc.cm.display.shift || doc.extend) {
+    var anchor = range.anchor;
+    if (other) {
+      var posBefore = cmp(head, anchor) < 0;
+      if (posBefore != (cmp(other, anchor) < 0)) {
+        anchor = head;
+        head = other;
+      } else if (posBefore != (cmp(head, other) < 0)) {
+        head = other;
+      }
+    }
+    return new Range(anchor, head)
+  } else {
+    return new Range(other || head, head)
+  }
+}
+
+// Extend the primary selection range, discard the rest.
+function extendSelection(doc, head, other, options) {
+  setSelection(doc, new Selection([extendRange(doc, doc.sel.primary(), head, other)], 0), options);
+}
+
+// Extend all selections (pos is an array of selections with length
+// equal the number of selections)
+function extendSelections(doc, heads, options) {
+  var out = [];
+  for (var i = 0; i < doc.sel.ranges.length; i++)
+    { out[i] = extendRange(doc, doc.sel.ranges[i], heads[i], null); }
+  var newSel = normalizeSelection(out, doc.sel.primIndex);
+  setSelection(doc, newSel, options);
+}
+
+// Updates a single range in the selection.
+function replaceOneSelection(doc, i, range, options) {
+  var ranges = doc.sel.ranges.slice(0);
+  ranges[i] = range;
+  setSelection(doc, normalizeSelection(ranges, doc.sel.primIndex), options);
+}
+
+// Reset the selection to a single range.
+function setSimpleSelection(doc, anchor, head, options) {
+  setSelection(doc, simpleSelection(anchor, head), options);
+}
+
+// Give beforeSelectionChange handlers a change to influence a
+// selection update.
+function filterSelectionChange(doc, sel, options) {
+  var obj = {
+    ranges: sel.ranges,
+    update: function(ranges) {
+      var this$1 = this;
+
+      this.ranges = [];
+      for (var i = 0; i < ranges.length; i++)
+        { this$1.ranges[i] = new Range(clipPos(doc, ranges[i].anchor),
+                                   clipPos(doc, ranges[i].head)); }
+    },
+    origin: options && options.origin
+  };
+  signal(doc, "beforeSelectionChange", doc, obj);
+  if (doc.cm) { signal(doc.cm, "beforeSelectionChange", doc.cm, obj); }
+  if (obj.ranges != sel.ranges) { return normalizeSelection(obj.ranges, obj.ranges.length - 1) }
+  else { return sel }
+}
+
+function setSelectionReplaceHistory(doc, sel, options) {
+  var done = doc.history.done, last = lst(done);
+  if (last && last.ranges) {
+    done[done.length - 1] = sel;
+    setSelectionNoUndo(doc, sel, options);
+  } else {
+    setSelection(doc, sel, options);
+  }
+}
+
+// Set a new selection.
+function setSelection(doc, sel, options) {
+  setSelectionNoUndo(doc, sel, options);
+  addSelectionToHistory(doc, doc.sel, doc.cm ? doc.cm.curOp.id : NaN, options);
+}
+
+function setSelectionNoUndo(doc, sel, options) {
+  if (hasHandler(doc, "beforeSelectionChange") || doc.cm && hasHandler(doc.cm, "beforeSelectionChange"))
+    { sel = filterSelectionChange(doc, sel, options); }
+
+  var bias = options && options.bias ||
+    (cmp(sel.primary().head, doc.sel.primary().head) < 0 ? -1 : 1);
+  setSelectionInner(doc, skipAtomicInSelection(doc, sel, bias, true));
+
+  if (!(options && options.scroll === false) && doc.cm)
+    { ensureCursorVisible(doc.cm); }
+}
+
+function setSelectionInner(doc, sel) {
+  if (sel.equals(doc.sel)) { return }
+
+  doc.sel = sel;
+
+  if (doc.cm) {
+    doc.cm.curOp.updateInput = doc.cm.curOp.selectionChanged = true;
+    signalCursorActivity(doc.cm);
+  }
+  signalLater(doc, "cursorActivity", doc);
+}
+
+// Verify that the selection does not partially select any atomic
+// marked ranges.
+function reCheckSelection(doc) {
+  setSelectionInner(doc, skipAtomicInSelection(doc, doc.sel, null, false), sel_dontScroll);
+}
+
+// Return a selection that does not partially select any atomic
+// ranges.
+function skipAtomicInSelection(doc, sel, bias, mayClear) {
+  var out;
+  for (var i = 0; i < sel.ranges.length; i++) {
+    var range = sel.ranges[i];
+    var old = sel.ranges.length == doc.sel.ranges.length && doc.sel.ranges[i];
+    var newAnchor = skipAtomic(doc, range.anchor, old && old.anchor, bias, mayClear);
+    var newHead = skipAtomic(doc, range.head, old && old.head, bias, mayClear);
+    if (out || newAnchor != range.anchor || newHead != range.head) {
+      if (!out) { out = sel.ranges.slice(0, i); }
+      out[i] = new Range(newAnchor, newHead);
+    }
+  }
+  return out ? normalizeSelection(out, sel.primIndex) : sel
+}
+
+function skipAtomicInner(doc, pos, oldPos, dir, mayClear) {
+  var line = getLine(doc, pos.line);
+  if (line.markedSpans) { for (var i = 0; i < line.markedSpans.length; ++i) {
+    var sp = line.markedSpans[i], m = sp.marker;
+    if ((sp.from == null || (m.inclusiveLeft ? sp.from <= pos.ch : sp.from < pos.ch)) &&
+        (sp.to == null || (m.inclusiveRight ? sp.to >= pos.ch : sp.to > pos.ch))) {
+      if (mayClear) {
+        signal(m, "beforeCursorEnter");
+        if (m.explicitlyCleared) {
+          if (!line.markedSpans) { break }
+          else {--i; continue}
+        }
+      }
+      if (!m.atomic) { continue }
+
+      if (oldPos) {
+        var near = m.find(dir < 0 ? 1 : -1), diff = (void 0);
+        if (dir < 0 ? m.inclusiveRight : m.inclusiveLeft)
+          { near = movePos(doc, near, -dir, near && near.line == pos.line ? line : null); }
+        if (near && near.line == pos.line && (diff = cmp(near, oldPos)) && (dir < 0 ? diff < 0 : diff > 0))
+          { return skipAtomicInner(doc, near, pos, dir, mayClear) }
+      }
+
+      var far = m.find(dir < 0 ? -1 : 1);
+      if (dir < 0 ? m.inclusiveLeft : m.inclusiveRight)
+        { far = movePos(doc, far, dir, far.line == pos.line ? line : null); }
+      return far ? skipAtomicInner(doc, far, pos, dir, mayClear) : null
+    }
+  } }
+  return pos
+}
+
+// Ensure a given position is not inside an atomic range.
+function skipAtomic(doc, pos, oldPos, bias, mayClear) {
+  var dir = bias || 1;
+  var found = skipAtomicInner(doc, pos, oldPos, dir, mayClear) ||
+      (!mayClear && skipAtomicInner(doc, pos, oldPos, dir, true)) ||
+      skipAtomicInner(doc, pos, oldPos, -dir, mayClear) ||
+      (!mayClear && skipAtomicInner(doc, pos, oldPos, -dir, true));
+  if (!found) {
+    doc.cantEdit = true;
+    return Pos(doc.first, 0)
+  }
+  return found
+}
+
+function movePos(doc, pos, dir, line) {
+  if (dir < 0 && pos.ch == 0) {
+    if (pos.line > doc.first) { return clipPos(doc, Pos(pos.line - 1)) }
+    else { return null }
+  } else if (dir > 0 && pos.ch == (line || getLine(doc, pos.line)).text.length) {
+    if (pos.line < doc.first + doc.size - 1) { return Pos(pos.line + 1, 0) }
+    else { return null }
+  } else {
+    return new Pos(pos.line, pos.ch + dir)
+  }
+}
+
+function selectAll(cm) {
+  cm.setSelection(Pos(cm.firstLine(), 0), Pos(cm.lastLine()), sel_dontScroll);
+}
+
+// UPDATING
+
+// Allow "beforeChange" event handlers to influence a change
+function filterChange(doc, change, update) {
+  var obj = {
+    canceled: false,
+    from: change.from,
+    to: change.to,
+    text: change.text,
+    origin: change.origin,
+    cancel: function () { return obj.canceled = true; }
+  };
+  if (update) { obj.update = function (from, to, text, origin) {
+    if (from) { obj.from = clipPos(doc, from); }
+    if (to) { obj.to = clipPos(doc, to); }
+    if (text) { obj.text = text; }
+    if (origin !== undefined) { obj.origin = origin; }
+  }; }
+  signal(doc, "beforeChange", doc, obj);
+  if (doc.cm) { signal(doc.cm, "beforeChange", doc.cm, obj); }
+
+  if (obj.canceled) { return null }
+  return {from: obj.from, to: obj.to, text: obj.text, origin: obj.origin}
+}
+
+// Apply a change to a document, and add it to the document's
+// history, and propagating it to all linked documents.
+function makeChange(doc, change, ignoreReadOnly) {
+  if (doc.cm) {
+    if (!doc.cm.curOp) { return operation(doc.cm, makeChange)(doc, change, ignoreReadOnly) }
+    if (doc.cm.state.suppressEdits) { return }
+  }
+
+  if (hasHandler(doc, "beforeChange") || doc.cm && hasHandler(doc.cm, "beforeChange")) {
+    change = filterChange(doc, change, true);
+    if (!change) { return }
+  }
+
+  // Possibly split or suppress the update based on the presence
+  // of read-only spans in its range.
+  var split = sawReadOnlySpans && !ignoreReadOnly && removeReadOnlyRanges(doc, change.from, change.to);
+  if (split) {
+    for (var i = split.length - 1; i >= 0; --i)
+      { makeChangeInner(doc, {from: split[i].from, to: split[i].to, text: i ? [""] : change.text}); }
+  } else {
+    makeChangeInner(doc, change);
+  }
+}
+
+function makeChangeInner(doc, change) {
+  if (change.text.length == 1 && change.text[0] == "" && cmp(change.from, change.to) == 0) { return }
+  var selAfter = computeSelAfterChange(doc, change);
+  addChangeToHistory(doc, change, selAfter, doc.cm ? doc.cm.curOp.id : NaN);
+
+  makeChangeSingleDoc(doc, change, selAfter, stretchSpansOverChange(doc, change));
+  var rebased = [];
+
+  linkedDocs(doc, function (doc, sharedHist) {
+    if (!sharedHist && indexOf(rebased, doc.history) == -1) {
+      rebaseHist(doc.history, change);
+      rebased.push(doc.history);
+    }
+    makeChangeSingleDoc(doc, change, null, stretchSpansOverChange(doc, change));
+  });
+}
+
+// Revert a change stored in a document's history.
+function makeChangeFromHistory(doc, type, allowSelectionOnly) {
+  if (doc.cm && doc.cm.state.suppressEdits && !allowSelectionOnly) { return }
+
+  var hist = doc.history, event, selAfter = doc.sel;
+  var source = type == "undo" ? hist.done : hist.undone, dest = type == "undo" ? hist.undone : hist.done;
+
+  // Verify that there is a useable event (so that ctrl-z won't
+  // needlessly clear selection events)
+  var i = 0;
+  for (; i < source.length; i++) {
+    event = source[i];
+    if (allowSelectionOnly ? event.ranges && !event.equals(doc.sel) : !event.ranges)
+      { break }
+  }
+  if (i == source.length) { return }
+  hist.lastOrigin = hist.lastSelOrigin = null;
+
+  for (;;) {
+    event = source.pop();
+    if (event.ranges) {
+      pushSelectionToHistory(event, dest);
+      if (allowSelectionOnly && !event.equals(doc.sel)) {
+        setSelection(doc, event, {clearRedo: false});
+        return
+      }
+      selAfter = event;
+    }
+    else { break }
+  }
+
+  // Build up a reverse change object to add to the opposite history
+  // stack (redo when undoing, and vice versa).
+  var antiChanges = [];
+  pushSelectionToHistory(selAfter, dest);
+  dest.push({changes: antiChanges, generation: hist.generation});
+  hist.generation = event.generation || ++hist.maxGeneration;
+
+  var filter = hasHandler(doc, "beforeChange") || doc.cm && hasHandler(doc.cm, "beforeChange");
+
+  var loop = function ( i ) {
+    var change = event.changes[i];
+    change.origin = type;
+    if (filter && !filterChange(doc, change, false)) {
+      source.length = 0;
+      return {}
+    }
+
+    antiChanges.push(historyChangeFromChange(doc, change));
+
+    var after = i ? computeSelAfterChange(doc, change) : lst(source);
+    makeChangeSingleDoc(doc, change, after, mergeOldSpans(doc, change));
+    if (!i && doc.cm) { doc.cm.scrollIntoView({from: change.from, to: changeEnd(change)}); }
+    var rebased = [];
+
+    // Propagate to the linked documents
+    linkedDocs(doc, function (doc, sharedHist) {
+      if (!sharedHist && indexOf(rebased, doc.history) == -1) {
+        rebaseHist(doc.history, change);
+        rebased.push(doc.history);
+      }
+      makeChangeSingleDoc(doc, change, null, mergeOldSpans(doc, change));
+    });
+  };
+
+  for (var i$1 = event.changes.length - 1; i$1 >= 0; --i$1) {
+    var returned = loop( i$1 );
+
+    if ( returned ) return returned.v;
+  }
+}
+
+// Sub-views need their line numbers shifted when text is added
+// above or below them in the parent document.
+function shiftDoc(doc, distance) {
+  if (distance == 0) { return }
+  doc.first += distance;
+  doc.sel = new Selection(map(doc.sel.ranges, function (range) { return new Range(
+    Pos(range.anchor.line + distance, range.anchor.ch),
+    Pos(range.head.line + distance, range.head.ch)
+  ); }), doc.sel.primIndex);
+  if (doc.cm) {
+    regChange(doc.cm, doc.first, doc.first - distance, distance);
+    for (var d = doc.cm.display, l = d.viewFrom; l < d.viewTo; l++)
+      { regLineChange(doc.cm, l, "gutter"); }
+  }
+}
+
+// More lower-level change function, handling only a single document
+// (not linked ones).
+function makeChangeSingleDoc(doc, change, selAfter, spans) {
+  if (doc.cm && !doc.cm.curOp)
+    { return operation(doc.cm, makeChangeSingleDoc)(doc, change, selAfter, spans) }
+
+  if (change.to.line < doc.first) {
+    shiftDoc(doc, change.text.length - 1 - (change.to.line - change.from.line));
+    return
+  }
+  if (change.from.line > doc.lastLine()) { return }
+
+  // Clip the change to the size of this doc
+  if (change.from.line < doc.first) {
+    var shift = change.text.length - 1 - (doc.first - change.from.line);
+    shiftDoc(doc, shift);
+    change = {from: Pos(doc.first, 0), to: Pos(change.to.line + shift, change.to.ch),
+              text: [lst(change.text)], origin: change.origin};
+  }
+  var last = doc.lastLine();
+  if (change.to.line > last) {
+    change = {from: change.from, to: Pos(last, getLine(doc, last).text.length),
+              text: [change.text[0]], origin: change.origin};
+  }
+
+  change.removed = getBetween(doc, change.from, change.to);
+
+  if (!selAfter) { selAfter = computeSelAfterChange(doc, change); }
+  if (doc.cm) { makeChangeSingleDocInEditor(doc.cm, change, spans); }
+  else { updateDoc(doc, change, spans); }
+  setSelectionNoUndo(doc, selAfter, sel_dontScroll);
+}
+
+// Handle the interaction of a change to a document with the editor
+// that this document is part of.
+function makeChangeSingleDocInEditor(cm, change, spans) {
+  var doc = cm.doc, display = cm.display, from = change.from, to = change.to;
+
+  var recomputeMaxLength = false, checkWidthStart = from.line;
+  if (!cm.options.lineWrapping) {
+    checkWidthStart = lineNo(visualLine(getLine(doc, from.line)));
+    doc.iter(checkWidthStart, to.line + 1, function (line) {
+      if (line == display.maxLine) {
+        recomputeMaxLength = true;
+        return true
+      }
+    });
+  }
+
+  if (doc.sel.contains(change.from, change.to) > -1)
+    { signalCursorActivity(cm); }
+
+  updateDoc(doc, change, spans, estimateHeight(cm));
+
+  if (!cm.options.lineWrapping) {
+    doc.iter(checkWidthStart, from.line + change.text.length, function (line) {
+      var len = lineLength(line);
+      if (len > display.maxLineLength) {
+        display.maxLine = line;
+        display.maxLineLength = len;
+        display.maxLineChanged = true;
+        recomputeMaxLength = false;
+      }
+    });
+    if (recomputeMaxLength) { cm.curOp.updateMaxLine = true; }
+  }
+
+  // Adjust frontier, schedule worker
+  doc.frontier = Math.min(doc.frontier, from.line);
+  startWorker(cm, 400);
+
+  var lendiff = change.text.length - (to.line - from.line) - 1;
+  // Remember that these lines changed, for updating the display
+  if (change.full)
+    { regChange(cm); }
+  else if (from.line == to.line && change.text.length == 1 && !isWholeLineUpdate(cm.doc, change))
+    { regLineChange(cm, from.line, "text"); }
+  else
+    { regChange(cm, from.line, to.line + 1, lendiff); }
+
+  var changesHandler = hasHandler(cm, "changes"), changeHandler = hasHandler(cm, "change");
+  if (changeHandler || changesHandler) {
+    var obj = {
+      from: from, to: to,
+      text: change.text,
+      removed: change.removed,
+      origin: change.origin
+    };
+    if (changeHandler) { signalLater(cm, "change", cm, obj); }
+    if (changesHandler) { (cm.curOp.changeObjs || (cm.curOp.changeObjs = [])).push(obj); }
+  }
+  cm.display.selForContextMenu = null;
+}
+
+function replaceRange(doc, code, from, to, origin) {
+  if (!to) { to = from; }
+  if (cmp(to, from) < 0) { var tmp = to; to = from; from = tmp; }
+  if (typeof code == "string") { code = doc.splitLines(code); }
+  makeChange(doc, {from: from, to: to, text: code, origin: origin});
+}
+
+// Rebasing/resetting history to deal with externally-sourced changes
+
+function rebaseHistSelSingle(pos, from, to, diff) {
+  if (to < pos.line) {
+    pos.line += diff;
+  } else if (from < pos.line) {
+    pos.line = from;
+    pos.ch = 0;
+  }
+}
+
+// Tries to rebase an array of history events given a change in the
+// document. If the change touches the same lines as the event, the
+// event, and everything 'behind' it, is discarded. If the change is
+// before the event, the event's positions are updated. Uses a
+// copy-on-write scheme for the positions, to avoid having to
+// reallocate them all on every rebase, but also avoid problems with
+// shared position objects being unsafely updated.
+function rebaseHistArray(array, from, to, diff) {
+  for (var i = 0; i < array.length; ++i) {
+    var sub = array[i], ok = true;
+    if (sub.ranges) {
+      if (!sub.copied) { sub = array[i] = sub.deepCopy(); sub.copied = true; }
+      for (var j = 0; j < sub.ranges.length; j++) {
+        rebaseHistSelSingle(sub.ranges[j].anchor, from, to, diff);
+        rebaseHistSelSingle(sub.ranges[j].head, from, to, diff);
+      }
+      continue
+    }
+    for (var j$1 = 0; j$1 < sub.changes.length; ++j$1) {
+      var cur = sub.changes[j$1];
+      if (to < cur.from.line) {
+        cur.from = Pos(cur.from.line + diff, cur.from.ch);
+        cur.to = Pos(cur.to.line + diff, cur.to.ch);
+      } else if (from <= cur.to.line) {
+        ok = false;
+        break
+      }
+    }
+    if (!ok) {
+      array.splice(0, i + 1);
+      i = 0;
+    }
+  }
+}
+
+function rebaseHist(hist, change) {
+  var from = change.from.line, to = change.to.line, diff = change.text.length - (to - from) - 1;
+  rebaseHistArray(hist.done, from, to, diff);
+  rebaseHistArray(hist.undone, from, to, diff);
+}
+
+// Utility for applying a change to a line by handle or number,
+// returning the number and optionally registering the line as
+// changed.
+function changeLine(doc, handle, changeType, op) {
+  var no = handle, line = handle;
+  if (typeof handle == "number") { line = getLine(doc, clipLine(doc, handle)); }
+  else { no = lineNo(handle); }
+  if (no == null) { return null }
+  if (op(line, no) && doc.cm) { regLineChange(doc.cm, no, changeType); }
+  return line
+}
+
+// The document is represented as a BTree consisting of leaves, with
+// chunk of lines in them, and branches, with up to ten leaves or
+// other branch nodes below them. The top node is always a branch
+// node, and is the document object itself (meaning it has
+// additional methods and properties).
+//
+// All nodes have parent links. The tree is used both to go from
+// line numbers to line objects, and to go from objects to numbers.
+// It also indexes by height, and is used to convert between height
+// and line object, and to find the total height of the document.
+//
+// See also http://marijnhaverbeke.nl/blog/codemirror-line-tree.html
+
+var LeafChunk = function(lines) {
+  var this$1 = this;
+
+  this.lines = lines;
+  this.parent = null;
+  var height = 0;
+  for (var i = 0; i < lines.length; ++i) {
+    lines[i].parent = this$1;
+    height += lines[i].height;
+  }
+  this.height = height;
+};
+
+LeafChunk.prototype.chunkSize = function () { return this.lines.length };
+
+// Remove the n lines at offset 'at'.
+LeafChunk.prototype.removeInner = function (at, n) {
+    var this$1 = this;
+
+  for (var i = at, e = at + n; i < e; ++i) {
+    var line = this$1.lines[i];
+    this$1.height -= line.height;
+    cleanUpLine(line);
+    signalLater(line, "delete");
+  }
+  this.lines.splice(at, n);
+};
+
+// Helper used to collapse a small branch into a single leaf.
+LeafChunk.prototype.collapse = function (lines) {
+  lines.push.apply(lines, this.lines);
+};
+
+// Insert the given array of lines at offset 'at', count them as
+// having the given height.
+LeafChunk.prototype.insertInner = function (at, lines, height) {
+    var this$1 = this;
+
+  this.height += height;
+  this.lines = this.lines.slice(0, at).concat(lines).concat(this.lines.slice(at));
+  for (var i = 0; i < lines.length; ++i) { lines[i].parent = this$1; }
+};
+
+// Used to iterate over a part of the tree.
+LeafChunk.prototype.iterN = function (at, n, op) {
+    var this$1 = this;
+
+  for (var e = at + n; at < e; ++at)
+    { if (op(this$1.lines[at])) { return true } }
+};
+
+var BranchChunk = function(children) {
+  var this$1 = this;
+
+  this.children = children;
+  var size = 0, height = 0;
+  for (var i = 0; i < children.length; ++i) {
+    var ch = children[i];
+    size += ch.chunkSize(); height += ch.height;
+    ch.parent = this$1;
+  }
+  this.size = size;
+  this.height = height;
+  this.parent = null;
+};
+
+BranchChunk.prototype.chunkSize = function () { return this.size };
+
+BranchChunk.prototype.removeInner = function (at, n) {
+    var this$1 = this;
+
+  this.size -= n;
+  for (var i = 0; i < this.children.length; ++i) {
+    var child = this$1.children[i], sz = child.chunkSize();
+    if (at < sz) {
+      var rm = Math.min(n, sz - at), oldHeight = child.height;
+      child.removeInner(at, rm);
+      this$1.height -= oldHeight - child.height;
+      if (sz == rm) { this$1.children.splice(i--, 1); child.parent = null; }
+      if ((n -= rm) == 0) { break }
+      at = 0;
+    } else { at -= sz; }
+  }
+  // If the result is smaller than 25 lines, ensure that it is a
+  // single leaf node.
+  if (this.size - n < 25 &&
+      (this.children.length > 1 || !(this.children[0] instanceof LeafChunk))) {
+    var lines = [];
+    this.collapse(lines);
+    this.children = [new LeafChunk(lines)];
+    this.children[0].parent = this;
+  }
+};
+
+BranchChunk.prototype.collapse = function (lines) {
+    var this$1 = this;
+
+  for (var i = 0; i < this.children.length; ++i) { this$1.children[i].collapse(lines); }
+};
+
+BranchChunk.prototype.insertInner = function (at, lines, height) {
+    var this$1 = this;
+
+  this.size += lines.length;
+  this.height += height;
+  for (var i = 0; i < this.children.length; ++i) {
+    var child = this$1.children[i], sz = child.chunkSize();
+    if (at <= sz) {
+      child.insertInner(at, lines, height);
+      if (child.lines && child.lines.length > 50) {
+        // To avoid memory thrashing when child.lines is huge (e.g. first view of a large file), it's never spliced.
+        // Instead, small slices are taken. They're taken in order because sequential memory accesses are fastest.
+        var remaining = child.lines.length % 25 + 25;
+        for (var pos = remaining; pos < child.lines.length;) {
+          var leaf = new LeafChunk(child.lines.slice(pos, pos += 25));
+          child.height -= leaf.height;
+          this$1.children.splice(++i, 0, leaf);
+          leaf.parent = this$1;
+        }
+        child.lines = child.lines.slice(0, remaining);
+        this$1.maybeSpill();
+      }
+      break
+    }
+    at -= sz;
+  }
+};
+
+// When a node has grown, check whether it should be split.
+BranchChunk.prototype.maybeSpill = function () {
+  if (this.children.length <= 10) { return }
+  var me = this;
+  do {
+    var spilled = me.children.splice(me.children.length - 5, 5);
+    var sibling = new BranchChunk(spilled);
+    if (!me.parent) { // Become the parent node
+      var copy = new BranchChunk(me.children);
+      copy.parent = me;
+      me.children = [copy, sibling];
+      me = copy;
+   } else {
+      me.size -= sibling.size;
+      me.height -= sibling.height;
+      var myIndex = indexOf(me.parent.children, me);
+      me.parent.children.splice(myIndex + 1, 0, sibling);
+    }
+    sibling.parent = me.parent;
+  } while (me.children.length > 10)
+  me.parent.maybeSpill();
+};
+
+BranchChunk.prototype.iterN = function (at, n, op) {
+    var this$1 = this;
+
+  for (var i = 0; i < this.children.length; ++i) {
+    var child = this$1.children[i], sz = child.chunkSize();
+    if (at < sz) {
+      var used = Math.min(n, sz - at);
+      if (child.iterN(at, used, op)) { return true }
+      if ((n -= used) == 0) { break }
+      at = 0;
+    } else { at -= sz; }
+  }
+};
+
+// Line widgets are block elements displayed above or below a line.
+
+var LineWidget = function(doc, node, options) {
+  var this$1 = this;
+
+  if (options) { for (var opt in options) { if (options.hasOwnProperty(opt))
+    { this$1[opt] = options[opt]; } } }
+  this.doc = doc;
+  this.node = node;
+};
+
+LineWidget.prototype.clear = function () {
+    var this$1 = this;
+
+  var cm = this.doc.cm, ws = this.line.widgets, line = this.line, no = lineNo(line);
+  if (no == null || !ws) { return }
+  for (var i = 0; i < ws.length; ++i) { if (ws[i] == this$1) { ws.splice(i--, 1); } }
+  if (!ws.length) { line.widgets = null; }
+  var height = widgetHeight(this);
+  updateLineHeight(line, Math.max(0, line.height - height));
+  if (cm) {
+    runInOp(cm, function () {
+      adjustScrollWhenAboveVisible(cm, line, -height);
+      regLineChange(cm, no, "widget");
+    });
+    signalLater(cm, "lineWidgetCleared", cm, this, no);
+  }
+};
+
+LineWidget.prototype.changed = function () {
+    var this$1 = this;
+
+  var oldH = this.height, cm = this.doc.cm, line = this.line;
+  this.height = null;
+  var diff = widgetHeight(this) - oldH;
+  if (!diff) { return }
+  updateLineHeight(line, line.height + diff);
+  if (cm) {
+    runInOp(cm, function () {
+      cm.curOp.forceUpdate = true;
+      adjustScrollWhenAboveVisible(cm, line, diff);
+      signalLater(cm, "lineWidgetChanged", cm, this$1, lineNo(line));
+    });
+  }
+};
+eventMixin(LineWidget);
+
+function adjustScrollWhenAboveVisible(cm, line, diff) {
+  if (heightAtLine(line) < ((cm.curOp && cm.curOp.scrollTop) || cm.doc.scrollTop))
+    { addToScrollPos(cm, null, diff); }
+}
+
+function addLineWidget(doc, handle, node, options) {
+  var widget = new LineWidget(doc, node, options);
+  var cm = doc.cm;
+  if (cm && widget.noHScroll) { cm.display.alignWidgets = true; }
+  changeLine(doc, handle, "widget", function (line) {
+    var widgets = line.widgets || (line.widgets = []);
+    if (widget.insertAt == null) { widgets.push(widget); }
+    else { widgets.splice(Math.min(widgets.length - 1, Math.max(0, widget.insertAt)), 0, widget); }
+    widget.line = line;
+    if (cm && !lineIsHidden(doc, line)) {
+      var aboveVisible = heightAtLine(line) < doc.scrollTop;
+      updateLineHeight(line, line.height + widgetHeight(widget));
+      if (aboveVisible) { addToScrollPos(cm, null, widget.height); }
+      cm.curOp.forceUpdate = true;
+    }
+    return true
+  });
+  signalLater(cm, "lineWidgetAdded", cm, widget, typeof handle == "number" ? handle : lineNo(handle));
+  return widget
+}
+
+// TEXTMARKERS
+
+// Created with markText and setBookmark methods. A TextMarker is a
+// handle that can be used to clear or find a marked position in the
+// document. Line objects hold arrays (markedSpans) containing
+// {from, to, marker} object pointing to such marker objects, and
+// indicating that such a marker is present on that line. Multiple
+// lines may point to the same marker when it spans across lines.
+// The spans will have null for their from/to properties when the
+// marker continues beyond the start/end of the line. Markers have
+// links back to the lines they currently touch.
+
+// Collapsed markers have unique ids, in order to be able to order
+// them, which is needed for uniquely determining an outer marker
+// when they overlap (they may nest, but not partially overlap).
+var nextMarkerId = 0;
+
+var TextMarker = function(doc, type) {
+  this.lines = [];
+  this.type = type;
+  this.doc = doc;
+  this.id = ++nextMarkerId;
+};
+
+// Clear the marker.
+TextMarker.prototype.clear = function () {
+    var this$1 = this;
+
+  if (this.explicitlyCleared) { return }
+  var cm = this.doc.cm, withOp = cm && !cm.curOp;
+  if (withOp) { startOperation(cm); }
+  if (hasHandler(this, "clear")) {
+    var found = this.find();
+    if (found) { signalLater(this, "clear", found.from, found.to); }
+  }
+  var min = null, max = null;
+  for (var i = 0; i < this.lines.length; ++i) {
+    var line = this$1.lines[i];
+    var span = getMarkedSpanFor(line.markedSpans, this$1);
+    if (cm && !this$1.collapsed) { regLineChange(cm, lineNo(line), "text"); }
+    else if (cm) {
+      if (span.to != null) { max = lineNo(line); }
+      if (span.from != null) { min = lineNo(line); }
+    }
+    line.markedSpans = removeMarkedSpan(line.markedSpans, span);
+    if (span.from == null && this$1.collapsed && !lineIsHidden(this$1.doc, line) && cm)
+      { updateLineHeight(line, textHeight(cm.display)); }
+  }
+  if (cm && this.collapsed && !cm.options.lineWrapping) { for (var i$1 = 0; i$1 < this.lines.length; ++i$1) {
+    var visual = visualLine(this$1.lines[i$1]), len = lineLength(visual);
+    if (len > cm.display.maxLineLength) {
+      cm.display.maxLine = visual;
+      cm.display.maxLineLength = len;
+      cm.display.maxLineChanged = true;
+    }
+  } }
+
+  if (min != null && cm && this.collapsed) { regChange(cm, min, max + 1); }
+  this.lines.length = 0;
+  this.explicitlyCleared = true;
+  if (this.atomic && this.doc.cantEdit) {
+    this.doc.cantEdit = false;
+    if (cm) { reCheckSelection(cm.doc); }
+  }
+  if (cm) { signalLater(cm, "markerCleared", cm, this, min, max); }
+  if (withOp) { endOperation(cm); }
+  if (this.parent) { this.parent.clear(); }
+};
+
+// Find the position of the marker in the document. Returns a {from,
+// to} object by default. Side can be passed to get a specific side
+// -- 0 (both), -1 (left), or 1 (right). When lineObj is true, the
+// Pos objects returned contain a line object, rather than a line
+// number (used to prevent looking up the same line twice).
+TextMarker.prototype.find = function (side, lineObj) {
+    var this$1 = this;
+
+  if (side == null && this.type == "bookmark") { side = 1; }
+  var from, to;
+  for (var i = 0; i < this.lines.length; ++i) {
+    var line = this$1.lines[i];
+    var span = getMarkedSpanFor(line.markedSpans, this$1);
+    if (span.from != null) {
+      from = Pos(lineObj ? line : lineNo(line), span.from);
+      if (side == -1) { return from }
+    }
+    if (span.to != null) {
+      to = Pos(lineObj ? line : lineNo(line), span.to);
+      if (side == 1) { return to }
+    }
+  }
+  return from && {from: from, to: to}
+};
+
+// Signals that the marker's widget changed, and surrounding layout
+// should be recomputed.
+TextMarker.prototype.changed = function () {
+    var this$1 = this;
+
+  var pos = this.find(-1, true), widget = this, cm = this.doc.cm;
+  if (!pos || !cm) { return }
+  runInOp(cm, function () {
+    var line = pos.line, lineN = lineNo(pos.line);
+    var view = findViewForLine(cm, lineN);
+    if (view) {
+      clearLineMeasurementCacheFor(view);
+      cm.curOp.selectionChanged = cm.curOp.forceUpdate = true;
+    }
+    cm.curOp.updateMaxLine = true;
+    if (!lineIsHidden(widget.doc, line) && widget.height != null) {
+      var oldHeight = widget.height;
+      widget.height = null;
+      var dHeight = widgetHeight(widget) - oldHeight;
+      if (dHeight)
+        { updateLineHeight(line, line.height + dHeight); }
+    }
+    signalLater(cm, "markerChanged", cm, this$1);
+  });
+};
+
+TextMarker.prototype.attachLine = function (line) {
+  if (!this.lines.length && this.doc.cm) {
+    var op = this.doc.cm.curOp;
+    if (!op.maybeHiddenMarkers || indexOf(op.maybeHiddenMarkers, this) == -1)
+      { (op.maybeUnhiddenMarkers || (op.maybeUnhiddenMarkers = [])).push(this); }
+  }
+  this.lines.push(line);
+};
+
+TextMarker.prototype.detachLine = function (line) {
+  this.lines.splice(indexOf(this.lines, line), 1);
+  if (!this.lines.length && this.doc.cm) {
+    var op = this.doc.cm.curOp;(op.maybeHiddenMarkers || (op.maybeHiddenMarkers = [])).push(this);
+  }
+};
+eventMixin(TextMarker);
+
+// Create a marker, wire it up to the right lines, and
+function markText(doc, from, to, options, type) {
+  // Shared markers (across linked documents) are handled separately
+  // (markTextShared will call out to this again, once per
+  // document).
+  if (options && options.shared) { return markTextShared(doc, from, to, options, type) }
+  // Ensure we are in an operation.
+  if (doc.cm && !doc.cm.curOp) { return operation(doc.cm, markText)(doc, from, to, options, type) }
+
+  var marker = new TextMarker(doc, type), diff = cmp(from, to);
+  if (options) { copyObj(options, marker, false); }
+  // Don't connect empty markers unless clearWhenEmpty is false
+  if (diff > 0 || diff == 0 && marker.clearWhenEmpty !== false)
+    { return marker }
+  if (marker.replacedWith) {
+    // Showing up as a widget implies collapsed (widget replaces text)
+    marker.collapsed = true;
+    marker.widgetNode = eltP("span", [marker.replacedWith], "CodeMirror-widget");
+    if (!options.handleMouseEvents) { marker.widgetNode.setAttribute("cm-ignore-events", "true"); }
+    if (options.insertLeft) { marker.widgetNode.insertLeft = true; }
+  }
+  if (marker.collapsed) {
+    if (conflictingCollapsedRange(doc, from.line, from, to, marker) ||
+        from.line != to.line && conflictingCollapsedRange(doc, to.line, from, to, marker))
+      { throw new Error("Inserting collapsed marker partially overlapping an existing one") }
+    seeCollapsedSpans();
+  }
+
+  if (marker.addToHistory)
+    { addChangeToHistory(doc, {from: from, to: to, origin: "markText"}, doc.sel, NaN); }
+
+  var curLine = from.line, cm = doc.cm, updateMaxLine;
+  doc.iter(curLine, to.line + 1, function (line) {
+    if (cm && marker.collapsed && !cm.options.lineWrapping && visualLine(line) == cm.display.maxLine)
+      { updateMaxLine = true; }
+    if (marker.collapsed && curLine != from.line) { updateLineHeight(line, 0); }
+    addMarkedSpan(line, new MarkedSpan(marker,
+                                       curLine == from.line ? from.ch : null,
+                                       curLine == to.line ? to.ch : null));
+    ++curLine;
+  });
+  // lineIsHidden depends on the presence of the spans, so needs a second pass
+  if (marker.collapsed) { doc.iter(from.line, to.line + 1, function (line) {
+    if (lineIsHidden(doc, line)) { updateLineHeight(line, 0); }
+  }); }
+
+  if (marker.clearOnEnter) { on(marker, "beforeCursorEnter", function () { return marker.clear(); }); }
+
+  if (marker.readOnly) {
+    seeReadOnlySpans();
+    if (doc.history.done.length || doc.history.undone.length)
+      { doc.clearHistory(); }
+  }
+  if (marker.collapsed) {
+    marker.id = ++nextMarkerId;
+    marker.atomic = true;
+  }
+  if (cm) {
+    // Sync editor state
+    if (updateMaxLine) { cm.curOp.updateMaxLine = true; }
+    if (marker.collapsed)
+      { regChange(cm, from.line, to.line + 1); }
+    else if (marker.className || marker.title || marker.startStyle || marker.endStyle || marker.css)
+      { for (var i = from.line; i <= to.line; i++) { regLineChange(cm, i, "text"); } }
+    if (marker.atomic) { reCheckSelection(cm.doc); }
+    signalLater(cm, "markerAdded", cm, marker);
+  }
+  return marker
+}
+
+// SHARED TEXTMARKERS
+
+// A shared marker spans multiple linked documents. It is
+// implemented as a meta-marker-object controlling multiple normal
+// markers.
+var SharedTextMarker = function(markers, primary) {
+  var this$1 = this;
+
+  this.markers = markers;
+  this.primary = primary;
+  for (var i = 0; i < markers.length; ++i)
+    { markers[i].parent = this$1; }
+};
+
+SharedTextMarker.prototype.clear = function () {
+    var this$1 = this;
+
+  if (this.explicitlyCleared) { return }
+  this.explicitlyCleared = true;
+  for (var i = 0; i < this.markers.length; ++i)
+    { this$1.markers[i].clear(); }
+  signalLater(this, "clear");
+};
+
+SharedTextMarker.prototype.find = function (side, lineObj) {
+  return this.primary.find(side, lineObj)
+};
+eventMixin(SharedTextMarker);
+
+function markTextShared(doc, from, to, options, type) {
+  options = copyObj(options);
+  options.shared = false;
+  var markers = [markText(doc, from, to, options, type)], primary = markers[0];
+  var widget = options.widgetNode;
+  linkedDocs(doc, function (doc) {
+    if (widget) { options.widgetNode = widget.cloneNode(true); }
+    markers.push(markText(doc, clipPos(doc, from), clipPos(doc, to), options, type));
+    for (var i = 0; i < doc.linked.length; ++i)
+      { if (doc.linked[i].isParent) { return } }
+    primary = lst(markers);
+  });
+  return new SharedTextMarker(markers, primary)
+}
+
+function findSharedMarkers(doc) {
+  return doc.findMarks(Pos(doc.first, 0), doc.clipPos(Pos(doc.lastLine())), function (m) { return m.parent; })
+}
+
+function copySharedMarkers(doc, markers) {
+  for (var i = 0; i < markers.length; i++) {
+    var marker = markers[i], pos = marker.find();
+    var mFrom = doc.clipPos(pos.from), mTo = doc.clipPos(pos.to);
+    if (cmp(mFrom, mTo)) {
+      var subMark = markText(doc, mFrom, mTo, marker.primary, marker.primary.type);
+      marker.markers.push(subMark);
+      subMark.parent = marker;
+    }
+  }
+}
+
+function detachSharedMarkers(markers) {
+  var loop = function ( i ) {
+    var marker = markers[i], linked = [marker.primary.doc];
+    linkedDocs(marker.primary.doc, function (d) { return linked.push(d); });
+    for (var j = 0; j < marker.markers.length; j++) {
+      var subMarker = marker.markers[j];
+      if (indexOf(linked, subMarker.doc) == -1) {
+        subMarker.parent = null;
+        marker.markers.splice(j--, 1);
+      }
+    }
+  };
+
+  for (var i = 0; i < markers.length; i++) loop( i );
+}
+
+var nextDocId = 0;
+var Doc = function(text, mode, firstLine, lineSep, direction) {
+  if (!(this instanceof Doc)) { return new Doc(text, mode, firstLine, lineSep, direction) }
+  if (firstLine == null) { firstLine = 0; }
+
+  BranchChunk.call(this, [new LeafChunk([new Line("", null)])]);
+  this.first = firstLine;
+  this.scrollTop = this.scrollLeft = 0;
+  this.cantEdit = false;
+  this.cleanGeneration = 1;
+  this.frontier = firstLine;
+  var start = Pos(firstLine, 0);
+  this.sel = simpleSelection(start);
+  this.history = new History(null);
+  this.id = ++nextDocId;
+  this.modeOption = mode;
+  this.lineSep = lineSep;
+  this.direction = (direction == "rtl") ? "rtl" : "ltr";
+  this.extend = false;
+
+  if (typeof text == "string") { text = this.splitLines(text); }
+  updateDoc(this, {from: start, to: start, text: text});
+  setSelection(this, simpleSelection(start), sel_dontScroll);
+};
+
+Doc.prototype = createObj(BranchChunk.prototype, {
+  constructor: Doc,
+  // Iterate over the document. Supports two forms -- with only one
+  // argument, it calls that for each line in the document. With
+  // three, it iterates over the range given by the first two (with
+  // the second being non-inclusive).
+  iter: function(from, to, op) {
+    if (op) { this.iterN(from - this.first, to - from, op); }
+    else { this.iterN(this.first, this.first + this.size, from); }
+  },
+
+  // Non-public interface for adding and removing lines.
+  insert: function(at, lines) {
+    var height = 0;
+    for (var i = 0; i < lines.length; ++i) { height += lines[i].height; }
+    this.insertInner(at - this.first, lines, height);
+  },
+  remove: function(at, n) { this.removeInner(at - this.first, n); },
+
+  // From here, the methods are part of the public interface. Most
+  // are also available from CodeMirror (editor) instances.
+
+  getValue: function(lineSep) {
+    var lines = getLines(this, this.first, this.first + this.size);
+    if (lineSep === false) { return lines }
+    return lines.join(lineSep || this.lineSeparator())
+  },
+  setValue: docMethodOp(function(code) {
+    var top = Pos(this.first, 0), last = this.first + this.size - 1;
+    makeChange(this, {from: top, to: Pos(last, getLine(this, last).text.length),
+                      text: this.splitLines(code), origin: "setValue", full: true}, true);
+    if (this.cm) { this.cm.scrollTo(0, 0); }
+    setSelection(this, simpleSelection(top), sel_dontScroll);
+  }),
+  replaceRange: function(code, from, to, origin) {
+    from = clipPos(this, from);
+    to = to ? clipPos(this, to) : from;
+    replaceRange(this, code, from, to, origin);
+  },
+  getRange: function(from, to, lineSep) {
+    var lines = getBetween(this, clipPos(this, from), clipPos(this, to));
+    if (lineSep === false) { return lines }
+    return lines.join(lineSep || this.lineSeparator())
+  },
+
+  getLine: function(line) {var l = this.getLineHandle(line); return l && l.text},
+
+  getLineHandle: function(line) {if (isLine(this, line)) { return getLine(this, line) }},
+  getLineNumber: function(line) {return lineNo(line)},
+
+  getLineHandleVisualStart: function(line) {
+    if (typeof line == "number") { line = getLine(this, line); }
+    return visualLine(line)
+  },
+
+  lineCount: function() {return this.size},
+  firstLine: function() {return this.first},
+  lastLine: function() {return this.first + this.size - 1},
+
+  clipPos: function(pos) {return clipPos(this, pos)},
+
+  getCursor: function(start) {
+    var range$$1 = this.sel.primary(), pos;
+    if (start == null || start == "head") { pos = range$$1.head; }
+    else if (start == "anchor") { pos = range$$1.anchor; }
+    else if (start == "end" || start == "to" || start === false) { pos = range$$1.to(); }
+    else { pos = range$$1.from(); }
+    return pos
+  },
+  listSelections: function() { return this.sel.ranges },
+  somethingSelected: function() {return this.sel.somethingSelected()},
+
+  setCursor: docMethodOp(function(line, ch, options) {
+    setSimpleSelection(this, clipPos(this, typeof line == "number" ? Pos(line, ch || 0) : line), null, options);
+  }),
+  setSelection: docMethodOp(function(anchor, head, options) {
+    setSimpleSelection(this, clipPos(this, anchor), clipPos(this, head || anchor), options);
+  }),
+  extendSelection: docMethodOp(function(head, other, options) {
+    extendSelection(this, clipPos(this, head), other && clipPos(this, other), options);
+  }),
+  extendSelections: docMethodOp(function(heads, options) {
+    extendSelections(this, clipPosArray(this, heads), options);
+  }),
+  extendSelectionsBy: docMethodOp(function(f, options) {
+    var heads = map(this.sel.ranges, f);
+    extendSelections(this, clipPosArray(this, heads), options);
+  }),
+  setSelections: docMethodOp(function(ranges, primary, options) {
+    var this$1 = this;
+
+    if (!ranges.length) { return }
+    var out = [];
+    for (var i = 0; i < ranges.length; i++)
+      { out[i] = new Range(clipPos(this$1, ranges[i].anchor),
+                         clipPos(this$1, ranges[i].head)); }
+    if (primary == null) { primary = Math.min(ranges.length - 1, this.sel.primIndex); }
+    setSelection(this, normalizeSelection(out, primary), options);
+  }),
+  addSelection: docMethodOp(function(anchor, head, options) {
+    var ranges = this.sel.ranges.slice(0);
+    ranges.push(new Range(clipPos(this, anchor), clipPos(this, head || anchor)));
+    setSelection(this, normalizeSelection(ranges, ranges.length - 1), options);
+  }),
+
+  getSelection: function(lineSep) {
+    var this$1 = this;
+
+    var ranges = this.sel.ranges, lines;
+    for (var i = 0; i < ranges.length; i++) {
+      var sel = getBetween(this$1, ranges[i].from(), ranges[i].to());
+      lines = lines ? lines.concat(sel) : sel;
+    }
+    if (lineSep === false) { return lines }
+    else { return lines.join(lineSep || this.lineSeparator()) }
+  },
+  getSelections: function(lineSep) {
+    var this$1 = this;
+
+    var parts = [], ranges = this.sel.ranges;
+    for (var i = 0; i < ranges.length; i++) {
+      var sel = getBetween(this$1, ranges[i].from(), ranges[i].to());
+      if (lineSep !== false) { sel = sel.join(lineSep || this$1.lineSeparator()); }
+      parts[i] = sel;
+    }
+    return parts
+  },
+  replaceSelection: function(code, collapse, origin) {
+    var dup = [];
+    for (var i = 0; i < this.sel.ranges.length; i++)
+      { dup[i] = code; }
+    this.replaceSelections(dup, collapse, origin || "+input");
+  },
+  replaceSelections: docMethodOp(function(code, collapse, origin) {
+    var this$1 = this;
+
+    var changes = [], sel = this.sel;
+    for (var i = 0; i < sel.ranges.length; i++) {
+      var range$$1 = sel.ranges[i];
+      changes[i] = {from: range$$1.from(), to: range$$1.to(), text: this$1.splitLines(code[i]), origin: origin};
+    }
+    var newSel = collapse && collapse != "end" && computeReplacedSel(this, changes, collapse);
+    for (var i$1 = changes.length - 1; i$1 >= 0; i$1--)
+      { makeChange(this$1, changes[i$1]); }
+    if (newSel) { setSelectionReplaceHistory(this, newSel); }
+    else if (this.cm) { ensureCursorVisible(this.cm); }
+  }),
+  undo: docMethodOp(function() {makeChangeFromHistory(this, "undo");}),
+  redo: docMethodOp(function() {makeChangeFromHistory(this, "redo");}),
+  undoSelection: docMethodOp(function() {makeChangeFromHistory(this, "undo", true);}),
+  redoSelection: docMethodOp(function() {makeChangeFromHistory(this, "redo", true);}),
+
+  setExtending: function(val) {this.extend = val;},
+  getExtending: function() {return this.extend},
+
+  historySize: function() {
+    var hist = this.history, done = 0, undone = 0;
+    for (var i = 0; i < hist.done.length; i++) { if (!hist.done[i].ranges) { ++done; } }
+    for (var i$1 = 0; i$1 < hist.undone.length; i$1++) { if (!hist.undone[i$1].ranges) { ++undone; } }
+    return {undo: done, redo: undone}
+  },
+  clearHistory: function() {this.history = new History(this.history.maxGeneration);},
+
+  markClean: function() {
+    this.cleanGeneration = this.changeGeneration(true);
+  },
+  changeGeneration: function(forceSplit) {
+    if (forceSplit)
+      { this.history.lastOp = this.history.lastSelOp = this.history.lastOrigin = null; }
+    return this.history.generation
+  },
+  isClean: function (gen) {
+    return this.history.generation == (gen || this.cleanGeneration)
+  },
+
+  getHistory: function() {
+    return {done: copyHistoryArray(this.history.done),
+            undone: copyHistoryArray(this.history.undone)}
+  },
+  setHistory: function(histData) {
+    var hist = this.history = new History(this.history.maxGeneration);
+    hist.done = copyHistoryArray(histData.done.slice(0), null, true);
+    hist.undone = copyHistoryArray(histData.undone.slice(0), null, true);
+  },
+
+  setGutterMarker: docMethodOp(function(line, gutterID, value) {
+    return changeLine(this, line, "gutter", function (line) {
+      var markers = line.gutterMarkers || (line.gutterMarkers = {});
+      markers[gutterID] = value;
+      if (!value && isEmpty(markers)) { line.gutterMarkers = null; }
+      return true
+    })
+  }),
+
+  clearGutter: docMethodOp(function(gutterID) {
+    var this$1 = this;
+
+    this.iter(function (line) {
+      if (line.gutterMarkers && line.gutterMarkers[gutterID]) {
+        changeLine(this$1, line, "gutter", function () {
+          line.gutterMarkers[gutterID] = null;
+          if (isEmpty(line.gutterMarkers)) { line.gutterMarkers = null; }
+          return true
+        });
+      }
+    });
+  }),
+
+  lineInfo: function(line) {
+    var n;
+    if (typeof line == "number") {
+      if (!isLine(this, line)) { return null }
+      n = line;
+      line = getLine(this, line);
+      if (!line) { return null }
+    } else {
+      n = lineNo(line);
+      if (n == null) { return null }
+    }
+    return {line: n, handle: line, text: line.text, gutterMarkers: line.gutterMarkers,
+            textClass: line.textClass, bgClass: line.bgClass, wrapClass: line.wrapClass,
+            widgets: line.widgets}
+  },
+
+  addLineClass: docMethodOp(function(handle, where, cls) {
+    return changeLine(this, handle, where == "gutter" ? "gutter" : "class", function (line) {
+      var prop = where == "text" ? "textClass"
+               : where == "background" ? "bgClass"
+               : where == "gutter" ? "gutterClass" : "wrapClass";
+      if (!line[prop]) { line[prop] = cls; }
+      else if (classTest(cls).test(line[prop])) { return false }
+      else { line[prop] += " " + cls; }
+      return true
+    })
+  }),
+  removeLineClass: docMethodOp(function(handle, where, cls) {
+    return changeLine(this, handle, where == "gutter" ? "gutter" : "class", function (line) {
+      var prop = where == "text" ? "textClass"
+               : where == "background" ? "bgClass"
+               : where == "gutter" ? "gutterClass" : "wrapClass";
+      var cur = line[prop];
+      if (!cur) { return false }
+      else if (cls == null) { line[prop] = null; }
+      else {
+        var found = cur.match(classTest(cls));
+        if (!found) { return false }
+        var end = found.index + found[0].length;
+        line[prop] = cur.slice(0, found.index) + (!found.index || end == cur.length ? "" : " ") + cur.slice(end) || null;
+      }
+      return true
+    })
+  }),
+
+  addLineWidget: docMethodOp(function(handle, node, options) {
+    return addLineWidget(this, handle, node, options)
+  }),
+  removeLineWidget: function(widget) { widget.clear(); },
+
+  markText: function(from, to, options) {
+    return markText(this, clipPos(this, from), clipPos(this, to), options, options && options.type || "range")
+  },
+  setBookmark: function(pos, options) {
+    var realOpts = {replacedWith: options && (options.nodeType == null ? options.widget : options),
+                    insertLeft: options && options.insertLeft,
+                    clearWhenEmpty: false, shared: options && options.shared,
+                    handleMouseEvents: options && options.handleMouseEvents};
+    pos = clipPos(this, pos);
+    return markText(this, pos, pos, realOpts, "bookmark")
+  },
+  findMarksAt: function(pos) {
+    pos = clipPos(this, pos);
+    var markers = [], spans = getLine(this, pos.line).markedSpans;
+    if (spans) { for (var i = 0; i < spans.length; ++i) {
+      var span = spans[i];
+      if ((span.from == null || span.from <= pos.ch) &&
+          (span.to == null || span.to >= pos.ch))
+        { markers.push(span.marker.parent || span.marker); }
+    } }
+    return markers
+  },
+  findMarks: function(from, to, filter) {
+    from = clipPos(this, from); to = clipPos(this, to);
+    var found = [], lineNo$$1 = from.line;
+    this.iter(from.line, to.line + 1, function (line) {
+      var spans = line.markedSpans;
+      if (spans) { for (var i = 0; i < spans.length; i++) {
+        var span = spans[i];
+        if (!(span.to != null && lineNo$$1 == from.line && from.ch >= span.to ||
+              span.from == null && lineNo$$1 != from.line ||
+              span.from != null && lineNo$$1 == to.line && span.from >= to.ch) &&
+            (!filter || filter(span.marker)))
+          { found.push(span.marker.parent || span.marker); }
+      } }
+      ++lineNo$$1;
+    });
+    return found
+  },
+  getAllMarks: function() {
+    var markers = [];
+    this.iter(function (line) {
+      var sps = line.markedSpans;
+      if (sps) { for (var i = 0; i < sps.length; ++i)
+        { if (sps[i].from != null) { markers.push(sps[i].marker); } } }
+    });
+    return markers
+  },
+
+  posFromIndex: function(off) {
+    var ch, lineNo$$1 = this.first, sepSize = this.lineSeparator().length;
+    this.iter(function (line) {
+      var sz = line.text.length + sepSize;
+      if (sz > off) { ch = off; return true }
+      off -= sz;
+      ++lineNo$$1;
+    });
+    return clipPos(this, Pos(lineNo$$1, ch))
+  },
+  indexFromPos: function (coords) {
+    coords = clipPos(this, coords);
+    var index = coords.ch;
+    if (coords.line < this.first || coords.ch < 0) { return 0 }
+    var sepSize = this.lineSeparator().length;
+    this.iter(this.first, coords.line, function (line) { // iter aborts when callback returns a truthy value
+      index += line.text.length + sepSize;
+    });
+    return index
+  },
+
+  copy: function(copyHistory) {
+    var doc = new Doc(getLines(this, this.first, this.first + this.size),
+                      this.modeOption, this.first, this.lineSep, this.direction);
+    doc.scrollTop = this.scrollTop; doc.scrollLeft = this.scrollLeft;
+    doc.sel = this.sel;
+    doc.extend = false;
+    if (copyHistory) {
+      doc.history.undoDepth = this.history.undoDepth;
+      doc.setHistory(this.getHistory());
+    }
+    return doc
+  },
+
+  linkedDoc: function(options) {
+    if (!options) { options = {}; }
+    var from = this.first, to = this.first + this.size;
+    if (options.from != null && options.from > from) { from = options.from; }
+    if (options.to != null && options.to < to) { to = options.to; }
+    var copy = new Doc(getLines(this, from, to), options.mode || this.modeOption, from, this.lineSep, this.direction);
+    if (options.sharedHist) { copy.history = this.history
+    ; }(this.linked || (this.linked = [])).push({doc: copy, sharedHist: options.sharedHist});
+    copy.linked = [{doc: this, isParent: true, sharedHist: options.sharedHist}];
+    copySharedMarkers(copy, findSharedMarkers(this));
+    return copy
+  },
+  unlinkDoc: function(other) {
+    var this$1 = this;
+
+    if (other instanceof CodeMirror$1) { other = other.doc; }
+    if (this.linked) { for (var i = 0; i < this.linked.length; ++i) {
+      var link = this$1.linked[i];
+      if (link.doc != other) { continue }
+      this$1.linked.splice(i, 1);
+      other.unlinkDoc(this$1);
+      detachSharedMarkers(findSharedMarkers(this$1));
+      break
+    } }
+    // If the histories were shared, split them again
+    if (other.history == this.history) {
+      var splitIds = [other.id];
+      linkedDocs(other, function (doc) { return splitIds.push(doc.id); }, true);
+      other.history = new History(null);
+      other.history.done = copyHistoryArray(this.history.done, splitIds);
+      other.history.undone = copyHistoryArray(this.history.undone, splitIds);
+    }
+  },
+  iterLinkedDocs: function(f) {linkedDocs(this, f);},
+
+  getMode: function() {return this.mode},
+  getEditor: function() {return this.cm},
+
+  splitLines: function(str) {
+    if (this.lineSep) { return str.split(this.lineSep) }
+    return splitLinesAuto(str)
+  },
+  lineSeparator: function() { return this.lineSep || "\n" },
+
+  setDirection: docMethodOp(function (dir) {
+    if (dir != "rtl") { dir = "ltr"; }
+    if (dir == this.direction) { return }
+    this.direction = dir;
+    this.iter(function (line) { return line.order = null; });
+    if (this.cm) { directionChanged(this.cm); }
+  })
+});
+
+// Public alias.
+Doc.prototype.eachLine = Doc.prototype.iter;
+
+// Kludge to work around strange IE behavior where it'll sometimes
+// re-fire a series of drag-related events right after the drop (#1551)
+var lastDrop = 0;
+
+function onDrop(e) {
+  var cm = this;
+  clearDragCursor(cm);
+  if (signalDOMEvent(cm, e) || eventInWidget(cm.display, e))
+    { return }
+  e_preventDefault(e);
+  if (ie) { lastDrop = +new Date; }
+  var pos = posFromMouse(cm, e, true), files = e.dataTransfer.files;
+  if (!pos || cm.isReadOnly()) { return }
+  // Might be a file drop, in which case we simply extract the text
+  // and insert it.
+  if (files && files.length && window.FileReader && window.File) {
+    var n = files.length, text = Array(n), read = 0;
+    var loadFile = function (file, i) {
+      if (cm.options.allowDropFileTypes &&
+          indexOf(cm.options.allowDropFileTypes, file.type) == -1)
+        { return }
+
+      var reader = new FileReader;
+      reader.onload = operation(cm, function () {
+        var content = reader.result;
+        if (/[\x00-\x08\x0e-\x1f]{2}/.test(content)) { content = ""; }
+        text[i] = content;
+        if (++read == n) {
+          pos = clipPos(cm.doc, pos);
+          var change = {from: pos, to: pos,
+                        text: cm.doc.splitLines(text.join(cm.doc.lineSeparator())),
+                        origin: "paste"};
+          makeChange(cm.doc, change);
+          setSelectionReplaceHistory(cm.doc, simpleSelection(pos, changeEnd(change)));
+        }
+      });
+      reader.readAsText(file);
+    };
+    for (var i = 0; i < n; ++i) { loadFile(files[i], i); }
+  } else { // Normal drop
+    // Don't do a replace if the drop happened inside of the selected text.
+    if (cm.state.draggingText && cm.doc.sel.contains(pos) > -1) {
+      cm.state.draggingText(e);
+      // Ensure the editor is re-focused
+      setTimeout(function () { return cm.display.input.focus(); }, 20);
+      return
+    }
+    try {
+      var text$1 = e.dataTransfer.getData("Text");
+      if (text$1) {
+        var selected;
+        if (cm.state.draggingText && !cm.state.draggingText.copy)
+          { selected = cm.listSelections(); }
+        setSelectionNoUndo(cm.doc, simpleSelection(pos, pos));
+        if (selected) { for (var i$1 = 0; i$1 < selected.length; ++i$1)
+          { replaceRange(cm.doc, "", selected[i$1].anchor, selected[i$1].head, "drag"); } }
+        cm.replaceSelection(text$1, "around", "paste");
+        cm.display.input.focus();
+      }
+    }
+    catch(e){}
+  }
+}
+
+function onDragStart(cm, e) {
+  if (ie && (!cm.state.draggingText || +new Date - lastDrop < 100)) { e_stop(e); return }
+  if (signalDOMEvent(cm, e) || eventInWidget(cm.display, e)) { return }
+
+  e.dataTransfer.setData("Text", cm.getSelection());
+  e.dataTransfer.effectAllowed = "copyMove";
+
+  // Use dummy image instead of default browsers image.
+  // Recent Safari (~6.0.2) have a tendency to segfault when this happens, so we don't do it there.
+  if (e.dataTransfer.setDragImage && !safari) {
+    var img = elt("img", null, null, "position: fixed; left: 0; top: 0;");
+    img.src = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+    if (presto) {
+      img.width = img.height = 1;
+      cm.display.wrapper.appendChild(img);
+      // Force a relayout, or Opera won't use our image for some obscure reason
+      img._top = img.offsetTop;
+    }
+    e.dataTransfer.setDragImage(img, 0, 0);
+    if (presto) { img.parentNode.removeChild(img); }
+  }
+}
+
+function onDragOver(cm, e) {
+  var pos = posFromMouse(cm, e);
+  if (!pos) { return }
+  var frag = document.createDocumentFragment();
+  drawSelectionCursor(cm, pos, frag);
+  if (!cm.display.dragCursor) {
+    cm.display.dragCursor = elt("div", null, "CodeMirror-cursors CodeMirror-dragcursors");
+    cm.display.lineSpace.insertBefore(cm.display.dragCursor, cm.display.cursorDiv);
+  }
+  removeChildrenAndAdd(cm.display.dragCursor, frag);
+}
+
+function clearDragCursor(cm) {
+  if (cm.display.dragCursor) {
+    cm.display.lineSpace.removeChild(cm.display.dragCursor);
+    cm.display.dragCursor = null;
+  }
+}
+
+// These must be handled carefully, because naively registering a
+// handler for each editor will cause the editors to never be
+// garbage collected.
+
+function forEachCodeMirror(f) {
+  if (!document.body.getElementsByClassName) { return }
+  var byClass = document.body.getElementsByClassName("CodeMirror");
+  for (var i = 0; i < byClass.length; i++) {
+    var cm = byClass[i].CodeMirror;
+    if (cm) { f(cm); }
+  }
+}
+
+var globalsRegistered = false;
+function ensureGlobalHandlers() {
+  if (globalsRegistered) { return }
+  registerGlobalHandlers();
+  globalsRegistered = true;
+}
+function registerGlobalHandlers() {
+  // When the window resizes, we need to refresh active editors.
+  var resizeTimer;
+  on(window, "resize", function () {
+    if (resizeTimer == null) { resizeTimer = setTimeout(function () {
+      resizeTimer = null;
+      forEachCodeMirror(onResize);
+    }, 100); }
+  });
+  // When the window loses focus, we want to show the editor as blurred
+  on(window, "blur", function () { return forEachCodeMirror(onBlur); });
+}
+// Called when the window resizes
+function onResize(cm) {
+  var d = cm.display;
+  if (d.lastWrapHeight == d.wrapper.clientHeight && d.lastWrapWidth == d.wrapper.clientWidth)
+    { return }
+  // Might be a text scaling operation, clear size caches.
+  d.cachedCharWidth = d.cachedTextHeight = d.cachedPaddingH = null;
+  d.scrollbarsClipped = false;
+  cm.setSize();
+}
+
+var keyNames = {
+  3: "Enter", 8: "Backspace", 9: "Tab", 13: "Enter", 16: "Shift", 17: "Ctrl", 18: "Alt",
+  19: "Pause", 20: "CapsLock", 27: "Esc", 32: "Space", 33: "PageUp", 34: "PageDown", 35: "End",
+  36: "Home", 37: "Left", 38: "Up", 39: "Right", 40: "Down", 44: "PrintScrn", 45: "Insert",
+  46: "Delete", 59: ";", 61: "=", 91: "Mod", 92: "Mod", 93: "Mod",
+  106: "*", 107: "=", 109: "-", 110: ".", 111: "/", 127: "Delete",
+  173: "-", 186: ";", 187: "=", 188: ",", 189: "-", 190: ".", 191: "/", 192: "`", 219: "[", 220: "\\",
+  221: "]", 222: "'", 63232: "Up", 63233: "Down", 63234: "Left", 63235: "Right", 63272: "Delete",
+  63273: "Home", 63275: "End", 63276: "PageUp", 63277: "PageDown", 63302: "Insert"
+};
+
+// Number keys
+for (var i = 0; i < 10; i++) { keyNames[i + 48] = keyNames[i + 96] = String(i); }
+// Alphabetic keys
+for (var i$1 = 65; i$1 <= 90; i$1++) { keyNames[i$1] = String.fromCharCode(i$1); }
+// Function keys
+for (var i$2 = 1; i$2 <= 12; i$2++) { keyNames[i$2 + 111] = keyNames[i$2 + 63235] = "F" + i$2; }
+
+var keyMap = {};
+
+keyMap.basic = {
+  "Left": "goCharLeft", "Right": "goCharRight", "Up": "goLineUp", "Down": "goLineDown",
+  "End": "goLineEnd", "Home": "goLineStartSmart", "PageUp": "goPageUp", "PageDown": "goPageDown",
+  "Delete": "delCharAfter", "Backspace": "delCharBefore", "Shift-Backspace": "delCharBefore",
+  "Tab": "defaultTab", "Shift-Tab": "indentAuto",
+  "Enter": "newlineAndIndent", "Insert": "toggleOverwrite",
+  "Esc": "singleSelection"
+};
+// Note that the save and find-related commands aren't defined by
+// default. User code or addons can define them. Unknown commands
+// are simply ignored.
+keyMap.pcDefault = {
+  "Ctrl-A": "selectAll", "Ctrl-D": "deleteLine", "Ctrl-Z": "undo", "Shift-Ctrl-Z": "redo", "Ctrl-Y": "redo",
+  "Ctrl-Home": "goDocStart", "Ctrl-End": "goDocEnd", "Ctrl-Up": "goLineUp", "Ctrl-Down": "goLineDown",
+  "Ctrl-Left": "goGroupLeft", "Ctrl-Right": "goGroupRight", "Alt-Left": "goLineStart", "Alt-Right": "goLineEnd",
+  "Ctrl-Backspace": "delGroupBefore", "Ctrl-Delete": "delGroupAfter", "Ctrl-S": "save", "Ctrl-F": "find",
+  "Ctrl-G": "findNext", "Shift-Ctrl-G": "findPrev", "Shift-Ctrl-F": "replace", "Shift-Ctrl-R": "replaceAll",
+  "Ctrl-[": "indentLess", "Ctrl-]": "indentMore",
+  "Ctrl-U": "undoSelection", "Shift-Ctrl-U": "redoSelection", "Alt-U": "redoSelection",
+  fallthrough: "basic"
+};
+// Very basic readline/emacs-style bindings, which are standard on Mac.
+keyMap.emacsy = {
+  "Ctrl-F": "goCharRight", "Ctrl-B": "goCharLeft", "Ctrl-P": "goLineUp", "Ctrl-N": "goLineDown",
+  "Alt-F": "goWordRight", "Alt-B": "goWordLeft", "Ctrl-A": "goLineStart", "Ctrl-E": "goLineEnd",
+  "Ctrl-V": "goPageDown", "Shift-Ctrl-V": "goPageUp", "Ctrl-D": "delCharAfter", "Ctrl-H": "delCharBefore",
+  "Alt-D": "delWordAfter", "Alt-Backspace": "delWordBefore", "Ctrl-K": "killLine", "Ctrl-T": "transposeChars",
+  "Ctrl-O": "openLine"
+};
+keyMap.macDefault = {
+  "Cmd-A": "selectAll", "Cmd-D": "deleteLine", "Cmd-Z": "undo", "Shift-Cmd-Z": "redo", "Cmd-Y": "redo",
+  "Cmd-Home": "goDocStart", "Cmd-Up": "goDocStart", "Cmd-End": "goDocEnd", "Cmd-Down": "goDocEnd", "Alt-Left": "goGroupLeft",
+  "Alt-Right": "goGroupRight", "Cmd-Left": "goLineLeft", "Cmd-Right": "goLineRight", "Alt-Backspace": "delGroupBefore",
+  "Ctrl-Alt-Backspace": "delGroupAfter", "Alt-Delete": "delGroupAfter", "Cmd-S": "save", "Cmd-F": "find",
+  "Cmd-G": "findNext", "Shift-Cmd-G": "findPrev", "Cmd-Alt-F": "replace", "Shift-Cmd-Alt-F": "replaceAll",
+  "Cmd-[": "indentLess", "Cmd-]": "indentMore", "Cmd-Backspace": "delWrappedLineLeft", "Cmd-Delete": "delWrappedLineRight",
+  "Cmd-U": "undoSelection", "Shift-Cmd-U": "redoSelection", "Ctrl-Up": "goDocStart", "Ctrl-Down": "goDocEnd",
+  fallthrough: ["basic", "emacsy"]
+};
+keyMap["default"] = mac ? keyMap.macDefault : keyMap.pcDefault;
+
+// KEYMAP DISPATCH
+
+function normalizeKeyName(name) {
+  var parts = name.split(/-(?!$)/);
+  name = parts[parts.length - 1];
+  var alt, ctrl, shift, cmd;
+  for (var i = 0; i < parts.length - 1; i++) {
+    var mod = parts[i];
+    if (/^(cmd|meta|m)$/i.test(mod)) { cmd = true; }
+    else if (/^a(lt)?$/i.test(mod)) { alt = true; }
+    else if (/^(c|ctrl|control)$/i.test(mod)) { ctrl = true; }
+    else if (/^s(hift)?$/i.test(mod)) { shift = true; }
+    else { throw new Error("Unrecognized modifier name: " + mod) }
+  }
+  if (alt) { name = "Alt-" + name; }
+  if (ctrl) { name = "Ctrl-" + name; }
+  if (cmd) { name = "Cmd-" + name; }
+  if (shift) { name = "Shift-" + name; }
+  return name
+}
+
+// This is a kludge to keep keymaps mostly working as raw objects
+// (backwards compatibility) while at the same time support features
+// like normalization and multi-stroke key bindings. It compiles a
+// new normalized keymap, and then updates the old object to reflect
+// this.
+function normalizeKeyMap(keymap) {
+  var copy = {};
+  for (var keyname in keymap) { if (keymap.hasOwnProperty(keyname)) {
+    var value = keymap[keyname];
+    if (/^(name|fallthrough|(de|at)tach)$/.test(keyname)) { continue }
+    if (value == "...") { delete keymap[keyname]; continue }
+
+    var keys = map(keyname.split(" "), normalizeKeyName);
+    for (var i = 0; i < keys.length; i++) {
+      var val = (void 0), name = (void 0);
+      if (i == keys.length - 1) {
+        name = keys.join(" ");
+        val = value;
+      } else {
+        name = keys.slice(0, i + 1).join(" ");
+        val = "...";
+      }
+      var prev = copy[name];
+      if (!prev) { copy[name] = val; }
+      else if (prev != val) { throw new Error("Inconsistent bindings for " + name) }
+    }
+    delete keymap[keyname];
+  } }
+  for (var prop in copy) { keymap[prop] = copy[prop]; }
+  return keymap
+}
+
+function lookupKey(key, map$$1, handle, context) {
+  map$$1 = getKeyMap(map$$1);
+  var found = map$$1.call ? map$$1.call(key, context) : map$$1[key];
+  if (found === false) { return "nothing" }
+  if (found === "...") { return "multi" }
+  if (found != null && handle(found)) { return "handled" }
+
+  if (map$$1.fallthrough) {
+    if (Object.prototype.toString.call(map$$1.fallthrough) != "[object Array]")
+      { return lookupKey(key, map$$1.fallthrough, handle, context) }
+    for (var i = 0; i < map$$1.fallthrough.length; i++) {
+      var result = lookupKey(key, map$$1.fallthrough[i], handle, context);
+      if (result) { return result }
+    }
+  }
+}
+
+// Modifier key presses don't count as 'real' key presses for the
+// purpose of keymap fallthrough.
+function isModifierKey(value) {
+  var name = typeof value == "string" ? value : keyNames[value.keyCode];
+  return name == "Ctrl" || name == "Alt" || name == "Shift" || name == "Mod"
+}
+
+// Look up the name of a key as indicated by an event object.
+function keyName(event, noShift) {
+  if (presto && event.keyCode == 34 && event["char"]) { return false }
+  var base = keyNames[event.keyCode], name = base;
+  if (name == null || event.altGraphKey) { return false }
+  if (event.altKey && base != "Alt") { name = "Alt-" + name; }
+  if ((flipCtrlCmd ? event.metaKey : event.ctrlKey) && base != "Ctrl") { name = "Ctrl-" + name; }
+  if ((flipCtrlCmd ? event.ctrlKey : event.metaKey) && base != "Cmd") { name = "Cmd-" + name; }
+  if (!noShift && event.shiftKey && base != "Shift") { name = "Shift-" + name; }
+  return name
+}
+
+function getKeyMap(val) {
+  return typeof val == "string" ? keyMap[val] : val
+}
+
+// Helper for deleting text near the selection(s), used to implement
+// backspace, delete, and similar functionality.
+function deleteNearSelection(cm, compute) {
+  var ranges = cm.doc.sel.ranges, kill = [];
+  // Build up a set of ranges to kill first, merging overlapping
+  // ranges.
+  for (var i = 0; i < ranges.length; i++) {
+    var toKill = compute(ranges[i]);
+    while (kill.length && cmp(toKill.from, lst(kill).to) <= 0) {
+      var replaced = kill.pop();
+      if (cmp(replaced.from, toKill.from) < 0) {
+        toKill.from = replaced.from;
+        break
+      }
+    }
+    kill.push(toKill);
+  }
+  // Next, remove those actual ranges.
+  runInOp(cm, function () {
+    for (var i = kill.length - 1; i >= 0; i--)
+      { replaceRange(cm.doc, "", kill[i].from, kill[i].to, "+delete"); }
+    ensureCursorVisible(cm);
+  });
+}
+
+// Commands are parameter-less actions that can be performed on an
+// editor, mostly used for keybindings.
+var commands = {
+  selectAll: selectAll,
+  singleSelection: function (cm) { return cm.setSelection(cm.getCursor("anchor"), cm.getCursor("head"), sel_dontScroll); },
+  killLine: function (cm) { return deleteNearSelection(cm, function (range) {
+    if (range.empty()) {
+      var len = getLine(cm.doc, range.head.line).text.length;
+      if (range.head.ch == len && range.head.line < cm.lastLine())
+        { return {from: range.head, to: Pos(range.head.line + 1, 0)} }
+      else
+        { return {from: range.head, to: Pos(range.head.line, len)} }
+    } else {
+      return {from: range.from(), to: range.to()}
+    }
+  }); },
+  deleteLine: function (cm) { return deleteNearSelection(cm, function (range) { return ({
+    from: Pos(range.from().line, 0),
+    to: clipPos(cm.doc, Pos(range.to().line + 1, 0))
+  }); }); },
+  delLineLeft: function (cm) { return deleteNearSelection(cm, function (range) { return ({
+    from: Pos(range.from().line, 0), to: range.from()
+  }); }); },
+  delWrappedLineLeft: function (cm) { return deleteNearSelection(cm, function (range) {
+    var top = cm.charCoords(range.head, "div").top + 5;
+    var leftPos = cm.coordsChar({left: 0, top: top}, "div");
+    return {from: leftPos, to: range.from()}
+  }); },
+  delWrappedLineRight: function (cm) { return deleteNearSelection(cm, function (range) {
+    var top = cm.charCoords(range.head, "div").top + 5;
+    var rightPos = cm.coordsChar({left: cm.display.lineDiv.offsetWidth + 100, top: top}, "div");
+    return {from: range.from(), to: rightPos }
+  }); },
+  undo: function (cm) { return cm.undo(); },
+  redo: function (cm) { return cm.redo(); },
+  undoSelection: function (cm) { return cm.undoSelection(); },
+  redoSelection: function (cm) { return cm.redoSelection(); },
+  goDocStart: function (cm) { return cm.extendSelection(Pos(cm.firstLine(), 0)); },
+  goDocEnd: function (cm) { return cm.extendSelection(Pos(cm.lastLine())); },
+  goLineStart: function (cm) { return cm.extendSelectionsBy(function (range) { return lineStart(cm, range.head.line); },
+    {origin: "+move", bias: 1}
+  ); },
+  goLineStartSmart: function (cm) { return cm.extendSelectionsBy(function (range) { return lineStartSmart(cm, range.head); },
+    {origin: "+move", bias: 1}
+  ); },
+  goLineEnd: function (cm) { return cm.extendSelectionsBy(function (range) { return lineEnd(cm, range.head.line); },
+    {origin: "+move", bias: -1}
+  ); },
+  goLineRight: function (cm) { return cm.extendSelectionsBy(function (range) {
+    var top = cm.charCoords(range.head, "div").top + 5;
+    return cm.coordsChar({left: cm.display.lineDiv.offsetWidth + 100, top: top}, "div")
+  }, sel_move); },
+  goLineLeft: function (cm) { return cm.extendSelectionsBy(function (range) {
+    var top = cm.charCoords(range.head, "div").top + 5;
+    return cm.coordsChar({left: 0, top: top}, "div")
+  }, sel_move); },
+  goLineLeftSmart: function (cm) { return cm.extendSelectionsBy(function (range) {
+    var top = cm.charCoords(range.head, "div").top + 5;
+    var pos = cm.coordsChar({left: 0, top: top}, "div");
+    if (pos.ch < cm.getLine(pos.line).search(/\S/)) { return lineStartSmart(cm, range.head) }
+    return pos
+  }, sel_move); },
+  goLineUp: function (cm) { return cm.moveV(-1, "line"); },
+  goLineDown: function (cm) { return cm.moveV(1, "line"); },
+  goPageUp: function (cm) { return cm.moveV(-1, "page"); },
+  goPageDown: function (cm) { return cm.moveV(1, "page"); },
+  goCharLeft: function (cm) { return cm.moveH(-1, "char"); },
+  goCharRight: function (cm) { return cm.moveH(1, "char"); },
+  goColumnLeft: function (cm) { return cm.moveH(-1, "column"); },
+  goColumnRight: function (cm) { return cm.moveH(1, "column"); },
+  goWordLeft: function (cm) { return cm.moveH(-1, "word"); },
+  goGroupRight: function (cm) { return cm.moveH(1, "group"); },
+  goGroupLeft: function (cm) { return cm.moveH(-1, "group"); },
+  goWordRight: function (cm) { return cm.moveH(1, "word"); },
+  delCharBefore: function (cm) { return cm.deleteH(-1, "char"); },
+  delCharAfter: function (cm) { return cm.deleteH(1, "char"); },
+  delWordBefore: function (cm) { return cm.deleteH(-1, "word"); },
+  delWordAfter: function (cm) { return cm.deleteH(1, "word"); },
+  delGroupBefore: function (cm) { return cm.deleteH(-1, "group"); },
+  delGroupAfter: function (cm) { return cm.deleteH(1, "group"); },
+  indentAuto: function (cm) { return cm.indentSelection("smart"); },
+  indentMore: function (cm) { return cm.indentSelection("add"); },
+  indentLess: function (cm) { return cm.indentSelection("subtract"); },
+  insertTab: function (cm) { return cm.replaceSelection("\t"); },
+  insertSoftTab: function (cm) {
+    var spaces = [], ranges = cm.listSelections(), tabSize = cm.options.tabSize;
+    for (var i = 0; i < ranges.length; i++) {
+      var pos = ranges[i].from();
+      var col = countColumn(cm.getLine(pos.line), pos.ch, tabSize);
+      spaces.push(spaceStr(tabSize - col % tabSize));
+    }
+    cm.replaceSelections(spaces);
+  },
+  defaultTab: function (cm) {
+    if (cm.somethingSelected()) { cm.indentSelection("add"); }
+    else { cm.execCommand("insertTab"); }
+  },
+  // Swap the two chars left and right of each selection's head.
+  // Move cursor behind the two swapped characters afterwards.
+  //
+  // Doesn't consider line feeds a character.
+  // Doesn't scan more than one line above to find a character.
+  // Doesn't do anything on an empty line.
+  // Doesn't do anything with non-empty selections.
+  transposeChars: function (cm) { return runInOp(cm, function () {
+    var ranges = cm.listSelections(), newSel = [];
+    for (var i = 0; i < ranges.length; i++) {
+      if (!ranges[i].empty()) { continue }
+      var cur = ranges[i].head, line = getLine(cm.doc, cur.line).text;
+      if (line) {
+        if (cur.ch == line.length) { cur = new Pos(cur.line, cur.ch - 1); }
+        if (cur.ch > 0) {
+          cur = new Pos(cur.line, cur.ch + 1);
+          cm.replaceRange(line.charAt(cur.ch - 1) + line.charAt(cur.ch - 2),
+                          Pos(cur.line, cur.ch - 2), cur, "+transpose");
+        } else if (cur.line > cm.doc.first) {
+          var prev = getLine(cm.doc, cur.line - 1).text;
+          if (prev) {
+            cur = new Pos(cur.line, 1);
+            cm.replaceRange(line.charAt(0) + cm.doc.lineSeparator() +
+                            prev.charAt(prev.length - 1),
+                            Pos(cur.line - 1, prev.length - 1), cur, "+transpose");
+          }
+        }
+      }
+      newSel.push(new Range(cur, cur));
+    }
+    cm.setSelections(newSel);
+  }); },
+  newlineAndIndent: function (cm) { return runInOp(cm, function () {
+    var sels = cm.listSelections();
+    for (var i = sels.length - 1; i >= 0; i--)
+      { cm.replaceRange(cm.doc.lineSeparator(), sels[i].anchor, sels[i].head, "+input"); }
+    sels = cm.listSelections();
+    for (var i$1 = 0; i$1 < sels.length; i$1++)
+      { cm.indentLine(sels[i$1].from().line, null, true); }
+    ensureCursorVisible(cm);
+  }); },
+  openLine: function (cm) { return cm.replaceSelection("\n", "start"); },
+  toggleOverwrite: function (cm) { return cm.toggleOverwrite(); }
+};
+
+
+function lineStart(cm, lineN) {
+  var line = getLine(cm.doc, lineN);
+  var visual = visualLine(line);
+  if (visual != line) { lineN = lineNo(visual); }
+  return endOfLine(true, cm, visual, lineN, 1)
+}
+function lineEnd(cm, lineN) {
+  var line = getLine(cm.doc, lineN);
+  var visual = visualLineEnd(line);
+  if (visual != line) { lineN = lineNo(visual); }
+  return endOfLine(true, cm, line, lineN, -1)
+}
+function lineStartSmart(cm, pos) {
+  var start = lineStart(cm, pos.line);
+  var line = getLine(cm.doc, start.line);
+  var order = getOrder(line, cm.doc.direction);
+  if (!order || order[0].level == 0) {
+    var firstNonWS = Math.max(0, line.text.search(/\S/));
+    var inWS = pos.line == start.line && pos.ch <= firstNonWS && pos.ch;
+    return Pos(start.line, inWS ? 0 : firstNonWS, start.sticky)
+  }
+  return start
+}
+
+// Run a handler that was bound to a key.
+function doHandleBinding(cm, bound, dropShift) {
+  if (typeof bound == "string") {
+    bound = commands[bound];
+    if (!bound) { return false }
+  }
+  // Ensure previous input has been read, so that the handler sees a
+  // consistent view of the document
+  cm.display.input.ensurePolled();
+  var prevShift = cm.display.shift, done = false;
+  try {
+    if (cm.isReadOnly()) { cm.state.suppressEdits = true; }
+    if (dropShift) { cm.display.shift = false; }
+    done = bound(cm) != Pass;
+  } finally {
+    cm.display.shift = prevShift;
+    cm.state.suppressEdits = false;
+  }
+  return done
+}
+
+function lookupKeyForEditor(cm, name, handle) {
+  for (var i = 0; i < cm.state.keyMaps.length; i++) {
+    var result = lookupKey(name, cm.state.keyMaps[i], handle, cm);
+    if (result) { return result }
+  }
+  return (cm.options.extraKeys && lookupKey(name, cm.options.extraKeys, handle, cm))
+    || lookupKey(name, cm.options.keyMap, handle, cm)
+}
+
+var stopSeq = new Delayed;
+function dispatchKey(cm, name, e, handle) {
+  var seq = cm.state.keySeq;
+  if (seq) {
+    if (isModifierKey(name)) { return "handled" }
+    stopSeq.set(50, function () {
+      if (cm.state.keySeq == seq) {
+        cm.state.keySeq = null;
+        cm.display.input.reset();
+      }
+    });
+    name = seq + " " + name;
+  }
+  var result = lookupKeyForEditor(cm, name, handle);
+
+  if (result == "multi")
+    { cm.state.keySeq = name; }
+  if (result == "handled")
+    { signalLater(cm, "keyHandled", cm, name, e); }
+
+  if (result == "handled" || result == "multi") {
+    e_preventDefault(e);
+    restartBlink(cm);
+  }
+
+  if (seq && !result && /\'$/.test(name)) {
+    e_preventDefault(e);
+    return true
+  }
+  return !!result
+}
+
+// Handle a key from the keydown event.
+function handleKeyBinding(cm, e) {
+  var name = keyName(e, true);
+  if (!name) { return false }
+
+  if (e.shiftKey && !cm.state.keySeq) {
+    // First try to resolve full name (including 'Shift-'). Failing
+    // that, see if there is a cursor-motion command (starting with
+    // 'go') bound to the keyname without 'Shift-'.
+    return dispatchKey(cm, "Shift-" + name, e, function (b) { return doHandleBinding(cm, b, true); })
+        || dispatchKey(cm, name, e, function (b) {
+             if (typeof b == "string" ? /^go[A-Z]/.test(b) : b.motion)
+               { return doHandleBinding(cm, b) }
+           })
+  } else {
+    return dispatchKey(cm, name, e, function (b) { return doHandleBinding(cm, b); })
+  }
+}
+
+// Handle a key from the keypress event
+function handleCharBinding(cm, e, ch) {
+  return dispatchKey(cm, "'" + ch + "'", e, function (b) { return doHandleBinding(cm, b, true); })
+}
+
+var lastStoppedKey = null;
+function onKeyDown(e) {
+  var cm = this;
+  cm.curOp.focus = activeElt();
+  if (signalDOMEvent(cm, e)) { return }
+  // IE does strange things with escape.
+  if (ie && ie_version < 11 && e.keyCode == 27) { e.returnValue = false; }
+  var code = e.keyCode;
+  cm.display.shift = code == 16 || e.shiftKey;
+  var handled = handleKeyBinding(cm, e);
+  if (presto) {
+    lastStoppedKey = handled ? code : null;
+    // Opera has no cut event... we try to at least catch the key combo
+    if (!handled && code == 88 && !hasCopyEvent && (mac ? e.metaKey : e.ctrlKey))
+      { cm.replaceSelection("", null, "cut"); }
+  }
+
+  // Turn mouse into crosshair when Alt is held on Mac.
+  if (code == 18 && !/\bCodeMirror-crosshair\b/.test(cm.display.lineDiv.className))
+    { showCrossHair(cm); }
+}
+
+function showCrossHair(cm) {
+  var lineDiv = cm.display.lineDiv;
+  addClass(lineDiv, "CodeMirror-crosshair");
+
+  function up(e) {
+    if (e.keyCode == 18 || !e.altKey) {
+      rmClass(lineDiv, "CodeMirror-crosshair");
+      off(document, "keyup", up);
+      off(document, "mouseover", up);
+    }
+  }
+  on(document, "keyup", up);
+  on(document, "mouseover", up);
+}
+
+function onKeyUp(e) {
+  if (e.keyCode == 16) { this.doc.sel.shift = false; }
+  signalDOMEvent(this, e);
+}
+
+function onKeyPress(e) {
+  var cm = this;
+  if (eventInWidget(cm.display, e) || signalDOMEvent(cm, e) || e.ctrlKey && !e.altKey || mac && e.metaKey) { return }
+  var keyCode = e.keyCode, charCode = e.charCode;
+  if (presto && keyCode == lastStoppedKey) {lastStoppedKey = null; e_preventDefault(e); return}
+  if ((presto && (!e.which || e.which < 10)) && handleKeyBinding(cm, e)) { return }
+  var ch = String.fromCharCode(charCode == null ? keyCode : charCode);
+  // Some browsers fire keypress events for backspace
+  if (ch == "\x08") { return }
+  if (handleCharBinding(cm, e, ch)) { return }
+  cm.display.input.onKeyPress(e);
+}
+
+// A mouse down can be a single click, double click, triple click,
+// start of selection drag, start of text drag, new cursor
+// (ctrl-click), rectangle drag (alt-drag), or xwin
+// middle-click-paste. Or it might be a click on something we should
+// not interfere with, such as a scrollbar or widget.
+function onMouseDown(e) {
+  var cm = this, display = cm.display;
+  if (signalDOMEvent(cm, e) || display.activeTouch && display.input.supportsTouch()) { return }
+  display.input.ensurePolled();
+  display.shift = e.shiftKey;
+
+  if (eventInWidget(display, e)) {
+    if (!webkit) {
+      // Briefly turn off draggability, to allow widgets to do
+      // normal dragging things.
+      display.scroller.draggable = false;
+      setTimeout(function () { return display.scroller.draggable = true; }, 100);
+    }
+    return
+  }
+  if (clickInGutter(cm, e)) { return }
+  var start = posFromMouse(cm, e);
+  window.focus();
+
+  switch (e_button(e)) {
+  case 1:
+    // #3261: make sure, that we're not starting a second selection
+    if (cm.state.selectingText)
+      { cm.state.selectingText(e); }
+    else if (start)
+      { leftButtonDown(cm, e, start); }
+    else if (e_target(e) == display.scroller)
+      { e_preventDefault(e); }
+    break
+  case 2:
+    if (webkit) { cm.state.lastMiddleDown = +new Date; }
+    if (start) { extendSelection(cm.doc, start); }
+    setTimeout(function () { return display.input.focus(); }, 20);
+    e_preventDefault(e);
+    break
+  case 3:
+    if (captureRightClick) { onContextMenu(cm, e); }
+    else { delayBlurEvent(cm); }
+    break
+  }
+}
+
+var lastClick;
+var lastDoubleClick;
+function leftButtonDown(cm, e, start) {
+  if (ie) { setTimeout(bind(ensureFocus, cm), 0); }
+  else { cm.curOp.focus = activeElt(); }
+
+  var now = +new Date, type;
+  if (lastDoubleClick && lastDoubleClick.time > now - 400 && cmp(lastDoubleClick.pos, start) == 0) {
+    type = "triple";
+  } else if (lastClick && lastClick.time > now - 400 && cmp(lastClick.pos, start) == 0) {
+    type = "double";
+    lastDoubleClick = {time: now, pos: start};
+  } else {
+    type = "single";
+    lastClick = {time: now, pos: start};
+  }
+
+  var sel = cm.doc.sel, modifier = mac ? e.metaKey : e.ctrlKey, contained;
+  if (cm.options.dragDrop && dragAndDrop && !cm.isReadOnly() &&
+      type == "single" && (contained = sel.contains(start)) > -1 &&
+      (cmp((contained = sel.ranges[contained]).from(), start) < 0 || start.xRel > 0) &&
+      (cmp(contained.to(), start) > 0 || start.xRel < 0))
+    { leftButtonStartDrag(cm, e, start, modifier); }
+  else
+    { leftButtonSelect(cm, e, start, type, modifier); }
+}
+
+// Start a text drag. When it ends, see if any dragging actually
+// happen, and treat as a click if it didn't.
+function leftButtonStartDrag(cm, e, start, modifier) {
+  var display = cm.display, moved = false;
+  var dragEnd = operation(cm, function (e) {
+    if (webkit) { display.scroller.draggable = false; }
+    cm.state.draggingText = false;
+    off(document, "mouseup", dragEnd);
+    off(document, "mousemove", mouseMove);
+    off(display.scroller, "dragstart", dragStart);
+    off(display.scroller, "drop", dragEnd);
+    if (!moved) {
+      e_preventDefault(e);
+      if (!modifier)
+        { extendSelection(cm.doc, start); }
+      // Work around unexplainable focus problem in IE9 (#2127) and Chrome (#3081)
+      if (webkit || ie && ie_version == 9)
+        { setTimeout(function () {document.body.focus(); display.input.focus();}, 20); }
+      else
+        { display.input.focus(); }
+    }
+  });
+  var mouseMove = function(e2) {
+    moved = moved || Math.abs(e.clientX - e2.clientX) + Math.abs(e.clientY - e2.clientY) >= 10;
+  };
+  var dragStart = function () { return moved = true; };
+  // Let the drag handler handle this.
+  if (webkit) { display.scroller.draggable = true; }
+  cm.state.draggingText = dragEnd;
+  dragEnd.copy = mac ? e.altKey : e.ctrlKey;
+  // IE's approach to draggable
+  if (display.scroller.dragDrop) { display.scroller.dragDrop(); }
+  on(document, "mouseup", dragEnd);
+  on(document, "mousemove", mouseMove);
+  on(display.scroller, "dragstart", dragStart);
+  on(display.scroller, "drop", dragEnd);
+
+  delayBlurEvent(cm);
+  setTimeout(function () { return display.input.focus(); }, 20);
+}
+
+// Normal selection, as opposed to text dragging.
+function leftButtonSelect(cm, e, start, type, addNew) {
+  var display = cm.display, doc = cm.doc;
+  e_preventDefault(e);
+
+  var ourRange, ourIndex, startSel = doc.sel, ranges = startSel.ranges;
+  if (addNew && !e.shiftKey) {
+    ourIndex = doc.sel.contains(start);
+    if (ourIndex > -1)
+      { ourRange = ranges[ourIndex]; }
+    else
+      { ourRange = new Range(start, start); }
+  } else {
+    ourRange = doc.sel.primary();
+    ourIndex = doc.sel.primIndex;
+  }
+
+  if (chromeOS ? e.shiftKey && e.metaKey : e.altKey) {
+    type = "rect";
+    if (!addNew) { ourRange = new Range(start, start); }
+    start = posFromMouse(cm, e, true, true);
+    ourIndex = -1;
+  } else if (type == "double") {
+    var word = cm.findWordAt(start);
+    if (cm.display.shift || doc.extend)
+      { ourRange = extendRange(doc, ourRange, word.anchor, word.head); }
+    else
+      { ourRange = word; }
+  } else if (type == "triple") {
+    var line = new Range(Pos(start.line, 0), clipPos(doc, Pos(start.line + 1, 0)));
+    if (cm.display.shift || doc.extend)
+      { ourRange = extendRange(doc, ourRange, line.anchor, line.head); }
+    else
+      { ourRange = line; }
+  } else {
+    ourRange = extendRange(doc, ourRange, start);
+  }
+
+  if (!addNew) {
+    ourIndex = 0;
+    setSelection(doc, new Selection([ourRange], 0), sel_mouse);
+    startSel = doc.sel;
+  } else if (ourIndex == -1) {
+    ourIndex = ranges.length;
+    setSelection(doc, normalizeSelection(ranges.concat([ourRange]), ourIndex),
+                 {scroll: false, origin: "*mouse"});
+  } else if (ranges.length > 1 && ranges[ourIndex].empty() && type == "single" && !e.shiftKey) {
+    setSelection(doc, normalizeSelection(ranges.slice(0, ourIndex).concat(ranges.slice(ourIndex + 1)), 0),
+                 {scroll: false, origin: "*mouse"});
+    startSel = doc.sel;
+  } else {
+    replaceOneSelection(doc, ourIndex, ourRange, sel_mouse);
+  }
+
+  var lastPos = start;
+  function extendTo(pos) {
+    if (cmp(lastPos, pos) == 0) { return }
+    lastPos = pos;
+
+    if (type == "rect") {
+      var ranges = [], tabSize = cm.options.tabSize;
+      var startCol = countColumn(getLine(doc, start.line).text, start.ch, tabSize);
+      var posCol = countColumn(getLine(doc, pos.line).text, pos.ch, tabSize);
+      var left = Math.min(startCol, posCol), right = Math.max(startCol, posCol);
+      for (var line = Math.min(start.line, pos.line), end = Math.min(cm.lastLine(), Math.max(start.line, pos.line));
+           line <= end; line++) {
+        var text = getLine(doc, line).text, leftPos = findColumn(text, left, tabSize);
+        if (left == right)
+          { ranges.push(new Range(Pos(line, leftPos), Pos(line, leftPos))); }
+        else if (text.length > leftPos)
+          { ranges.push(new Range(Pos(line, leftPos), Pos(line, findColumn(text, right, tabSize)))); }
+      }
+      if (!ranges.length) { ranges.push(new Range(start, start)); }
+      setSelection(doc, normalizeSelection(startSel.ranges.slice(0, ourIndex).concat(ranges), ourIndex),
+                   {origin: "*mouse", scroll: false});
+      cm.scrollIntoView(pos);
+    } else {
+      var oldRange = ourRange;
+      var anchor = oldRange.anchor, head = pos;
+      if (type != "single") {
+        var range$$1;
+        if (type == "double")
+          { range$$1 = cm.findWordAt(pos); }
+        else
+          { range$$1 = new Range(Pos(pos.line, 0), clipPos(doc, Pos(pos.line + 1, 0))); }
+        if (cmp(range$$1.anchor, anchor) > 0) {
+          head = range$$1.head;
+          anchor = minPos(oldRange.from(), range$$1.anchor);
+        } else {
+          head = range$$1.anchor;
+          anchor = maxPos(oldRange.to(), range$$1.head);
+        }
+      }
+      var ranges$1 = startSel.ranges.slice(0);
+      ranges$1[ourIndex] = new Range(clipPos(doc, anchor), head);
+      setSelection(doc, normalizeSelection(ranges$1, ourIndex), sel_mouse);
+    }
+  }
+
+  var editorSize = display.wrapper.getBoundingClientRect();
+  // Used to ensure timeout re-tries don't fire when another extend
+  // happened in the meantime (clearTimeout isn't reliable -- at
+  // least on Chrome, the timeouts still happen even when cleared,
+  // if the clear happens after their scheduled firing time).
+  var counter = 0;
+
+  function extend(e) {
+    var curCount = ++counter;
+    var cur = posFromMouse(cm, e, true, type == "rect");
+    if (!cur) { return }
+    if (cmp(cur, lastPos) != 0) {
+      cm.curOp.focus = activeElt();
+      extendTo(cur);
+      var visible = visibleLines(display, doc);
+      if (cur.line >= visible.to || cur.line < visible.from)
+        { setTimeout(operation(cm, function () {if (counter == curCount) { extend(e); }}), 150); }
+    } else {
+      var outside = e.clientY < editorSize.top ? -20 : e.clientY > editorSize.bottom ? 20 : 0;
+      if (outside) { setTimeout(operation(cm, function () {
+        if (counter != curCount) { return }
+        display.scroller.scrollTop += outside;
+        extend(e);
+      }), 50); }
+    }
+  }
+
+  function done(e) {
+    cm.state.selectingText = false;
+    counter = Infinity;
+    e_preventDefault(e);
+    display.input.focus();
+    off(document, "mousemove", move);
+    off(document, "mouseup", up);
+    doc.history.lastSelOrigin = null;
+  }
+
+  var move = operation(cm, function (e) {
+    if (!e_button(e)) { done(e); }
+    else { extend(e); }
+  });
+  var up = operation(cm, done);
+  cm.state.selectingText = up;
+  on(document, "mousemove", move);
+  on(document, "mouseup", up);
+}
+
+
+// Determines whether an event happened in the gutter, and fires the
+// handlers for the corresponding event.
+function gutterEvent(cm, e, type, prevent) {
+  var mX, mY;
+  try { mX = e.clientX; mY = e.clientY; }
+  catch(e) { return false }
+  if (mX >= Math.floor(cm.display.gutters.getBoundingClientRect().right)) { return false }
+  if (prevent) { e_preventDefault(e); }
+
+  var display = cm.display;
+  var lineBox = display.lineDiv.getBoundingClientRect();
+
+  if (mY > lineBox.bottom || !hasHandler(cm, type)) { return e_defaultPrevented(e) }
+  mY -= lineBox.top - display.viewOffset;
+
+  for (var i = 0; i < cm.options.gutters.length; ++i) {
+    var g = display.gutters.childNodes[i];
+    if (g && g.getBoundingClientRect().right >= mX) {
+      var line = lineAtHeight(cm.doc, mY);
+      var gutter = cm.options.gutters[i];
+      signal(cm, type, cm, line, gutter, e);
+      return e_defaultPrevented(e)
+    }
+  }
+}
+
+function clickInGutter(cm, e) {
+  return gutterEvent(cm, e, "gutterClick", true)
+}
+
+// CONTEXT MENU HANDLING
+
+// To make the context menu work, we need to briefly unhide the
+// textarea (making it as unobtrusive as possible) to let the
+// right-click take effect on it.
+function onContextMenu(cm, e) {
+  if (eventInWidget(cm.display, e) || contextMenuInGutter(cm, e)) { return }
+  if (signalDOMEvent(cm, e, "contextmenu")) { return }
+  cm.display.input.onContextMenu(e);
+}
+
+function contextMenuInGutter(cm, e) {
+  if (!hasHandler(cm, "gutterContextMenu")) { return false }
+  return gutterEvent(cm, e, "gutterContextMenu", false)
+}
+
+function themeChanged(cm) {
+  cm.display.wrapper.className = cm.display.wrapper.className.replace(/\s*cm-s-\S+/g, "") +
+    cm.options.theme.replace(/(^|\s)\s*/g, " cm-s-");
+  clearCaches(cm);
+}
+
+var Init = {toString: function(){return "CodeMirror.Init"}};
+
+var defaults = {};
+var optionHandlers = {};
+
+function defineOptions(CodeMirror) {
+  var optionHandlers = CodeMirror.optionHandlers;
+
+  function option(name, deflt, handle, notOnInit) {
+    CodeMirror.defaults[name] = deflt;
+    if (handle) { optionHandlers[name] =
+      notOnInit ? function (cm, val, old) {if (old != Init) { handle(cm, val, old); }} : handle; }
+  }
+
+  CodeMirror.defineOption = option;
+
+  // Passed to option handlers when there is no old value.
+  CodeMirror.Init = Init;
+
+  // These two are, on init, called from the constructor because they
+  // have to be initialized before the editor can start at all.
+  option("value", "", function (cm, val) { return cm.setValue(val); }, true);
+  option("mode", null, function (cm, val) {
+    cm.doc.modeOption = val;
+    loadMode(cm);
+  }, true);
+
+  option("indentUnit", 2, loadMode, true);
+  option("indentWithTabs", false);
+  option("smartIndent", true);
+  option("tabSize", 4, function (cm) {
+    resetModeState(cm);
+    clearCaches(cm);
+    regChange(cm);
+  }, true);
+  option("lineSeparator", null, function (cm, val) {
+    cm.doc.lineSep = val;
+    if (!val) { return }
+    var newBreaks = [], lineNo = cm.doc.first;
+    cm.doc.iter(function (line) {
+      for (var pos = 0;;) {
+        var found = line.text.indexOf(val, pos);
+        if (found == -1) { break }
+        pos = found + val.length;
+        newBreaks.push(Pos(lineNo, found));
+      }
+      lineNo++;
+    });
+    for (var i = newBreaks.length - 1; i >= 0; i--)
+      { replaceRange(cm.doc, val, newBreaks[i], Pos(newBreaks[i].line, newBreaks[i].ch + val.length)); }
+  });
+  option("specialChars", /[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u200b-\u200f\u2028\u2029\ufeff]/g, function (cm, val, old) {
+    cm.state.specialChars = new RegExp(val.source + (val.test("\t") ? "" : "|\t"), "g");
+    if (old != Init) { cm.refresh(); }
+  });
+  option("specialCharPlaceholder", defaultSpecialCharPlaceholder, function (cm) { return cm.refresh(); }, true);
+  option("electricChars", true);
+  option("inputStyle", mobile ? "contenteditable" : "textarea", function () {
+    throw new Error("inputStyle can not (yet) be changed in a running editor") // FIXME
+  }, true);
+  option("spellcheck", false, function (cm, val) { return cm.getInputField().spellcheck = val; }, true);
+  option("rtlMoveVisually", !windows);
+  option("wholeLineUpdateBefore", true);
+
+  option("theme", "default", function (cm) {
+    themeChanged(cm);
+    guttersChanged(cm);
+  }, true);
+  option("keyMap", "default", function (cm, val, old) {
+    var next = getKeyMap(val);
+    var prev = old != Init && getKeyMap(old);
+    if (prev && prev.detach) { prev.detach(cm, next); }
+    if (next.attach) { next.attach(cm, prev || null); }
+  });
+  option("extraKeys", null);
+
+  option("lineWrapping", false, wrappingChanged, true);
+  option("gutters", [], function (cm) {
+    setGuttersForLineNumbers(cm.options);
+    guttersChanged(cm);
+  }, true);
+  option("fixedGutter", true, function (cm, val) {
+    cm.display.gutters.style.left = val ? compensateForHScroll(cm.display) + "px" : "0";
+    cm.refresh();
+  }, true);
+  option("coverGutterNextToScrollbar", false, function (cm) { return updateScrollbars(cm); }, true);
+  option("scrollbarStyle", "native", function (cm) {
+    initScrollbars(cm);
+    updateScrollbars(cm);
+    cm.display.scrollbars.setScrollTop(cm.doc.scrollTop);
+    cm.display.scrollbars.setScrollLeft(cm.doc.scrollLeft);
+  }, true);
+  option("lineNumbers", false, function (cm) {
+    setGuttersForLineNumbers(cm.options);
+    guttersChanged(cm);
+  }, true);
+  option("firstLineNumber", 1, guttersChanged, true);
+  option("lineNumberFormatter", function (integer) { return integer; }, guttersChanged, true);
+  option("showCursorWhenSelecting", false, updateSelection, true);
+
+  option("resetSelectionOnContextMenu", true);
+  option("lineWiseCopyCut", true);
+
+  option("readOnly", false, function (cm, val) {
+    if (val == "nocursor") {
+      onBlur(cm);
+      cm.display.input.blur();
+      cm.display.disabled = true;
+    } else {
+      cm.display.disabled = false;
+    }
+    cm.display.input.readOnlyChanged(val);
+  });
+  option("disableInput", false, function (cm, val) {if (!val) { cm.display.input.reset(); }}, true);
+  option("dragDrop", true, dragDropChanged);
+  option("allowDropFileTypes", null);
+
+  option("cursorBlinkRate", 530);
+  option("cursorScrollMargin", 0);
+  option("cursorHeight", 1, updateSelection, true);
+  option("singleCursorHeightPerLine", true, updateSelection, true);
+  option("workTime", 100);
+  option("workDelay", 100);
+  option("flattenSpans", true, resetModeState, true);
+  option("addModeClass", false, resetModeState, true);
+  option("pollInterval", 100);
+  option("undoDepth", 200, function (cm, val) { return cm.doc.history.undoDepth = val; });
+  option("historyEventDelay", 1250);
+  option("viewportMargin", 10, function (cm) { return cm.refresh(); }, true);
+  option("maxHighlightLength", 10000, resetModeState, true);
+  option("moveInputWithCursor", true, function (cm, val) {
+    if (!val) { cm.display.input.resetPosition(); }
+  });
+
+  option("tabindex", null, function (cm, val) { return cm.display.input.getField().tabIndex = val || ""; });
+  option("autofocus", null);
+  option("direction", "ltr", function (cm, val) { return cm.doc.setDirection(val); }, true);
+}
+
+function guttersChanged(cm) {
+  updateGutters(cm);
+  regChange(cm);
+  alignHorizontally(cm);
+}
+
+function dragDropChanged(cm, value, old) {
+  var wasOn = old && old != Init;
+  if (!value != !wasOn) {
+    var funcs = cm.display.dragFunctions;
+    var toggle = value ? on : off;
+    toggle(cm.display.scroller, "dragstart", funcs.start);
+    toggle(cm.display.scroller, "dragenter", funcs.enter);
+    toggle(cm.display.scroller, "dragover", funcs.over);
+    toggle(cm.display.scroller, "dragleave", funcs.leave);
+    toggle(cm.display.scroller, "drop", funcs.drop);
+  }
+}
+
+function wrappingChanged(cm) {
+  if (cm.options.lineWrapping) {
+    addClass(cm.display.wrapper, "CodeMirror-wrap");
+    cm.display.sizer.style.minWidth = "";
+    cm.display.sizerWidth = null;
+  } else {
+    rmClass(cm.display.wrapper, "CodeMirror-wrap");
+    findMaxLine(cm);
+  }
+  estimateLineHeights(cm);
+  regChange(cm);
+  clearCaches(cm);
+  setTimeout(function () { return updateScrollbars(cm); }, 100);
+}
+
+// A CodeMirror instance represents an editor. This is the object
+// that user code is usually dealing with.
+
+function CodeMirror$1(place, options) {
+  var this$1 = this;
+
+  if (!(this instanceof CodeMirror$1)) { return new CodeMirror$1(place, options) }
+
+  this.options = options = options ? copyObj(options) : {};
+  // Determine effective options based on given values and defaults.
+  copyObj(defaults, options, false);
+  setGuttersForLineNumbers(options);
+
+  var doc = options.value;
+  if (typeof doc == "string") { doc = new Doc(doc, options.mode, null, options.lineSeparator, options.direction); }
+  this.doc = doc;
+
+  var input = new CodeMirror$1.inputStyles[options.inputStyle](this);
+  var display = this.display = new Display(place, doc, input);
+  display.wrapper.CodeMirror = this;
+  updateGutters(this);
+  themeChanged(this);
+  if (options.lineWrapping)
+    { this.display.wrapper.className += " CodeMirror-wrap"; }
+  initScrollbars(this);
+
+  this.state = {
+    keyMaps: [],  // stores maps added by addKeyMap
+    overlays: [], // highlighting overlays, as added by addOverlay
+    modeGen: 0,   // bumped when mode/overlay changes, used to invalidate highlighting info
+    overwrite: false,
+    delayingBlurEvent: false,
+    focused: false,
+    suppressEdits: false, // used to disable editing during key handlers when in readOnly mode
+    pasteIncoming: false, cutIncoming: false, // help recognize paste/cut edits in input.poll
+    selectingText: false,
+    draggingText: false,
+    highlight: new Delayed(), // stores highlight worker timeout
+    keySeq: null,  // Unfinished key sequence
+    specialChars: null
+  };
+
+  if (options.autofocus && !mobile) { display.input.focus(); }
+
+  // Override magic textarea content restore that IE sometimes does
+  // on our hidden textarea on reload
+  if (ie && ie_version < 11) { setTimeout(function () { return this$1.display.input.reset(true); }, 20); }
+
+  registerEventHandlers(this);
+  ensureGlobalHandlers();
+
+  startOperation(this);
+  this.curOp.forceUpdate = true;
+  attachDoc(this, doc);
+
+  if ((options.autofocus && !mobile) || this.hasFocus())
+    { setTimeout(bind(onFocus, this), 20); }
+  else
+    { onBlur(this); }
+
+  for (var opt in optionHandlers) { if (optionHandlers.hasOwnProperty(opt))
+    { optionHandlers[opt](this$1, options[opt], Init); } }
+  maybeUpdateLineNumberWidth(this);
+  if (options.finishInit) { options.finishInit(this); }
+  for (var i = 0; i < initHooks.length; ++i) { initHooks[i](this$1); }
+  endOperation(this);
+  // Suppress optimizelegibility in Webkit, since it breaks text
+  // measuring on line wrapping boundaries.
+  if (webkit && options.lineWrapping &&
+      getComputedStyle(display.lineDiv).textRendering == "optimizelegibility")
+    { display.lineDiv.style.textRendering = "auto"; }
+}
+
+// The default configuration options.
+CodeMirror$1.defaults = defaults;
+// Functions to run when options are changed.
+CodeMirror$1.optionHandlers = optionHandlers;
+
+// Attach the necessary event handlers when initializing the editor
+function registerEventHandlers(cm) {
+  var d = cm.display;
+  on(d.scroller, "mousedown", operation(cm, onMouseDown));
+  // Older IE's will not fire a second mousedown for a double click
+  if (ie && ie_version < 11)
+    { on(d.scroller, "dblclick", operation(cm, function (e) {
+      if (signalDOMEvent(cm, e)) { return }
+      var pos = posFromMouse(cm, e);
+      if (!pos || clickInGutter(cm, e) || eventInWidget(cm.display, e)) { return }
+      e_preventDefault(e);
+      var word = cm.findWordAt(pos);
+      extendSelection(cm.doc, word.anchor, word.head);
+    })); }
+  else
+    { on(d.scroller, "dblclick", function (e) { return signalDOMEvent(cm, e) || e_preventDefault(e); }); }
+  // Some browsers fire contextmenu *after* opening the menu, at
+  // which point we can't mess with it anymore. Context menu is
+  // handled in onMouseDown for these browsers.
+  if (!captureRightClick) { on(d.scroller, "contextmenu", function (e) { return onContextMenu(cm, e); }); }
+
+  // Used to suppress mouse event handling when a touch happens
+  var touchFinished, prevTouch = {end: 0};
+  function finishTouch() {
+    if (d.activeTouch) {
+      touchFinished = setTimeout(function () { return d.activeTouch = null; }, 1000);
+      prevTouch = d.activeTouch;
+      prevTouch.end = +new Date;
+    }
+  }
+  function isMouseLikeTouchEvent(e) {
+    if (e.touches.length != 1) { return false }
+    var touch = e.touches[0];
+    return touch.radiusX <= 1 && touch.radiusY <= 1
+  }
+  function farAway(touch, other) {
+    if (other.left == null) { return true }
+    var dx = other.left - touch.left, dy = other.top - touch.top;
+    return dx * dx + dy * dy > 20 * 20
+  }
+  on(d.scroller, "touchstart", function (e) {
+    if (!signalDOMEvent(cm, e) && !isMouseLikeTouchEvent(e)) {
+      d.input.ensurePolled();
+      clearTimeout(touchFinished);
+      var now = +new Date;
+      d.activeTouch = {start: now, moved: false,
+                       prev: now - prevTouch.end <= 300 ? prevTouch : null};
+      if (e.touches.length == 1) {
+        d.activeTouch.left = e.touches[0].pageX;
+        d.activeTouch.top = e.touches[0].pageY;
+      }
+    }
+  });
+  on(d.scroller, "touchmove", function () {
+    if (d.activeTouch) { d.activeTouch.moved = true; }
+  });
+  on(d.scroller, "touchend", function (e) {
+    var touch = d.activeTouch;
+    if (touch && !eventInWidget(d, e) && touch.left != null &&
+        !touch.moved && new Date - touch.start < 300) {
+      var pos = cm.coordsChar(d.activeTouch, "page"), range;
+      if (!touch.prev || farAway(touch, touch.prev)) // Single tap
+        { range = new Range(pos, pos); }
+      else if (!touch.prev.prev || farAway(touch, touch.prev.prev)) // Double tap
+        { range = cm.findWordAt(pos); }
+      else // Triple tap
+        { range = new Range(Pos(pos.line, 0), clipPos(cm.doc, Pos(pos.line + 1, 0))); }
+      cm.setSelection(range.anchor, range.head);
+      cm.focus();
+      e_preventDefault(e);
+    }
+    finishTouch();
+  });
+  on(d.scroller, "touchcancel", finishTouch);
+
+  // Sync scrolling between fake scrollbars and real scrollable
+  // area, ensure viewport is updated when scrolling.
+  on(d.scroller, "scroll", function () {
+    if (d.scroller.clientHeight) {
+      setScrollTop(cm, d.scroller.scrollTop);
+      setScrollLeft(cm, d.scroller.scrollLeft, true);
+      signal(cm, "scroll", cm);
+    }
+  });
+
+  // Listen to wheel events in order to try and update the viewport on time.
+  on(d.scroller, "mousewheel", function (e) { return onScrollWheel(cm, e); });
+  on(d.scroller, "DOMMouseScroll", function (e) { return onScrollWheel(cm, e); });
+
+  // Prevent wrapper from ever scrolling
+  on(d.wrapper, "scroll", function () { return d.wrapper.scrollTop = d.wrapper.scrollLeft = 0; });
+
+  d.dragFunctions = {
+    enter: function (e) {if (!signalDOMEvent(cm, e)) { e_stop(e); }},
+    over: function (e) {if (!signalDOMEvent(cm, e)) { onDragOver(cm, e); e_stop(e); }},
+    start: function (e) { return onDragStart(cm, e); },
+    drop: operation(cm, onDrop),
+    leave: function (e) {if (!signalDOMEvent(cm, e)) { clearDragCursor(cm); }}
+  };
+
+  var inp = d.input.getField();
+  on(inp, "keyup", function (e) { return onKeyUp.call(cm, e); });
+  on(inp, "keydown", operation(cm, onKeyDown));
+  on(inp, "keypress", operation(cm, onKeyPress));
+  on(inp, "focus", function (e) { return onFocus(cm, e); });
+  on(inp, "blur", function (e) { return onBlur(cm, e); });
+}
+
+var initHooks = [];
+CodeMirror$1.defineInitHook = function (f) { return initHooks.push(f); };
+
+// Indent the given line. The how parameter can be "smart",
+// "add"/null, "subtract", or "prev". When aggressive is false
+// (typically set to true for forced single-line indents), empty
+// lines are not indented, and places where the mode returns Pass
+// are left alone.
+function indentLine(cm, n, how, aggressive) {
+  var doc = cm.doc, state;
+  if (how == null) { how = "add"; }
+  if (how == "smart") {
+    // Fall back to "prev" when the mode doesn't have an indentation
+    // method.
+    if (!doc.mode.indent) { how = "prev"; }
+    else { state = getStateBefore(cm, n); }
+  }
+
+  var tabSize = cm.options.tabSize;
+  var line = getLine(doc, n), curSpace = countColumn(line.text, null, tabSize);
+  if (line.stateAfter) { line.stateAfter = null; }
+  var curSpaceString = line.text.match(/^\s*/)[0], indentation;
+  if (!aggressive && !/\S/.test(line.text)) {
+    indentation = 0;
+    how = "not";
+  } else if (how == "smart") {
+    indentation = doc.mode.indent(state, line.text.slice(curSpaceString.length), line.text);
+    if (indentation == Pass || indentation > 150) {
+      if (!aggressive) { return }
+      how = "prev";
+    }
+  }
+  if (how == "prev") {
+    if (n > doc.first) { indentation = countColumn(getLine(doc, n-1).text, null, tabSize); }
+    else { indentation = 0; }
+  } else if (how == "add") {
+    indentation = curSpace + cm.options.indentUnit;
+  } else if (how == "subtract") {
+    indentation = curSpace - cm.options.indentUnit;
+  } else if (typeof how == "number") {
+    indentation = curSpace + how;
+  }
+  indentation = Math.max(0, indentation);
+
+  var indentString = "", pos = 0;
+  if (cm.options.indentWithTabs)
+    { for (var i = Math.floor(indentation / tabSize); i; --i) {pos += tabSize; indentString += "\t";} }
+  if (pos < indentation) { indentString += spaceStr(indentation - pos); }
+
+  if (indentString != curSpaceString) {
+    replaceRange(doc, indentString, Pos(n, 0), Pos(n, curSpaceString.length), "+input");
+    line.stateAfter = null;
+    return true
+  } else {
+    // Ensure that, if the cursor was in the whitespace at the start
+    // of the line, it is moved to the end of that space.
+    for (var i$1 = 0; i$1 < doc.sel.ranges.length; i$1++) {
+      var range = doc.sel.ranges[i$1];
+      if (range.head.line == n && range.head.ch < curSpaceString.length) {
+        var pos$1 = Pos(n, curSpaceString.length);
+        replaceOneSelection(doc, i$1, new Range(pos$1, pos$1));
+        break
+      }
+    }
+  }
+}
+
+// This will be set to a {lineWise: bool, text: [string]} object, so
+// that, when pasting, we know what kind of selections the copied
+// text was made out of.
+var lastCopied = null;
+
+function setLastCopied(newLastCopied) {
+  lastCopied = newLastCopied;
+}
+
+function applyTextInput(cm, inserted, deleted, sel, origin) {
+  var doc = cm.doc;
+  cm.display.shift = false;
+  if (!sel) { sel = doc.sel; }
+
+  var paste = cm.state.pasteIncoming || origin == "paste";
+  var textLines = splitLinesAuto(inserted), multiPaste = null;
+  // When pasing N lines into N selections, insert one line per selection
+  if (paste && sel.ranges.length > 1) {
+    if (lastCopied && lastCopied.text.join("\n") == inserted) {
+      if (sel.ranges.length % lastCopied.text.length == 0) {
+        multiPaste = [];
+        for (var i = 0; i < lastCopied.text.length; i++)
+          { multiPaste.push(doc.splitLines(lastCopied.text[i])); }
+      }
+    } else if (textLines.length == sel.ranges.length) {
+      multiPaste = map(textLines, function (l) { return [l]; });
+    }
+  }
+
+  var updateInput;
+  // Normal behavior is to insert the new text into every selection
+  for (var i$1 = sel.ranges.length - 1; i$1 >= 0; i$1--) {
+    var range$$1 = sel.ranges[i$1];
+    var from = range$$1.from(), to = range$$1.to();
+    if (range$$1.empty()) {
+      if (deleted && deleted > 0) // Handle deletion
+        { from = Pos(from.line, from.ch - deleted); }
+      else if (cm.state.overwrite && !paste) // Handle overwrite
+        { to = Pos(to.line, Math.min(getLine(doc, to.line).text.length, to.ch + lst(textLines).length)); }
+      else if (lastCopied && lastCopied.lineWise && lastCopied.text.join("\n") == inserted)
+        { from = to = Pos(from.line, 0); }
+    }
+    updateInput = cm.curOp.updateInput;
+    var changeEvent = {from: from, to: to, text: multiPaste ? multiPaste[i$1 % multiPaste.length] : textLines,
+                       origin: origin || (paste ? "paste" : cm.state.cutIncoming ? "cut" : "+input")};
+    makeChange(cm.doc, changeEvent);
+    signalLater(cm, "inputRead", cm, changeEvent);
+  }
+  if (inserted && !paste)
+    { triggerElectric(cm, inserted); }
+
+  ensureCursorVisible(cm);
+  cm.curOp.updateInput = updateInput;
+  cm.curOp.typing = true;
+  cm.state.pasteIncoming = cm.state.cutIncoming = false;
+}
+
+function handlePaste(e, cm) {
+  var pasted = e.clipboardData && e.clipboardData.getData("Text");
+  if (pasted) {
+    e.preventDefault();
+    if (!cm.isReadOnly() && !cm.options.disableInput)
+      { runInOp(cm, function () { return applyTextInput(cm, pasted, 0, null, "paste"); }); }
+    return true
+  }
+}
+
+function triggerElectric(cm, inserted) {
+  // When an 'electric' character is inserted, immediately trigger a reindent
+  if (!cm.options.electricChars || !cm.options.smartIndent) { return }
+  var sel = cm.doc.sel;
+
+  for (var i = sel.ranges.length - 1; i >= 0; i--) {
+    var range$$1 = sel.ranges[i];
+    if (range$$1.head.ch > 100 || (i && sel.ranges[i - 1].head.line == range$$1.head.line)) { continue }
+    var mode = cm.getModeAt(range$$1.head);
+    var indented = false;
+    if (mode.electricChars) {
+      for (var j = 0; j < mode.electricChars.length; j++)
+        { if (inserted.indexOf(mode.electricChars.charAt(j)) > -1) {
+          indented = indentLine(cm, range$$1.head.line, "smart");
+          break
+        } }
+    } else if (mode.electricInput) {
+      if (mode.electricInput.test(getLine(cm.doc, range$$1.head.line).text.slice(0, range$$1.head.ch)))
+        { indented = indentLine(cm, range$$1.head.line, "smart"); }
+    }
+    if (indented) { signalLater(cm, "electricInput", cm, range$$1.head.line); }
+  }
+}
+
+function copyableRanges(cm) {
+  var text = [], ranges = [];
+  for (var i = 0; i < cm.doc.sel.ranges.length; i++) {
+    var line = cm.doc.sel.ranges[i].head.line;
+    var lineRange = {anchor: Pos(line, 0), head: Pos(line + 1, 0)};
+    ranges.push(lineRange);
+    text.push(cm.getRange(lineRange.anchor, lineRange.head));
+  }
+  return {text: text, ranges: ranges}
+}
+
+function disableBrowserMagic(field, spellcheck) {
+  field.setAttribute("autocorrect", "off");
+  field.setAttribute("autocapitalize", "off");
+  field.setAttribute("spellcheck", !!spellcheck);
+}
+
+function hiddenTextarea() {
+  var te = elt("textarea", null, null, "position: absolute; bottom: -1em; padding: 0; width: 1px; height: 1em; outline: none");
+  var div = elt("div", [te], null, "overflow: hidden; position: relative; width: 3px; height: 0px;");
+  // The textarea is kept positioned near the cursor to prevent the
+  // fact that it'll be scrolled into view on input from scrolling
+  // our fake cursor out of view. On webkit, when wrap=off, paste is
+  // very slow. So make the area wide instead.
+  if (webkit) { te.style.width = "1000px"; }
+  else { te.setAttribute("wrap", "off"); }
+  // If border: 0; -- iOS fails to open keyboard (issue #1287)
+  if (ios) { te.style.border = "1px solid black"; }
+  disableBrowserMagic(te);
+  return div
+}
+
+// The publicly visible API. Note that methodOp(f) means
+// 'wrap f in an operation, performed on its `this` parameter'.
+
+// This is not the complete set of editor methods. Most of the
+// methods defined on the Doc type are also injected into
+// CodeMirror.prototype, for backwards compatibility and
+// convenience.
+
+var addEditorMethods = function(CodeMirror) {
+  var optionHandlers = CodeMirror.optionHandlers;
+
+  var helpers = CodeMirror.helpers = {};
+
+  CodeMirror.prototype = {
+    constructor: CodeMirror,
+    focus: function(){window.focus(); this.display.input.focus();},
+
+    setOption: function(option, value) {
+      var options = this.options, old = options[option];
+      if (options[option] == value && option != "mode") { return }
+      options[option] = value;
+      if (optionHandlers.hasOwnProperty(option))
+        { operation(this, optionHandlers[option])(this, value, old); }
+      signal(this, "optionChange", this, option);
+    },
+
+    getOption: function(option) {return this.options[option]},
+    getDoc: function() {return this.doc},
+
+    addKeyMap: function(map$$1, bottom) {
+      this.state.keyMaps[bottom ? "push" : "unshift"](getKeyMap(map$$1));
+    },
+    removeKeyMap: function(map$$1) {
+      var maps = this.state.keyMaps;
+      for (var i = 0; i < maps.length; ++i)
+        { if (maps[i] == map$$1 || maps[i].name == map$$1) {
+          maps.splice(i, 1);
+          return true
+        } }
+    },
+
+    addOverlay: methodOp(function(spec, options) {
+      var mode = spec.token ? spec : CodeMirror.getMode(this.options, spec);
+      if (mode.startState) { throw new Error("Overlays may not be stateful.") }
+      insertSorted(this.state.overlays,
+                   {mode: mode, modeSpec: spec, opaque: options && options.opaque,
+                    priority: (options && options.priority) || 0},
+                   function (overlay) { return overlay.priority; });
+      this.state.modeGen++;
+      regChange(this);
+    }),
+    removeOverlay: methodOp(function(spec) {
+      var this$1 = this;
+
+      var overlays = this.state.overlays;
+      for (var i = 0; i < overlays.length; ++i) {
+        var cur = overlays[i].modeSpec;
+        if (cur == spec || typeof spec == "string" && cur.name == spec) {
+          overlays.splice(i, 1);
+          this$1.state.modeGen++;
+          regChange(this$1);
+          return
+        }
+      }
+    }),
+
+    indentLine: methodOp(function(n, dir, aggressive) {
+      if (typeof dir != "string" && typeof dir != "number") {
+        if (dir == null) { dir = this.options.smartIndent ? "smart" : "prev"; }
+        else { dir = dir ? "add" : "subtract"; }
+      }
+      if (isLine(this.doc, n)) { indentLine(this, n, dir, aggressive); }
+    }),
+    indentSelection: methodOp(function(how) {
+      var this$1 = this;
+
+      var ranges = this.doc.sel.ranges, end = -1;
+      for (var i = 0; i < ranges.length; i++) {
+        var range$$1 = ranges[i];
+        if (!range$$1.empty()) {
+          var from = range$$1.from(), to = range$$1.to();
+          var start = Math.max(end, from.line);
+          end = Math.min(this$1.lastLine(), to.line - (to.ch ? 0 : 1)) + 1;
+          for (var j = start; j < end; ++j)
+            { indentLine(this$1, j, how); }
+          var newRanges = this$1.doc.sel.ranges;
+          if (from.ch == 0 && ranges.length == newRanges.length && newRanges[i].from().ch > 0)
+            { replaceOneSelection(this$1.doc, i, new Range(from, newRanges[i].to()), sel_dontScroll); }
+        } else if (range$$1.head.line > end) {
+          indentLine(this$1, range$$1.head.line, how, true);
+          end = range$$1.head.line;
+          if (i == this$1.doc.sel.primIndex) { ensureCursorVisible(this$1); }
+        }
+      }
+    }),
+
+    // Fetch the parser token for a given character. Useful for hacks
+    // that want to inspect the mode state (say, for completion).
+    getTokenAt: function(pos, precise) {
+      return takeToken(this, pos, precise)
+    },
+
+    getLineTokens: function(line, precise) {
+      return takeToken(this, Pos(line), precise, true)
+    },
+
+    getTokenTypeAt: function(pos) {
+      pos = clipPos(this.doc, pos);
+      var styles = getLineStyles(this, getLine(this.doc, pos.line));
+      var before = 0, after = (styles.length - 1) / 2, ch = pos.ch;
+      var type;
+      if (ch == 0) { type = styles[2]; }
+      else { for (;;) {
+        var mid = (before + after) >> 1;
+        if ((mid ? styles[mid * 2 - 1] : 0) >= ch) { after = mid; }
+        else if (styles[mid * 2 + 1] < ch) { before = mid + 1; }
+        else { type = styles[mid * 2 + 2]; break }
+      } }
+      var cut = type ? type.indexOf("overlay ") : -1;
+      return cut < 0 ? type : cut == 0 ? null : type.slice(0, cut - 1)
+    },
+
+    getModeAt: function(pos) {
+      var mode = this.doc.mode;
+      if (!mode.innerMode) { return mode }
+      return CodeMirror.innerMode(mode, this.getTokenAt(pos).state).mode
+    },
+
+    getHelper: function(pos, type) {
+      return this.getHelpers(pos, type)[0]
+    },
+
+    getHelpers: function(pos, type) {
+      var this$1 = this;
+
+      var found = [];
+      if (!helpers.hasOwnProperty(type)) { return found }
+      var help = helpers[type], mode = this.getModeAt(pos);
+      if (typeof mode[type] == "string") {
+        if (help[mode[type]]) { found.push(help[mode[type]]); }
+      } else if (mode[type]) {
+        for (var i = 0; i < mode[type].length; i++) {
+          var val = help[mode[type][i]];
+          if (val) { found.push(val); }
+        }
+      } else if (mode.helperType && help[mode.helperType]) {
+        found.push(help[mode.helperType]);
+      } else if (help[mode.name]) {
+        found.push(help[mode.name]);
+      }
+      for (var i$1 = 0; i$1 < help._global.length; i$1++) {
+        var cur = help._global[i$1];
+        if (cur.pred(mode, this$1) && indexOf(found, cur.val) == -1)
+          { found.push(cur.val); }
+      }
+      return found
+    },
+
+    getStateAfter: function(line, precise) {
+      var doc = this.doc;
+      line = clipLine(doc, line == null ? doc.first + doc.size - 1: line);
+      return getStateBefore(this, line + 1, precise)
+    },
+
+    cursorCoords: function(start, mode) {
+      var pos, range$$1 = this.doc.sel.primary();
+      if (start == null) { pos = range$$1.head; }
+      else if (typeof start == "object") { pos = clipPos(this.doc, start); }
+      else { pos = start ? range$$1.from() : range$$1.to(); }
+      return cursorCoords(this, pos, mode || "page")
+    },
+
+    charCoords: function(pos, mode) {
+      return charCoords(this, clipPos(this.doc, pos), mode || "page")
+    },
+
+    coordsChar: function(coords, mode) {
+      coords = fromCoordSystem(this, coords, mode || "page");
+      return coordsChar(this, coords.left, coords.top)
+    },
+
+    lineAtHeight: function(height, mode) {
+      height = fromCoordSystem(this, {top: height, left: 0}, mode || "page").top;
+      return lineAtHeight(this.doc, height + this.display.viewOffset)
+    },
+    heightAtLine: function(line, mode, includeWidgets) {
+      var end = false, lineObj;
+      if (typeof line == "number") {
+        var last = this.doc.first + this.doc.size - 1;
+        if (line < this.doc.first) { line = this.doc.first; }
+        else if (line > last) { line = last; end = true; }
+        lineObj = getLine(this.doc, line);
+      } else {
+        lineObj = line;
+      }
+      return intoCoordSystem(this, lineObj, {top: 0, left: 0}, mode || "page", includeWidgets || end).top +
+        (end ? this.doc.height - heightAtLine(lineObj) : 0)
+    },
+
+    defaultTextHeight: function() { return textHeight(this.display) },
+    defaultCharWidth: function() { return charWidth(this.display) },
+
+    getViewport: function() { return {from: this.display.viewFrom, to: this.display.viewTo}},
+
+    addWidget: function(pos, node, scroll, vert, horiz) {
+      var display = this.display;
+      pos = cursorCoords(this, clipPos(this.doc, pos));
+      var top = pos.bottom, left = pos.left;
+      node.style.position = "absolute";
+      node.setAttribute("cm-ignore-events", "true");
+      this.display.input.setUneditable(node);
+      display.sizer.appendChild(node);
+      if (vert == "over") {
+        top = pos.top;
+      } else if (vert == "above" || vert == "near") {
+        var vspace = Math.max(display.wrapper.clientHeight, this.doc.height),
+        hspace = Math.max(display.sizer.clientWidth, display.lineSpace.clientWidth);
+        // Default to positioning above (if specified and possible); otherwise default to positioning below
+        if ((vert == 'above' || pos.bottom + node.offsetHeight > vspace) && pos.top > node.offsetHeight)
+          { top = pos.top - node.offsetHeight; }
+        else if (pos.bottom + node.offsetHeight <= vspace)
+          { top = pos.bottom; }
+        if (left + node.offsetWidth > hspace)
+          { left = hspace - node.offsetWidth; }
+      }
+      node.style.top = top + "px";
+      node.style.left = node.style.right = "";
+      if (horiz == "right") {
+        left = display.sizer.clientWidth - node.offsetWidth;
+        node.style.right = "0px";
+      } else {
+        if (horiz == "left") { left = 0; }
+        else if (horiz == "middle") { left = (display.sizer.clientWidth - node.offsetWidth) / 2; }
+        node.style.left = left + "px";
+      }
+      if (scroll)
+        { scrollIntoView(this, {left: left, top: top, right: left + node.offsetWidth, bottom: top + node.offsetHeight}); }
+    },
+
+    triggerOnKeyDown: methodOp(onKeyDown),
+    triggerOnKeyPress: methodOp(onKeyPress),
+    triggerOnKeyUp: onKeyUp,
+
+    execCommand: function(cmd) {
+      if (commands.hasOwnProperty(cmd))
+        { return commands[cmd].call(null, this) }
+    },
+
+    triggerElectric: methodOp(function(text) { triggerElectric(this, text); }),
+
+    findPosH: function(from, amount, unit, visually) {
+      var this$1 = this;
+
+      var dir = 1;
+      if (amount < 0) { dir = -1; amount = -amount; }
+      var cur = clipPos(this.doc, from);
+      for (var i = 0; i < amount; ++i) {
+        cur = findPosH(this$1.doc, cur, dir, unit, visually);
+        if (cur.hitSide) { break }
+      }
+      return cur
+    },
+
+    moveH: methodOp(function(dir, unit) {
+      var this$1 = this;
+
+      this.extendSelectionsBy(function (range$$1) {
+        if (this$1.display.shift || this$1.doc.extend || range$$1.empty())
+          { return findPosH(this$1.doc, range$$1.head, dir, unit, this$1.options.rtlMoveVisually) }
+        else
+          { return dir < 0 ? range$$1.from() : range$$1.to() }
+      }, sel_move);
+    }),
+
+    deleteH: methodOp(function(dir, unit) {
+      var sel = this.doc.sel, doc = this.doc;
+      if (sel.somethingSelected())
+        { doc.replaceSelection("", null, "+delete"); }
+      else
+        { deleteNearSelection(this, function (range$$1) {
+          var other = findPosH(doc, range$$1.head, dir, unit, false);
+          return dir < 0 ? {from: other, to: range$$1.head} : {from: range$$1.head, to: other}
+        }); }
+    }),
+
+    findPosV: function(from, amount, unit, goalColumn) {
+      var this$1 = this;
+
+      var dir = 1, x = goalColumn;
+      if (amount < 0) { dir = -1; amount = -amount; }
+      var cur = clipPos(this.doc, from);
+      for (var i = 0; i < amount; ++i) {
+        var coords = cursorCoords(this$1, cur, "div");
+        if (x == null) { x = coords.left; }
+        else { coords.left = x; }
+        cur = findPosV(this$1, coords, dir, unit);
+        if (cur.hitSide) { break }
+      }
+      return cur
+    },
+
+    moveV: methodOp(function(dir, unit) {
+      var this$1 = this;
+
+      var doc = this.doc, goals = [];
+      var collapse = !this.display.shift && !doc.extend && doc.sel.somethingSelected();
+      doc.extendSelectionsBy(function (range$$1) {
+        if (collapse)
+          { return dir < 0 ? range$$1.from() : range$$1.to() }
+        var headPos = cursorCoords(this$1, range$$1.head, "div");
+        if (range$$1.goalColumn != null) { headPos.left = range$$1.goalColumn; }
+        goals.push(headPos.left);
+        var pos = findPosV(this$1, headPos, dir, unit);
+        if (unit == "page" && range$$1 == doc.sel.primary())
+          { addToScrollPos(this$1, null, charCoords(this$1, pos, "div").top - headPos.top); }
+        return pos
+      }, sel_move);
+      if (goals.length) { for (var i = 0; i < doc.sel.ranges.length; i++)
+        { doc.sel.ranges[i].goalColumn = goals[i]; } }
+    }),
+
+    // Find the word at the given position (as returned by coordsChar).
+    findWordAt: function(pos) {
+      var doc = this.doc, line = getLine(doc, pos.line).text;
+      var start = pos.ch, end = pos.ch;
+      if (line) {
+        var helper = this.getHelper(pos, "wordChars");
+        if ((pos.sticky == "before" || end == line.length) && start) { --start; } else { ++end; }
+        var startChar = line.charAt(start);
+        var check = isWordChar(startChar, helper)
+          ? function (ch) { return isWordChar(ch, helper); }
+          : /\s/.test(startChar) ? function (ch) { return /\s/.test(ch); }
+          : function (ch) { return (!/\s/.test(ch) && !isWordChar(ch)); };
+        while (start > 0 && check(line.charAt(start - 1))) { --start; }
+        while (end < line.length && check(line.charAt(end))) { ++end; }
+      }
+      return new Range(Pos(pos.line, start), Pos(pos.line, end))
+    },
+
+    toggleOverwrite: function(value) {
+      if (value != null && value == this.state.overwrite) { return }
+      if (this.state.overwrite = !this.state.overwrite)
+        { addClass(this.display.cursorDiv, "CodeMirror-overwrite"); }
+      else
+        { rmClass(this.display.cursorDiv, "CodeMirror-overwrite"); }
+
+      signal(this, "overwriteToggle", this, this.state.overwrite);
+    },
+    hasFocus: function() { return this.display.input.getField() == activeElt() },
+    isReadOnly: function() { return !!(this.options.readOnly || this.doc.cantEdit) },
+
+    scrollTo: methodOp(function(x, y) {
+      if (x != null || y != null) { resolveScrollToPos(this); }
+      if (x != null) { this.curOp.scrollLeft = x; }
+      if (y != null) { this.curOp.scrollTop = y; }
+    }),
+    getScrollInfo: function() {
+      var scroller = this.display.scroller;
+      return {left: scroller.scrollLeft, top: scroller.scrollTop,
+              height: scroller.scrollHeight - scrollGap(this) - this.display.barHeight,
+              width: scroller.scrollWidth - scrollGap(this) - this.display.barWidth,
+              clientHeight: displayHeight(this), clientWidth: displayWidth(this)}
+    },
+
+    scrollIntoView: methodOp(function(range$$1, margin) {
+      if (range$$1 == null) {
+        range$$1 = {from: this.doc.sel.primary().head, to: null};
+        if (margin == null) { margin = this.options.cursorScrollMargin; }
+      } else if (typeof range$$1 == "number") {
+        range$$1 = {from: Pos(range$$1, 0), to: null};
+      } else if (range$$1.from == null) {
+        range$$1 = {from: range$$1, to: null};
+      }
+      if (!range$$1.to) { range$$1.to = range$$1.from; }
+      range$$1.margin = margin || 0;
+
+      if (range$$1.from.line != null) {
+        resolveScrollToPos(this);
+        this.curOp.scrollToPos = range$$1;
+      } else {
+        var sPos = calculateScrollPos(this, {
+          left: Math.min(range$$1.from.left, range$$1.to.left),
+          top: Math.min(range$$1.from.top, range$$1.to.top) - range$$1.margin,
+          right: Math.max(range$$1.from.right, range$$1.to.right),
+          bottom: Math.max(range$$1.from.bottom, range$$1.to.bottom) + range$$1.margin
+        });
+        this.scrollTo(sPos.scrollLeft, sPos.scrollTop);
+      }
+    }),
+
+    setSize: methodOp(function(width, height) {
+      var this$1 = this;
+
+      var interpret = function (val) { return typeof val == "number" || /^\d+$/.test(String(val)) ? val + "px" : val; };
+      if (width != null) { this.display.wrapper.style.width = interpret(width); }
+      if (height != null) { this.display.wrapper.style.height = interpret(height); }
+      if (this.options.lineWrapping) { clearLineMeasurementCache(this); }
+      var lineNo$$1 = this.display.viewFrom;
+      this.doc.iter(lineNo$$1, this.display.viewTo, function (line) {
+        if (line.widgets) { for (var i = 0; i < line.widgets.length; i++)
+          { if (line.widgets[i].noHScroll) { regLineChange(this$1, lineNo$$1, "widget"); break } } }
+        ++lineNo$$1;
+      });
+      this.curOp.forceUpdate = true;
+      signal(this, "refresh", this);
+    }),
+
+    operation: function(f){return runInOp(this, f)},
+
+    refresh: methodOp(function() {
+      var oldHeight = this.display.cachedTextHeight;
+      regChange(this);
+      this.curOp.forceUpdate = true;
+      clearCaches(this);
+      this.scrollTo(this.doc.scrollLeft, this.doc.scrollTop);
+      updateGutterSpace(this);
+      if (oldHeight == null || Math.abs(oldHeight - textHeight(this.display)) > .5)
+        { estimateLineHeights(this); }
+      signal(this, "refresh", this);
+    }),
+
+    swapDoc: methodOp(function(doc) {
+      var old = this.doc;
+      old.cm = null;
+      attachDoc(this, doc);
+      clearCaches(this);
+      this.display.input.reset();
+      this.scrollTo(doc.scrollLeft, doc.scrollTop);
+      this.curOp.forceScroll = true;
+      signalLater(this, "swapDoc", this, old);
+      return old
+    }),
+
+    getInputField: function(){return this.display.input.getField()},
+    getWrapperElement: function(){return this.display.wrapper},
+    getScrollerElement: function(){return this.display.scroller},
+    getGutterElement: function(){return this.display.gutters}
+  };
+  eventMixin(CodeMirror);
+
+  CodeMirror.registerHelper = function(type, name, value) {
+    if (!helpers.hasOwnProperty(type)) { helpers[type] = CodeMirror[type] = {_global: []}; }
+    helpers[type][name] = value;
+  };
+  CodeMirror.registerGlobalHelper = function(type, name, predicate, value) {
+    CodeMirror.registerHelper(type, name, value);
+    helpers[type]._global.push({pred: predicate, val: value});
+  };
+};
+
+// Used for horizontal relative motion. Dir is -1 or 1 (left or
+// right), unit can be "char", "column" (like char, but doesn't
+// cross line boundaries), "word" (across next word), or "group" (to
+// the start of next group of word or non-word-non-whitespace
+// chars). The visually param controls whether, in right-to-left
+// text, direction 1 means to move towards the next index in the
+// string, or towards the character to the right of the current
+// position. The resulting position will have a hitSide=true
+// property if it reached the end of the document.
+function findPosH(doc, pos, dir, unit, visually) {
+  var oldPos = pos;
+  var origDir = dir;
+  var lineObj = getLine(doc, pos.line);
+  function findNextLine() {
+    var l = pos.line + dir;
+    if (l < doc.first || l >= doc.first + doc.size) { return false }
+    pos = new Pos(l, pos.ch, pos.sticky);
+    return lineObj = getLine(doc, l)
+  }
+  function moveOnce(boundToLine) {
+    var next;
+    if (visually) {
+      next = moveVisually(doc.cm, lineObj, pos, dir);
+    } else {
+      next = moveLogically(lineObj, pos, dir);
+    }
+    if (next == null) {
+      if (!boundToLine && findNextLine())
+        { pos = endOfLine(visually, doc.cm, lineObj, pos.line, dir); }
+      else
+        { return false }
+    } else {
+      pos = next;
+    }
+    return true
+  }
+
+  if (unit == "char") {
+    moveOnce();
+  } else if (unit == "column") {
+    moveOnce(true);
+  } else if (unit == "word" || unit == "group") {
+    var sawType = null, group = unit == "group";
+    var helper = doc.cm && doc.cm.getHelper(pos, "wordChars");
+    for (var first = true;; first = false) {
+      if (dir < 0 && !moveOnce(!first)) { break }
+      var cur = lineObj.text.charAt(pos.ch) || "\n";
+      var type = isWordChar(cur, helper) ? "w"
+        : group && cur == "\n" ? "n"
+        : !group || /\s/.test(cur) ? null
+        : "p";
+      if (group && !first && !type) { type = "s"; }
+      if (sawType && sawType != type) {
+        if (dir < 0) {dir = 1; moveOnce(); pos.sticky = "after";}
+        break
+      }
+
+      if (type) { sawType = type; }
+      if (dir > 0 && !moveOnce(!first)) { break }
+    }
+  }
+  var result = skipAtomic(doc, pos, oldPos, origDir, true);
+  if (equalCursorPos(oldPos, result)) { result.hitSide = true; }
+  return result
+}
+
+// For relative vertical movement. Dir may be -1 or 1. Unit can be
+// "page" or "line". The resulting position will have a hitSide=true
+// property if it reached the end of the document.
+function findPosV(cm, pos, dir, unit) {
+  var doc = cm.doc, x = pos.left, y;
+  if (unit == "page") {
+    var pageSize = Math.min(cm.display.wrapper.clientHeight, window.innerHeight || document.documentElement.clientHeight);
+    var moveAmount = Math.max(pageSize - .5 * textHeight(cm.display), 3);
+    y = (dir > 0 ? pos.bottom : pos.top) + dir * moveAmount;
+
+  } else if (unit == "line") {
+    y = dir > 0 ? pos.bottom + 3 : pos.top - 3;
+  }
+  var target;
+  for (;;) {
+    target = coordsChar(cm, x, y);
+    if (!target.outside) { break }
+    if (dir < 0 ? y <= 0 : y >= doc.height) { target.hitSide = true; break }
+    y += dir * 5;
+  }
+  return target
+}
+
+// CONTENTEDITABLE INPUT STYLE
+
+var ContentEditableInput = function(cm) {
+  this.cm = cm;
+  this.lastAnchorNode = this.lastAnchorOffset = this.lastFocusNode = this.lastFocusOffset = null;
+  this.polling = new Delayed();
+  this.composing = null;
+  this.gracePeriod = false;
+  this.readDOMTimeout = null;
+};
+
+ContentEditableInput.prototype.init = function (display) {
+    var this$1 = this;
+
+  var input = this, cm = input.cm;
+  var div = input.div = display.lineDiv;
+  disableBrowserMagic(div, cm.options.spellcheck);
+
+  on(div, "paste", function (e) {
+    if (signalDOMEvent(cm, e) || handlePaste(e, cm)) { return }
+    // IE doesn't fire input events, so we schedule a read for the pasted content in this way
+    if (ie_version <= 11) { setTimeout(operation(cm, function () { return this$1.updateFromDOM(); }), 20); }
+  });
+
+  on(div, "compositionstart", function (e) {
+    this$1.composing = {data: e.data, done: false};
+  });
+  on(div, "compositionupdate", function (e) {
+    if (!this$1.composing) { this$1.composing = {data: e.data, done: false}; }
+  });
+  on(div, "compositionend", function (e) {
+    if (this$1.composing) {
+      if (e.data != this$1.composing.data) { this$1.readFromDOMSoon(); }
+      this$1.composing.done = true;
+    }
+  });
+
+  on(div, "touchstart", function () { return input.forceCompositionEnd(); });
+
+  on(div, "input", function () {
+    if (!this$1.composing) { this$1.readFromDOMSoon(); }
+  });
+
+  function onCopyCut(e) {
+    if (signalDOMEvent(cm, e)) { return }
+    if (cm.somethingSelected()) {
+      setLastCopied({lineWise: false, text: cm.getSelections()});
+      if (e.type == "cut") { cm.replaceSelection("", null, "cut"); }
+    } else if (!cm.options.lineWiseCopyCut) {
+      return
+    } else {
+      var ranges = copyableRanges(cm);
+      setLastCopied({lineWise: true, text: ranges.text});
+      if (e.type == "cut") {
+        cm.operation(function () {
+          cm.setSelections(ranges.ranges, 0, sel_dontScroll);
+          cm.replaceSelection("", null, "cut");
+        });
+      }
+    }
+    if (e.clipboardData) {
+      e.clipboardData.clearData();
+      var content = lastCopied.text.join("\n");
+      // iOS exposes the clipboard API, but seems to discard content inserted into it
+      e.clipboardData.setData("Text", content);
+      if (e.clipboardData.getData("Text") == content) {
+        e.preventDefault();
+        return
+      }
+    }
+    // Old-fashioned briefly-focus-a-textarea hack
+    var kludge = hiddenTextarea(), te = kludge.firstChild;
+    cm.display.lineSpace.insertBefore(kludge, cm.display.lineSpace.firstChild);
+    te.value = lastCopied.text.join("\n");
+    var hadFocus = document.activeElement;
+    selectInput(te);
+    setTimeout(function () {
+      cm.display.lineSpace.removeChild(kludge);
+      hadFocus.focus();
+      if (hadFocus == div) { input.showPrimarySelection(); }
+    }, 50);
+  }
+  on(div, "copy", onCopyCut);
+  on(div, "cut", onCopyCut);
+};
+
+ContentEditableInput.prototype.prepareSelection = function () {
+  var result = prepareSelection(this.cm, false);
+  result.focus = this.cm.state.focused;
+  return result
+};
+
+ContentEditableInput.prototype.showSelection = function (info, takeFocus) {
+  if (!info || !this.cm.display.view.length) { return }
+  if (info.focus || takeFocus) { this.showPrimarySelection(); }
+  this.showMultipleSelections(info);
+};
+
+ContentEditableInput.prototype.showPrimarySelection = function () {
+  var sel = window.getSelection(), cm = this.cm, prim = cm.doc.sel.primary();
+  var from = prim.from(), to = prim.to();
+
+  if (cm.display.viewTo == cm.display.viewFrom || from.line >= cm.display.viewTo || to.line < cm.display.viewFrom) {
+    sel.removeAllRanges();
+    return
+  }
+
+  var curAnchor = domToPos(cm, sel.anchorNode, sel.anchorOffset);
+  var curFocus = domToPos(cm, sel.focusNode, sel.focusOffset);
+  if (curAnchor && !curAnchor.bad && curFocus && !curFocus.bad &&
+      cmp(minPos(curAnchor, curFocus), from) == 0 &&
+      cmp(maxPos(curAnchor, curFocus), to) == 0)
+    { return }
+
+  var view = cm.display.view;
+  var start = (from.line >= cm.display.viewFrom && posToDOM(cm, from)) ||
+      {node: view[0].measure.map[2], offset: 0};
+  var end = to.line < cm.display.viewTo && posToDOM(cm, to);
+  if (!end) {
+    var measure = view[view.length - 1].measure;
+    var map$$1 = measure.maps ? measure.maps[measure.maps.length - 1] : measure.map;
+    end = {node: map$$1[map$$1.length - 1], offset: map$$1[map$$1.length - 2] - map$$1[map$$1.length - 3]};
+  }
+
+  if (!start || !end) {
+    sel.removeAllRanges();
+    return
+  }
+
+  var old = sel.rangeCount && sel.getRangeAt(0), rng;
+  try { rng = range(start.node, start.offset, end.offset, end.node); }
+  catch(e) {} // Our model of the DOM might be outdated, in which case the range we try to set can be impossible
+  if (rng) {
+    if (!gecko && cm.state.focused) {
+      sel.collapse(start.node, start.offset);
+      if (!rng.collapsed) {
+        sel.removeAllRanges();
+        sel.addRange(rng);
+      }
+    } else {
+      sel.removeAllRanges();
+      sel.addRange(rng);
+    }
+    if (old && sel.anchorNode == null) { sel.addRange(old); }
+    else if (gecko) { this.startGracePeriod(); }
+  }
+  this.rememberSelection();
+};
+
+ContentEditableInput.prototype.startGracePeriod = function () {
+    var this$1 = this;
+
+  clearTimeout(this.gracePeriod);
+  this.gracePeriod = setTimeout(function () {
+    this$1.gracePeriod = false;
+    if (this$1.selectionChanged())
+      { this$1.cm.operation(function () { return this$1.cm.curOp.selectionChanged = true; }); }
+  }, 20);
+};
+
+ContentEditableInput.prototype.showMultipleSelections = function (info) {
+  removeChildrenAndAdd(this.cm.display.cursorDiv, info.cursors);
+  removeChildrenAndAdd(this.cm.display.selectionDiv, info.selection);
+};
+
+ContentEditableInput.prototype.rememberSelection = function () {
+  var sel = window.getSelection();
+  this.lastAnchorNode = sel.anchorNode; this.lastAnchorOffset = sel.anchorOffset;
+  this.lastFocusNode = sel.focusNode; this.lastFocusOffset = sel.focusOffset;
+};
+
+ContentEditableInput.prototype.selectionInEditor = function () {
+  var sel = window.getSelection();
+  if (!sel.rangeCount) { return false }
+  var node = sel.getRangeAt(0).commonAncestorContainer;
+  return contains(this.div, node)
+};
+
+ContentEditableInput.prototype.focus = function () {
+  if (this.cm.options.readOnly != "nocursor") {
+    if (!this.selectionInEditor())
+      { this.showSelection(this.prepareSelection(), true); }
+    this.div.focus();
+  }
+};
+ContentEditableInput.prototype.blur = function () { this.div.blur(); };
+ContentEditableInput.prototype.getField = function () { return this.div };
+
+ContentEditableInput.prototype.supportsTouch = function () { return true };
+
+ContentEditableInput.prototype.receivedFocus = function () {
+  var input = this;
+  if (this.selectionInEditor())
+    { this.pollSelection(); }
+  else
+    { runInOp(this.cm, function () { return input.cm.curOp.selectionChanged = true; }); }
+
+  function poll() {
+    if (input.cm.state.focused) {
+      input.pollSelection();
+      input.polling.set(input.cm.options.pollInterval, poll);
+    }
+  }
+  this.polling.set(this.cm.options.pollInterval, poll);
+};
+
+ContentEditableInput.prototype.selectionChanged = function () {
+  var sel = window.getSelection();
+  return sel.anchorNode != this.lastAnchorNode || sel.anchorOffset != this.lastAnchorOffset ||
+    sel.focusNode != this.lastFocusNode || sel.focusOffset != this.lastFocusOffset
+};
+
+ContentEditableInput.prototype.pollSelection = function () {
+  if (this.readDOMTimeout != null || this.gracePeriod || !this.selectionChanged()) { return }
+  var sel = window.getSelection(), cm = this.cm;
+  // On Android Chrome (version 56, at least), backspacing into an
+  // uneditable block element will put the cursor in that element,
+  // and then, because it's not editable, hide the virtual keyboard.
+  // Because Android doesn't allow us to actually detect backspace
+  // presses in a sane way, this code checks for when that happens
+  // and simulates a backspace press in this case.
+  if (android && chrome && this.cm.options.gutters.length && isInGutter(sel.anchorNode)) {
+    this.cm.triggerOnKeyDown({type: "keydown", keyCode: 8, preventDefault: Math.abs});
+    this.blur();
+    this.focus();
+    return
+  }
+  if (this.composing) { return }
+  this.rememberSelection();
+  var anchor = domToPos(cm, sel.anchorNode, sel.anchorOffset);
+  var head = domToPos(cm, sel.focusNode, sel.focusOffset);
+  if (anchor && head) { runInOp(cm, function () {
+    setSelection(cm.doc, simpleSelection(anchor, head), sel_dontScroll);
+    if (anchor.bad || head.bad) { cm.curOp.selectionChanged = true; }
+  }); }
+};
+
+ContentEditableInput.prototype.pollContent = function () {
+  if (this.readDOMTimeout != null) {
+    clearTimeout(this.readDOMTimeout);
+    this.readDOMTimeout = null;
+  }
+
+  var cm = this.cm, display = cm.display, sel = cm.doc.sel.primary();
+  var from = sel.from(), to = sel.to();
+  if (from.ch == 0 && from.line > cm.firstLine())
+    { from = Pos(from.line - 1, getLine(cm.doc, from.line - 1).length); }
+  if (to.ch == getLine(cm.doc, to.line).text.length && to.line < cm.lastLine())
+    { to = Pos(to.line + 1, 0); }
+  if (from.line < display.viewFrom || to.line > display.viewTo - 1) { return false }
+
+  var fromIndex, fromLine, fromNode;
+  if (from.line == display.viewFrom || (fromIndex = findViewIndex(cm, from.line)) == 0) {
+    fromLine = lineNo(display.view[0].line);
+    fromNode = display.view[0].node;
+  } else {
+    fromLine = lineNo(display.view[fromIndex].line);
+    fromNode = display.view[fromIndex - 1].node.nextSibling;
+  }
+  var toIndex = findViewIndex(cm, to.line);
+  var toLine, toNode;
+  if (toIndex == display.view.length - 1) {
+    toLine = display.viewTo - 1;
+    toNode = display.lineDiv.lastChild;
+  } else {
+    toLine = lineNo(display.view[toIndex + 1].line) - 1;
+    toNode = display.view[toIndex + 1].node.previousSibling;
+  }
+
+  if (!fromNode) { return false }
+  var newText = cm.doc.splitLines(domTextBetween(cm, fromNode, toNode, fromLine, toLine));
+  var oldText = getBetween(cm.doc, Pos(fromLine, 0), Pos(toLine, getLine(cm.doc, toLine).text.length));
+  while (newText.length > 1 && oldText.length > 1) {
+    if (lst(newText) == lst(oldText)) { newText.pop(); oldText.pop(); toLine--; }
+    else if (newText[0] == oldText[0]) { newText.shift(); oldText.shift(); fromLine++; }
+    else { break }
+  }
+
+  var cutFront = 0, cutEnd = 0;
+  var newTop = newText[0], oldTop = oldText[0], maxCutFront = Math.min(newTop.length, oldTop.length);
+  while (cutFront < maxCutFront && newTop.charCodeAt(cutFront) == oldTop.charCodeAt(cutFront))
+    { ++cutFront; }
+  var newBot = lst(newText), oldBot = lst(oldText);
+  var maxCutEnd = Math.min(newBot.length - (newText.length == 1 ? cutFront : 0),
+                           oldBot.length - (oldText.length == 1 ? cutFront : 0));
+  while (cutEnd < maxCutEnd &&
+         newBot.charCodeAt(newBot.length - cutEnd - 1) == oldBot.charCodeAt(oldBot.length - cutEnd - 1))
+    { ++cutEnd; }
+  // Try to move start of change to start of selection if ambiguous
+  if (newText.length == 1 && oldText.length == 1 && fromLine == from.line) {
+    while (cutFront && cutFront > from.ch &&
+           newBot.charCodeAt(newBot.length - cutEnd - 1) == oldBot.charCodeAt(oldBot.length - cutEnd - 1)) {
+      cutFront--;
+      cutEnd++;
+    }
+  }
+
+  newText[newText.length - 1] = newBot.slice(0, newBot.length - cutEnd).replace(/^\u200b+/, "");
+  newText[0] = newText[0].slice(cutFront).replace(/\u200b+$/, "");
+
+  var chFrom = Pos(fromLine, cutFront);
+  var chTo = Pos(toLine, oldText.length ? lst(oldText).length - cutEnd : 0);
+  if (newText.length > 1 || newText[0] || cmp(chFrom, chTo)) {
+    replaceRange(cm.doc, newText, chFrom, chTo, "+input");
+    return true
+  }
+};
+
+ContentEditableInput.prototype.ensurePolled = function () {
+  this.forceCompositionEnd();
+};
+ContentEditableInput.prototype.reset = function () {
+  this.forceCompositionEnd();
+};
+ContentEditableInput.prototype.forceCompositionEnd = function () {
+  if (!this.composing) { return }
+  clearTimeout(this.readDOMTimeout);
+  this.composing = null;
+  this.updateFromDOM();
+  this.div.blur();
+  this.div.focus();
+};
+ContentEditableInput.prototype.readFromDOMSoon = function () {
+    var this$1 = this;
+
+  if (this.readDOMTimeout != null) { return }
+  this.readDOMTimeout = setTimeout(function () {
+    this$1.readDOMTimeout = null;
+    if (this$1.composing) {
+      if (this$1.composing.done) { this$1.composing = null; }
+      else { return }
+    }
+    this$1.updateFromDOM();
+  }, 80);
+};
+
+ContentEditableInput.prototype.updateFromDOM = function () {
+    var this$1 = this;
+
+  if (this.cm.isReadOnly() || !this.pollContent())
+    { runInOp(this.cm, function () { return regChange(this$1.cm); }); }
+};
+
+ContentEditableInput.prototype.setUneditable = function (node) {
+  node.contentEditable = "false";
+};
+
+ContentEditableInput.prototype.onKeyPress = function (e) {
+  if (e.charCode == 0) { return }
+  e.preventDefault();
+  if (!this.cm.isReadOnly())
+    { operation(this.cm, applyTextInput)(this.cm, String.fromCharCode(e.charCode == null ? e.keyCode : e.charCode), 0); }
+};
+
+ContentEditableInput.prototype.readOnlyChanged = function (val) {
+  this.div.contentEditable = String(val != "nocursor");
+};
+
+ContentEditableInput.prototype.onContextMenu = function () {};
+ContentEditableInput.prototype.resetPosition = function () {};
+
+ContentEditableInput.prototype.needsContentAttribute = true;
+
+function posToDOM(cm, pos) {
+  var view = findViewForLine(cm, pos.line);
+  if (!view || view.hidden) { return null }
+  var line = getLine(cm.doc, pos.line);
+  var info = mapFromLineView(view, line, pos.line);
+
+  var order = getOrder(line, cm.doc.direction), side = "left";
+  if (order) {
+    var partPos = getBidiPartAt(order, pos.ch);
+    side = partPos % 2 ? "right" : "left";
+  }
+  var result = nodeAndOffsetInLineMap(info.map, pos.ch, side);
+  result.offset = result.collapse == "right" ? result.end : result.start;
+  return result
+}
+
+function isInGutter(node) {
+  for (var scan = node; scan; scan = scan.parentNode)
+    { if (/CodeMirror-gutter-wrapper/.test(scan.className)) { return true } }
+  return false
+}
+
+function badPos(pos, bad) { if (bad) { pos.bad = true; } return pos }
+
+function domTextBetween(cm, from, to, fromLine, toLine) {
+  var text = "", closing = false, lineSep = cm.doc.lineSeparator();
+  function recognizeMarker(id) { return function (marker) { return marker.id == id; } }
+  function close() {
+    if (closing) {
+      text += lineSep;
+      closing = false;
+    }
+  }
+  function addText(str) {
+    if (str) {
+      close();
+      text += str;
+    }
+  }
+  function walk(node) {
+    if (node.nodeType == 1) {
+      var cmText = node.getAttribute("cm-text");
+      if (cmText != null) {
+        addText(cmText || node.textContent.replace(/\u200b/g, ""));
+        return
+      }
+      var markerID = node.getAttribute("cm-marker"), range$$1;
+      if (markerID) {
+        var found = cm.findMarks(Pos(fromLine, 0), Pos(toLine + 1, 0), recognizeMarker(+markerID));
+        if (found.length && (range$$1 = found[0].find()))
+          { addText(getBetween(cm.doc, range$$1.from, range$$1.to).join(lineSep)); }
+        return
+      }
+      if (node.getAttribute("contenteditable") == "false") { return }
+      var isBlock = /^(pre|div|p)$/i.test(node.nodeName);
+      if (isBlock) { close(); }
+      for (var i = 0; i < node.childNodes.length; i++)
+        { walk(node.childNodes[i]); }
+      if (isBlock) { closing = true; }
+    } else if (node.nodeType == 3) {
+      addText(node.nodeValue);
+    }
+  }
+  for (;;) {
+    walk(from);
+    if (from == to) { break }
+    from = from.nextSibling;
+  }
+  return text
+}
+
+function domToPos(cm, node, offset) {
+  var lineNode;
+  if (node == cm.display.lineDiv) {
+    lineNode = cm.display.lineDiv.childNodes[offset];
+    if (!lineNode) { return badPos(cm.clipPos(Pos(cm.display.viewTo - 1)), true) }
+    node = null; offset = 0;
+  } else {
+    for (lineNode = node;; lineNode = lineNode.parentNode) {
+      if (!lineNode || lineNode == cm.display.lineDiv) { return null }
+      if (lineNode.parentNode && lineNode.parentNode == cm.display.lineDiv) { break }
+    }
+  }
+  for (var i = 0; i < cm.display.view.length; i++) {
+    var lineView = cm.display.view[i];
+    if (lineView.node == lineNode)
+      { return locateNodeInLineView(lineView, node, offset) }
+  }
+}
+
+function locateNodeInLineView(lineView, node, offset) {
+  var wrapper = lineView.text.firstChild, bad = false;
+  if (!node || !contains(wrapper, node)) { return badPos(Pos(lineNo(lineView.line), 0), true) }
+  if (node == wrapper) {
+    bad = true;
+    node = wrapper.childNodes[offset];
+    offset = 0;
+    if (!node) {
+      var line = lineView.rest ? lst(lineView.rest) : lineView.line;
+      return badPos(Pos(lineNo(line), line.text.length), bad)
+    }
+  }
+
+  var textNode = node.nodeType == 3 ? node : null, topNode = node;
+  if (!textNode && node.childNodes.length == 1 && node.firstChild.nodeType == 3) {
+    textNode = node.firstChild;
+    if (offset) { offset = textNode.nodeValue.length; }
+  }
+  while (topNode.parentNode != wrapper) { topNode = topNode.parentNode; }
+  var measure = lineView.measure, maps = measure.maps;
+
+  function find(textNode, topNode, offset) {
+    for (var i = -1; i < (maps ? maps.length : 0); i++) {
+      var map$$1 = i < 0 ? measure.map : maps[i];
+      for (var j = 0; j < map$$1.length; j += 3) {
+        var curNode = map$$1[j + 2];
+        if (curNode == textNode || curNode == topNode) {
+          var line = lineNo(i < 0 ? lineView.line : lineView.rest[i]);
+          var ch = map$$1[j] + offset;
+          if (offset < 0 || curNode != textNode) { ch = map$$1[j + (offset ? 1 : 0)]; }
+          return Pos(line, ch)
+        }
+      }
+    }
+  }
+  var found = find(textNode, topNode, offset);
+  if (found) { return badPos(found, bad) }
+
+  // FIXME this is all really shaky. might handle the few cases it needs to handle, but likely to cause problems
+  for (var after = topNode.nextSibling, dist = textNode ? textNode.nodeValue.length - offset : 0; after; after = after.nextSibling) {
+    found = find(after, after.firstChild, 0);
+    if (found)
+      { return badPos(Pos(found.line, found.ch - dist), bad) }
+    else
+      { dist += after.textContent.length; }
+  }
+  for (var before = topNode.previousSibling, dist$1 = offset; before; before = before.previousSibling) {
+    found = find(before, before.firstChild, -1);
+    if (found)
+      { return badPos(Pos(found.line, found.ch + dist$1), bad) }
+    else
+      { dist$1 += before.textContent.length; }
+  }
+}
+
+// TEXTAREA INPUT STYLE
+
+var TextareaInput = function(cm) {
+  this.cm = cm;
+  // See input.poll and input.reset
+  this.prevInput = "";
+
+  // Flag that indicates whether we expect input to appear real soon
+  // now (after some event like 'keypress' or 'input') and are
+  // polling intensively.
+  this.pollingFast = false;
+  // Self-resetting timeout for the poller
+  this.polling = new Delayed();
+  // Tracks when input.reset has punted to just putting a short
+  // string into the textarea instead of the full selection.
+  this.inaccurateSelection = false;
+  // Used to work around IE issue with selection being forgotten when focus moves away from textarea
+  this.hasSelection = false;
+  this.composing = null;
+};
+
+TextareaInput.prototype.init = function (display) {
+    var this$1 = this;
+
+  var input = this, cm = this.cm;
+
+  // Wraps and hides input textarea
+  var div = this.wrapper = hiddenTextarea();
+  // The semihidden textarea that is focused when the editor is
+  // focused, and receives input.
+  var te = this.textarea = div.firstChild;
+  display.wrapper.insertBefore(div, display.wrapper.firstChild);
+
+  // Needed to hide big blue blinking cursor on Mobile Safari (doesn't seem to work in iOS 8 anymore)
+  if (ios) { te.style.width = "0px"; }
+
+  on(te, "input", function () {
+    if (ie && ie_version >= 9 && this$1.hasSelection) { this$1.hasSelection = null; }
+    input.poll();
+  });
+
+  on(te, "paste", function (e) {
+    if (signalDOMEvent(cm, e) || handlePaste(e, cm)) { return }
+
+    cm.state.pasteIncoming = true;
+    input.fastPoll();
+  });
+
+  function prepareCopyCut(e) {
+    if (signalDOMEvent(cm, e)) { return }
+    if (cm.somethingSelected()) {
+      setLastCopied({lineWise: false, text: cm.getSelections()});
+      if (input.inaccurateSelection) {
+        input.prevInput = "";
+        input.inaccurateSelection = false;
+        te.value = lastCopied.text.join("\n");
+        selectInput(te);
+      }
+    } else if (!cm.options.lineWiseCopyCut) {
+      return
+    } else {
+      var ranges = copyableRanges(cm);
+      setLastCopied({lineWise: true, text: ranges.text});
+      if (e.type == "cut") {
+        cm.setSelections(ranges.ranges, null, sel_dontScroll);
+      } else {
+        input.prevInput = "";
+        te.value = ranges.text.join("\n");
+        selectInput(te);
+      }
+    }
+    if (e.type == "cut") { cm.state.cutIncoming = true; }
+  }
+  on(te, "cut", prepareCopyCut);
+  on(te, "copy", prepareCopyCut);
+
+  on(display.scroller, "paste", function (e) {
+    if (eventInWidget(display, e) || signalDOMEvent(cm, e)) { return }
+    cm.state.pasteIncoming = true;
+    input.focus();
+  });
+
+  // Prevent normal selection in the editor (we handle our own)
+  on(display.lineSpace, "selectstart", function (e) {
+    if (!eventInWidget(display, e)) { e_preventDefault(e); }
+  });
+
+  on(te, "compositionstart", function () {
+    var start = cm.getCursor("from");
+    if (input.composing) { input.composing.range.clear(); }
+    input.composing = {
+      start: start,
+      range: cm.markText(start, cm.getCursor("to"), {className: "CodeMirror-composing"})
+    };
+  });
+  on(te, "compositionend", function () {
+    if (input.composing) {
+      input.poll();
+      input.composing.range.clear();
+      input.composing = null;
+    }
+  });
+};
+
+TextareaInput.prototype.prepareSelection = function () {
+  // Redraw the selection and/or cursor
+  var cm = this.cm, display = cm.display, doc = cm.doc;
+  var result = prepareSelection(cm);
+
+  // Move the hidden textarea near the cursor to prevent scrolling artifacts
+  if (cm.options.moveInputWithCursor) {
+    var headPos = cursorCoords(cm, doc.sel.primary().head, "div");
+    var wrapOff = display.wrapper.getBoundingClientRect(), lineOff = display.lineDiv.getBoundingClientRect();
+    result.teTop = Math.max(0, Math.min(display.wrapper.clientHeight - 10,
+                                        headPos.top + lineOff.top - wrapOff.top));
+    result.teLeft = Math.max(0, Math.min(display.wrapper.clientWidth - 10,
+                                         headPos.left + lineOff.left - wrapOff.left));
+  }
+
+  return result
+};
+
+TextareaInput.prototype.showSelection = function (drawn) {
+  var cm = this.cm, display = cm.display;
+  removeChildrenAndAdd(display.cursorDiv, drawn.cursors);
+  removeChildrenAndAdd(display.selectionDiv, drawn.selection);
+  if (drawn.teTop != null) {
+    this.wrapper.style.top = drawn.teTop + "px";
+    this.wrapper.style.left = drawn.teLeft + "px";
+  }
+};
+
+// Reset the input to correspond to the selection (or to be empty,
+// when not typing and nothing is selected)
+TextareaInput.prototype.reset = function (typing) {
+  if (this.contextMenuPending) { return }
+  var minimal, selected, cm = this.cm, doc = cm.doc;
+  if (cm.somethingSelected()) {
+    this.prevInput = "";
+    var range$$1 = doc.sel.primary();
+    minimal = hasCopyEvent &&
+      (range$$1.to().line - range$$1.from().line > 100 || (selected = cm.getSelection()).length > 1000);
+    var content = minimal ? "-" : selected || cm.getSelection();
+    this.textarea.value = content;
+    if (cm.state.focused) { selectInput(this.textarea); }
+    if (ie && ie_version >= 9) { this.hasSelection = content; }
+  } else if (!typing) {
+    this.prevInput = this.textarea.value = "";
+    if (ie && ie_version >= 9) { this.hasSelection = null; }
+  }
+  this.inaccurateSelection = minimal;
+};
+
+TextareaInput.prototype.getField = function () { return this.textarea };
+
+TextareaInput.prototype.supportsTouch = function () { return false };
+
+TextareaInput.prototype.focus = function () {
+  if (this.cm.options.readOnly != "nocursor" && (!mobile || activeElt() != this.textarea)) {
+    try { this.textarea.focus(); }
+    catch (e) {} // IE8 will throw if the textarea is display: none or not in DOM
+  }
+};
+
+TextareaInput.prototype.blur = function () { this.textarea.blur(); };
+
+TextareaInput.prototype.resetPosition = function () {
+  this.wrapper.style.top = this.wrapper.style.left = 0;
+};
+
+TextareaInput.prototype.receivedFocus = function () { this.slowPoll(); };
+
+// Poll for input changes, using the normal rate of polling. This
+// runs as long as the editor is focused.
+TextareaInput.prototype.slowPoll = function () {
+    var this$1 = this;
+
+  if (this.pollingFast) { return }
+  this.polling.set(this.cm.options.pollInterval, function () {
+    this$1.poll();
+    if (this$1.cm.state.focused) { this$1.slowPoll(); }
+  });
+};
+
+// When an event has just come in that is likely to add or change
+// something in the input textarea, we poll faster, to ensure that
+// the change appears on the screen quickly.
+TextareaInput.prototype.fastPoll = function () {
+  var missed = false, input = this;
+  input.pollingFast = true;
+  function p() {
+    var changed = input.poll();
+    if (!changed && !missed) {missed = true; input.polling.set(60, p);}
+    else {input.pollingFast = false; input.slowPoll();}
+  }
+  input.polling.set(20, p);
+};
+
+// Read input from the textarea, and update the document to match.
+// When something is selected, it is present in the textarea, and
+// selected (unless it is huge, in which case a placeholder is
+// used). When nothing is selected, the cursor sits after previously
+// seen text (can be empty), which is stored in prevInput (we must
+// not reset the textarea when typing, because that breaks IME).
+TextareaInput.prototype.poll = function () {
+    var this$1 = this;
+
+  var cm = this.cm, input = this.textarea, prevInput = this.prevInput;
+  // Since this is called a *lot*, try to bail out as cheaply as
+  // possible when it is clear that nothing happened. hasSelection
+  // will be the case when there is a lot of text in the textarea,
+  // in which case reading its value would be expensive.
+  if (this.contextMenuPending || !cm.state.focused ||
+      (hasSelection(input) && !prevInput && !this.composing) ||
+      cm.isReadOnly() || cm.options.disableInput || cm.state.keySeq)
+    { return false }
+
+  var text = input.value;
+  // If nothing changed, bail.
+  if (text == prevInput && !cm.somethingSelected()) { return false }
+  // Work around nonsensical selection resetting in IE9/10, and
+  // inexplicable appearance of private area unicode characters on
+  // some key combos in Mac (#2689).
+  if (ie && ie_version >= 9 && this.hasSelection === text ||
+      mac && /[\uf700-\uf7ff]/.test(text)) {
+    cm.display.input.reset();
+    return false
+  }
+
+  if (cm.doc.sel == cm.display.selForContextMenu) {
+    var first = text.charCodeAt(0);
+    if (first == 0x200b && !prevInput) { prevInput = "\u200b"; }
+    if (first == 0x21da) { this.reset(); return this.cm.execCommand("undo") }
+  }
+  // Find the part of the input that is actually new
+  var same = 0, l = Math.min(prevInput.length, text.length);
+  while (same < l && prevInput.charCodeAt(same) == text.charCodeAt(same)) { ++same; }
+
+  runInOp(cm, function () {
+    applyTextInput(cm, text.slice(same), prevInput.length - same,
+                   null, this$1.composing ? "*compose" : null);
+
+    // Don't leave long text in the textarea, since it makes further polling slow
+    if (text.length > 1000 || text.indexOf("\n") > -1) { input.value = this$1.prevInput = ""; }
+    else { this$1.prevInput = text; }
+
+    if (this$1.composing) {
+      this$1.composing.range.clear();
+      this$1.composing.range = cm.markText(this$1.composing.start, cm.getCursor("to"),
+                                         {className: "CodeMirror-composing"});
+    }
+  });
+  return true
+};
+
+TextareaInput.prototype.ensurePolled = function () {
+  if (this.pollingFast && this.poll()) { this.pollingFast = false; }
+};
+
+TextareaInput.prototype.onKeyPress = function () {
+  if (ie && ie_version >= 9) { this.hasSelection = null; }
+  this.fastPoll();
+};
+
+TextareaInput.prototype.onContextMenu = function (e) {
+  var input = this, cm = input.cm, display = cm.display, te = input.textarea;
+  var pos = posFromMouse(cm, e), scrollPos = display.scroller.scrollTop;
+  if (!pos || presto) { return } // Opera is difficult.
+
+  // Reset the current text selection only if the click is done outside of the selection
+  // and 'resetSelectionOnContextMenu' option is true.
+  var reset = cm.options.resetSelectionOnContextMenu;
+  if (reset && cm.doc.sel.contains(pos) == -1)
+    { operation(cm, setSelection)(cm.doc, simpleSelection(pos), sel_dontScroll); }
+
+  var oldCSS = te.style.cssText, oldWrapperCSS = input.wrapper.style.cssText;
+  input.wrapper.style.cssText = "position: absolute";
+  var wrapperBox = input.wrapper.getBoundingClientRect();
+  te.style.cssText = "position: absolute; width: 30px; height: 30px;\n      top: " + (e.clientY - wrapperBox.top - 5) + "px; left: " + (e.clientX - wrapperBox.left - 5) + "px;\n      z-index: 1000; background: " + (ie ? "rgba(255, 255, 255, .05)" : "transparent") + ";\n      outline: none; border-width: 0; outline: none; overflow: hidden; opacity: .05; filter: alpha(opacity=5);";
+  var oldScrollY;
+  if (webkit) { oldScrollY = window.scrollY; } // Work around Chrome issue (#2712)
+  display.input.focus();
+  if (webkit) { window.scrollTo(null, oldScrollY); }
+  display.input.reset();
+  // Adds "Select all" to context menu in FF
+  if (!cm.somethingSelected()) { te.value = input.prevInput = " "; }
+  input.contextMenuPending = true;
+  display.selForContextMenu = cm.doc.sel;
+  clearTimeout(display.detectingSelectAll);
+
+  // Select-all will be greyed out if there's nothing to select, so
+  // this adds a zero-width space so that we can later check whether
+  // it got selected.
+  function prepareSelectAllHack() {
+    if (te.selectionStart != null) {
+      var selected = cm.somethingSelected();
+      var extval = "\u200b" + (selected ? te.value : "");
+      te.value = "\u21da"; // Used to catch context-menu undo
+      te.value = extval;
+      input.prevInput = selected ? "" : "\u200b";
+      te.selectionStart = 1; te.selectionEnd = extval.length;
+      // Re-set this, in case some other handler touched the
+      // selection in the meantime.
+      display.selForContextMenu = cm.doc.sel;
+    }
+  }
+  function rehide() {
+    input.contextMenuPending = false;
+    input.wrapper.style.cssText = oldWrapperCSS;
+    te.style.cssText = oldCSS;
+    if (ie && ie_version < 9) { display.scrollbars.setScrollTop(display.scroller.scrollTop = scrollPos); }
+
+    // Try to detect the user choosing select-all
+    if (te.selectionStart != null) {
+      if (!ie || (ie && ie_version < 9)) { prepareSelectAllHack(); }
+      var i = 0, poll = function () {
+        if (display.selForContextMenu == cm.doc.sel && te.selectionStart == 0 &&
+            te.selectionEnd > 0 && input.prevInput == "\u200b") {
+          operation(cm, selectAll)(cm);
+        } else if (i++ < 10) {
+          display.detectingSelectAll = setTimeout(poll, 500);
+        } else {
+          display.selForContextMenu = null;
+          display.input.reset();
+        }
+      };
+      display.detectingSelectAll = setTimeout(poll, 200);
+    }
+  }
+
+  if (ie && ie_version >= 9) { prepareSelectAllHack(); }
+  if (captureRightClick) {
+    e_stop(e);
+    var mouseup = function () {
+      off(window, "mouseup", mouseup);
+      setTimeout(rehide, 20);
+    };
+    on(window, "mouseup", mouseup);
+  } else {
+    setTimeout(rehide, 50);
+  }
+};
+
+TextareaInput.prototype.readOnlyChanged = function (val) {
+  if (!val) { this.reset(); }
+};
+
+TextareaInput.prototype.setUneditable = function () {};
+
+TextareaInput.prototype.needsContentAttribute = false;
+
+function fromTextArea(textarea, options) {
+  options = options ? copyObj(options) : {};
+  options.value = textarea.value;
+  if (!options.tabindex && textarea.tabIndex)
+    { options.tabindex = textarea.tabIndex; }
+  if (!options.placeholder && textarea.placeholder)
+    { options.placeholder = textarea.placeholder; }
+  // Set autofocus to true if this textarea is focused, or if it has
+  // autofocus and no other element is focused.
+  if (options.autofocus == null) {
+    var hasFocus = activeElt();
+    options.autofocus = hasFocus == textarea ||
+      textarea.getAttribute("autofocus") != null && hasFocus == document.body;
+  }
+
+  function save() {textarea.value = cm.getValue();}
+
+  var realSubmit;
+  if (textarea.form) {
+    on(textarea.form, "submit", save);
+    // Deplorable hack to make the submit method do the right thing.
+    if (!options.leaveSubmitMethodAlone) {
+      var form = textarea.form;
+      realSubmit = form.submit;
+      try {
+        var wrappedSubmit = form.submit = function () {
+          save();
+          form.submit = realSubmit;
+          form.submit();
+          form.submit = wrappedSubmit;
+        };
+      } catch(e) {}
+    }
+  }
+
+  options.finishInit = function (cm) {
+    cm.save = save;
+    cm.getTextArea = function () { return textarea; };
+    cm.toTextArea = function () {
+      cm.toTextArea = isNaN; // Prevent this from being ran twice
+      save();
+      textarea.parentNode.removeChild(cm.getWrapperElement());
+      textarea.style.display = "";
+      if (textarea.form) {
+        off(textarea.form, "submit", save);
+        if (typeof textarea.form.submit == "function")
+          { textarea.form.submit = realSubmit; }
+      }
+    };
+  };
+
+  textarea.style.display = "none";
+  var cm = CodeMirror$1(function (node) { return textarea.parentNode.insertBefore(node, textarea.nextSibling); },
+    options);
+  return cm
+}
+
+function addLegacyProps(CodeMirror) {
+  CodeMirror.off = off;
+  CodeMirror.on = on;
+  CodeMirror.wheelEventPixels = wheelEventPixels;
+  CodeMirror.Doc = Doc;
+  CodeMirror.splitLines = splitLinesAuto;
+  CodeMirror.countColumn = countColumn;
+  CodeMirror.findColumn = findColumn;
+  CodeMirror.isWordChar = isWordCharBasic;
+  CodeMirror.Pass = Pass;
+  CodeMirror.signal = signal;
+  CodeMirror.Line = Line;
+  CodeMirror.changeEnd = changeEnd;
+  CodeMirror.scrollbarModel = scrollbarModel;
+  CodeMirror.Pos = Pos;
+  CodeMirror.cmpPos = cmp;
+  CodeMirror.modes = modes;
+  CodeMirror.mimeModes = mimeModes;
+  CodeMirror.resolveMode = resolveMode;
+  CodeMirror.getMode = getMode;
+  CodeMirror.modeExtensions = modeExtensions;
+  CodeMirror.extendMode = extendMode;
+  CodeMirror.copyState = copyState;
+  CodeMirror.startState = startState;
+  CodeMirror.innerMode = innerMode;
+  CodeMirror.commands = commands;
+  CodeMirror.keyMap = keyMap;
+  CodeMirror.keyName = keyName;
+  CodeMirror.isModifierKey = isModifierKey;
+  CodeMirror.lookupKey = lookupKey;
+  CodeMirror.normalizeKeyMap = normalizeKeyMap;
+  CodeMirror.StringStream = StringStream;
+  CodeMirror.SharedTextMarker = SharedTextMarker;
+  CodeMirror.TextMarker = TextMarker;
+  CodeMirror.LineWidget = LineWidget;
+  CodeMirror.e_preventDefault = e_preventDefault;
+  CodeMirror.e_stopPropagation = e_stopPropagation;
+  CodeMirror.e_stop = e_stop;
+  CodeMirror.addClass = addClass;
+  CodeMirror.contains = contains;
+  CodeMirror.rmClass = rmClass;
+  CodeMirror.keyNames = keyNames;
+}
+
+// EDITOR CONSTRUCTOR
+
+defineOptions(CodeMirror$1);
+
+addEditorMethods(CodeMirror$1);
+
+// Set up methods on CodeMirror's prototype to redirect to the editor's document.
+var dontDelegate = "iter insert remove copy getEditor constructor".split(" ");
+for (var prop in Doc.prototype) { if (Doc.prototype.hasOwnProperty(prop) && indexOf(dontDelegate, prop) < 0)
+  { CodeMirror$1.prototype[prop] = (function(method) {
+    return function() {return method.apply(this.doc, arguments)}
+  })(Doc.prototype[prop]); } }
+
+eventMixin(Doc);
+
+// INPUT HANDLING
+
+CodeMirror$1.inputStyles = {"textarea": TextareaInput, "contenteditable": ContentEditableInput};
+
+// MODE DEFINITION AND QUERYING
+
+// Extra arguments are stored as the mode's dependencies, which is
+// used by (legacy) mechanisms like loadmode.js to automatically
+// load a mode. (Preferred mechanism is the require/define calls.)
+CodeMirror$1.defineMode = function(name/*, mode, …*/) {
+  if (!CodeMirror$1.defaults.mode && name != "null") { CodeMirror$1.defaults.mode = name; }
+  defineMode.apply(this, arguments);
+};
+
+CodeMirror$1.defineMIME = defineMIME;
+
+// Minimal default mode.
+CodeMirror$1.defineMode("null", function () { return ({token: function (stream) { return stream.skipToEnd(); }}); });
+CodeMirror$1.defineMIME("text/plain", "null");
+
+// EXTENSIONS
+
+CodeMirror$1.defineExtension = function (name, func) {
+  CodeMirror$1.prototype[name] = func;
+};
+CodeMirror$1.defineDocExtension = function (name, func) {
+  Doc.prototype[name] = func;
+};
+
+CodeMirror$1.fromTextArea = fromTextArea;
+
+addLegacyProps(CodeMirror$1);
+
+CodeMirror$1.version = "5.25.2";
+
+return CodeMirror$1;
+
+})));
+
+
+/***/ }),
+/* 144 */
+/***/ (function(module, exports) {
+
+// removed by extract-text-webpack-plugin
+
+/***/ }),
+/* 145 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13094,7 +29638,7 @@ function camelize(string) {
 module.exports = camelize;
 
 /***/ }),
-/* 111 */
+/* 146 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13111,7 +29655,7 @@ module.exports = camelize;
 
 
 
-var camelize = __webpack_require__(110);
+var camelize = __webpack_require__(145);
 
 var msPattern = /^-ms-/;
 
@@ -13139,7 +29683,7 @@ function camelizeStyleName(string) {
 module.exports = camelizeStyleName;
 
 /***/ }),
-/* 112 */
+/* 147 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13156,7 +29700,7 @@ module.exports = camelizeStyleName;
  * 
  */
 
-var isTextNode = __webpack_require__(120);
+var isTextNode = __webpack_require__(155);
 
 /*eslint-disable no-bitwise */
 
@@ -13184,7 +29728,7 @@ function containsNode(outerNode, innerNode) {
 module.exports = containsNode;
 
 /***/ }),
-/* 113 */
+/* 148 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13317,7 +29861,7 @@ module.exports = createArrayFromMixed;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 114 */
+/* 149 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13338,8 +29882,8 @@ module.exports = createArrayFromMixed;
 
 var ExecutionEnvironment = __webpack_require__(6);
 
-var createArrayFromMixed = __webpack_require__(113);
-var getMarkupWrap = __webpack_require__(115);
+var createArrayFromMixed = __webpack_require__(148);
+var getMarkupWrap = __webpack_require__(150);
 var invariant = __webpack_require__(1);
 
 /**
@@ -13407,7 +29951,7 @@ module.exports = createNodesFromMarkup;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 115 */
+/* 150 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13508,7 +30052,7 @@ module.exports = getMarkupWrap;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 116 */
+/* 151 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13552,7 +30096,7 @@ function getUnboundedScrollPosition(scrollable) {
 module.exports = getUnboundedScrollPosition;
 
 /***/ }),
-/* 117 */
+/* 152 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13590,7 +30134,7 @@ function hyphenate(string) {
 module.exports = hyphenate;
 
 /***/ }),
-/* 118 */
+/* 153 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13607,7 +30151,7 @@ module.exports = hyphenate;
 
 
 
-var hyphenate = __webpack_require__(117);
+var hyphenate = __webpack_require__(152);
 
 var msPattern = /^ms-/;
 
@@ -13634,7 +30178,7 @@ function hyphenateStyleName(string) {
 module.exports = hyphenateStyleName;
 
 /***/ }),
-/* 119 */
+/* 154 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13664,7 +30208,7 @@ function isNode(object) {
 module.exports = isNode;
 
 /***/ }),
-/* 120 */
+/* 155 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13681,7 +30225,7 @@ module.exports = isNode;
  * @typechecks
  */
 
-var isNode = __webpack_require__(119);
+var isNode = __webpack_require__(154);
 
 /**
  * @param {*} object The object to check.
@@ -13694,7 +30238,7 @@ function isTextNode(object) {
 module.exports = isTextNode;
 
 /***/ }),
-/* 121 */
+/* 156 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13729,7 +30273,7 @@ function memoizeStringOnly(callback) {
 module.exports = memoizeStringOnly;
 
 /***/ }),
-/* 122 */
+/* 157 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13757,7 +30301,7 @@ if (ExecutionEnvironment.canUseDOM) {
 module.exports = performance || {};
 
 /***/ }),
-/* 123 */
+/* 158 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13774,7 +30318,7 @@ module.exports = performance || {};
  * @typechecks
  */
 
-var performance = __webpack_require__(122);
+var performance = __webpack_require__(157);
 
 var performanceNow;
 
@@ -13796,7 +30340,64 @@ if (performance.now) {
 module.exports = performanceNow;
 
 /***/ }),
-/* 124 */
+/* 159 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/**
+ * Copyright 2015, Yahoo! Inc.
+ * Copyrights licensed under the New BSD License. See the accompanying LICENSE file for terms.
+ */
+
+
+var REACT_STATICS = {
+    childContextTypes: true,
+    contextTypes: true,
+    defaultProps: true,
+    displayName: true,
+    getDefaultProps: true,
+    mixins: true,
+    propTypes: true,
+    type: true
+};
+
+var KNOWN_STATICS = {
+    name: true,
+    length: true,
+    prototype: true,
+    caller: true,
+    arguments: true,
+    arity: true
+};
+
+var isGetOwnPropertySymbolsAvailable = typeof Object.getOwnPropertySymbols === 'function';
+
+module.exports = function hoistNonReactStatics(targetComponent, sourceComponent, customStatics) {
+    if (typeof sourceComponent !== 'string') { // don't hoist over string (html) components
+        var keys = Object.getOwnPropertyNames(sourceComponent);
+
+        /* istanbul ignore else */
+        if (isGetOwnPropertySymbolsAvailable) {
+            keys = keys.concat(Object.getOwnPropertySymbols(sourceComponent));
+        }
+
+        for (var i = 0; i < keys.length; ++i) {
+            if (!REACT_STATICS[keys[i]] && !KNOWN_STATICS[keys[i]] && (!customStatics || !customStatics[keys[i]])) {
+                try {
+                    targetComponent[keys[i]] = sourceComponent[keys[i]];
+                } catch (error) {
+
+                }
+            }
+        }
+    }
+
+    return targetComponent;
+};
+
+
+/***/ }),
+/* 160 */
 /***/ (function(module, exports) {
 
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
@@ -13886,7 +30487,66 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
 
 
 /***/ }),
-/* 125 */
+/* 161 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/* WEBPACK VAR INJECTION */(function(process) {/**
+ * Copyright 2013-2015, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ */
+
+
+
+/**
+ * Use invariant() to assert state which your program assumes to be true.
+ *
+ * Provide sprintf-style format (only %s is supported) and arguments
+ * to provide information about what broke and what you were
+ * expecting.
+ *
+ * The invariant message will be stripped in production, but the invariant
+ * will remain to ensure logic does not differ in production.
+ */
+
+var invariant = function(condition, format, a, b, c, d, e, f) {
+  if (process.env.NODE_ENV !== 'production') {
+    if (format === undefined) {
+      throw new Error('invariant requires an error message argument');
+    }
+  }
+
+  if (!condition) {
+    var error;
+    if (format === undefined) {
+      error = new Error(
+        'Minified exception occurred; use the non-minified dev environment ' +
+        'for the full error message and additional helpful warnings.'
+      );
+    } else {
+      var args = [a, b, c, d, e, f];
+      var argIndex = 0;
+      error = new Error(
+        format.replace(/%s/g, function() { return args[argIndex++]; })
+      );
+      error.name = 'Invariant Violation';
+    }
+
+    error.framesToPop = 1; // we don't care about invariant's own frame
+    throw error;
+  }
+};
+
+module.exports = invariant;
+
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
+
+/***/ }),
+/* 162 */
 /***/ (function(module, exports) {
 
 var toString = {}.toString;
@@ -13897,7 +30557,613 @@ module.exports = Array.isArray || function (arr) {
 
 
 /***/ }),
-/* 126 */
+/* 163 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__Symbol_js__ = __webpack_require__(72);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__getRawTag_js__ = __webpack_require__(166);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__objectToString_js__ = __webpack_require__(167);
+
+
+
+
+/** `Object#toString` result references. */
+var nullTag = '[object Null]',
+    undefinedTag = '[object Undefined]';
+
+/** Built-in value references. */
+var symToStringTag = __WEBPACK_IMPORTED_MODULE_0__Symbol_js__["a" /* default */] ? __WEBPACK_IMPORTED_MODULE_0__Symbol_js__["a" /* default */].toStringTag : undefined;
+
+/**
+ * The base implementation of `getTag` without fallbacks for buggy environments.
+ *
+ * @private
+ * @param {*} value The value to query.
+ * @returns {string} Returns the `toStringTag`.
+ */
+function baseGetTag(value) {
+  if (value == null) {
+    return value === undefined ? undefinedTag : nullTag;
+  }
+  return (symToStringTag && symToStringTag in Object(value))
+    ? __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1__getRawTag_js__["a" /* default */])(value)
+    : __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__objectToString_js__["a" /* default */])(value);
+}
+
+/* harmony default export */ __webpack_exports__["a"] = (baseGetTag);
+
+
+/***/ }),
+/* 164 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* WEBPACK VAR INJECTION */(function(global) {/** Detect free variable `global` from Node.js. */
+var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
+
+/* harmony default export */ __webpack_exports__["a"] = (freeGlobal);
+
+/* WEBPACK VAR INJECTION */}.call(__webpack_exports__, __webpack_require__(38)))
+
+/***/ }),
+/* 165 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__overArg_js__ = __webpack_require__(168);
+
+
+/** Built-in value references. */
+var getPrototype = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__overArg_js__["a" /* default */])(Object.getPrototypeOf, Object);
+
+/* harmony default export */ __webpack_exports__["a"] = (getPrototype);
+
+
+/***/ }),
+/* 166 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__Symbol_js__ = __webpack_require__(72);
+
+
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var nativeObjectToString = objectProto.toString;
+
+/** Built-in value references. */
+var symToStringTag = __WEBPACK_IMPORTED_MODULE_0__Symbol_js__["a" /* default */] ? __WEBPACK_IMPORTED_MODULE_0__Symbol_js__["a" /* default */].toStringTag : undefined;
+
+/**
+ * A specialized version of `baseGetTag` which ignores `Symbol.toStringTag` values.
+ *
+ * @private
+ * @param {*} value The value to query.
+ * @returns {string} Returns the raw `toStringTag`.
+ */
+function getRawTag(value) {
+  var isOwn = hasOwnProperty.call(value, symToStringTag),
+      tag = value[symToStringTag];
+
+  try {
+    value[symToStringTag] = undefined;
+    var unmasked = true;
+  } catch (e) {}
+
+  var result = nativeObjectToString.call(value);
+  if (unmasked) {
+    if (isOwn) {
+      value[symToStringTag] = tag;
+    } else {
+      delete value[symToStringTag];
+    }
+  }
+  return result;
+}
+
+/* harmony default export */ __webpack_exports__["a"] = (getRawTag);
+
+
+/***/ }),
+/* 167 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var nativeObjectToString = objectProto.toString;
+
+/**
+ * Converts `value` to a string using `Object.prototype.toString`.
+ *
+ * @private
+ * @param {*} value The value to convert.
+ * @returns {string} Returns the converted string.
+ */
+function objectToString(value) {
+  return nativeObjectToString.call(value);
+}
+
+/* harmony default export */ __webpack_exports__["a"] = (objectToString);
+
+
+/***/ }),
+/* 168 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/**
+ * Creates a unary function that invokes `func` with its argument transformed.
+ *
+ * @private
+ * @param {Function} func The function to wrap.
+ * @param {Function} transform The argument transform.
+ * @returns {Function} Returns the new function.
+ */
+function overArg(func, transform) {
+  return function(arg) {
+    return func(transform(arg));
+  };
+}
+
+/* harmony default export */ __webpack_exports__["a"] = (overArg);
+
+
+/***/ }),
+/* 169 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__freeGlobal_js__ = __webpack_require__(164);
+
+
+/** Detect free variable `self`. */
+var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
+
+/** Used as a reference to the global object. */
+var root = __WEBPACK_IMPORTED_MODULE_0__freeGlobal_js__["a" /* default */] || freeSelf || Function('return this')();
+
+/* harmony default export */ __webpack_exports__["a"] = (root);
+
+
+/***/ }),
+/* 170 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/**
+ * Checks if `value` is object-like. A value is object-like if it's not `null`
+ * and has a `typeof` result of "object".
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ * @example
+ *
+ * _.isObjectLike({});
+ * // => true
+ *
+ * _.isObjectLike([1, 2, 3]);
+ * // => true
+ *
+ * _.isObjectLike(_.noop);
+ * // => false
+ *
+ * _.isObjectLike(null);
+ * // => false
+ */
+function isObjectLike(value) {
+  return value != null && typeof value == 'object';
+}
+
+/* harmony default export */ __webpack_exports__["a"] = (isObjectLike);
+
+
+/***/ }),
+/* 171 */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(global) {/**
+ * lodash (Custom Build) <https://lodash.com/>
+ * Build: `lodash modularize exports="npm" -o ./`
+ * Copyright jQuery Foundation and other contributors <https://jquery.org/>
+ * Released under MIT license <https://lodash.com/license>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ */
+
+/** Used as the `TypeError` message for "Functions" methods. */
+var FUNC_ERROR_TEXT = 'Expected a function';
+
+/** Used as references for various `Number` constants. */
+var NAN = 0 / 0;
+
+/** `Object#toString` result references. */
+var symbolTag = '[object Symbol]';
+
+/** Used to match leading and trailing whitespace. */
+var reTrim = /^\s+|\s+$/g;
+
+/** Used to detect bad signed hexadecimal string values. */
+var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
+
+/** Used to detect binary string values. */
+var reIsBinary = /^0b[01]+$/i;
+
+/** Used to detect octal string values. */
+var reIsOctal = /^0o[0-7]+$/i;
+
+/** Built-in method references without a dependency on `root`. */
+var freeParseInt = parseInt;
+
+/** Detect free variable `global` from Node.js. */
+var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
+
+/** Detect free variable `self`. */
+var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
+
+/** Used as a reference to the global object. */
+var root = freeGlobal || freeSelf || Function('return this')();
+
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objectToString = objectProto.toString;
+
+/* Built-in method references for those with the same name as other `lodash` methods. */
+var nativeMax = Math.max,
+    nativeMin = Math.min;
+
+/**
+ * Gets the timestamp of the number of milliseconds that have elapsed since
+ * the Unix epoch (1 January 1970 00:00:00 UTC).
+ *
+ * @static
+ * @memberOf _
+ * @since 2.4.0
+ * @category Date
+ * @returns {number} Returns the timestamp.
+ * @example
+ *
+ * _.defer(function(stamp) {
+ *   console.log(_.now() - stamp);
+ * }, _.now());
+ * // => Logs the number of milliseconds it took for the deferred invocation.
+ */
+var now = function() {
+  return root.Date.now();
+};
+
+/**
+ * Creates a debounced function that delays invoking `func` until after `wait`
+ * milliseconds have elapsed since the last time the debounced function was
+ * invoked. The debounced function comes with a `cancel` method to cancel
+ * delayed `func` invocations and a `flush` method to immediately invoke them.
+ * Provide `options` to indicate whether `func` should be invoked on the
+ * leading and/or trailing edge of the `wait` timeout. The `func` is invoked
+ * with the last arguments provided to the debounced function. Subsequent
+ * calls to the debounced function return the result of the last `func`
+ * invocation.
+ *
+ * **Note:** If `leading` and `trailing` options are `true`, `func` is
+ * invoked on the trailing edge of the timeout only if the debounced function
+ * is invoked more than once during the `wait` timeout.
+ *
+ * If `wait` is `0` and `leading` is `false`, `func` invocation is deferred
+ * until to the next tick, similar to `setTimeout` with a timeout of `0`.
+ *
+ * See [David Corbacho's article](https://css-tricks.com/debouncing-throttling-explained-examples/)
+ * for details over the differences between `_.debounce` and `_.throttle`.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Function
+ * @param {Function} func The function to debounce.
+ * @param {number} [wait=0] The number of milliseconds to delay.
+ * @param {Object} [options={}] The options object.
+ * @param {boolean} [options.leading=false]
+ *  Specify invoking on the leading edge of the timeout.
+ * @param {number} [options.maxWait]
+ *  The maximum time `func` is allowed to be delayed before it's invoked.
+ * @param {boolean} [options.trailing=true]
+ *  Specify invoking on the trailing edge of the timeout.
+ * @returns {Function} Returns the new debounced function.
+ * @example
+ *
+ * // Avoid costly calculations while the window size is in flux.
+ * jQuery(window).on('resize', _.debounce(calculateLayout, 150));
+ *
+ * // Invoke `sendMail` when clicked, debouncing subsequent calls.
+ * jQuery(element).on('click', _.debounce(sendMail, 300, {
+ *   'leading': true,
+ *   'trailing': false
+ * }));
+ *
+ * // Ensure `batchLog` is invoked once after 1 second of debounced calls.
+ * var debounced = _.debounce(batchLog, 250, { 'maxWait': 1000 });
+ * var source = new EventSource('/stream');
+ * jQuery(source).on('message', debounced);
+ *
+ * // Cancel the trailing debounced invocation.
+ * jQuery(window).on('popstate', debounced.cancel);
+ */
+function debounce(func, wait, options) {
+  var lastArgs,
+      lastThis,
+      maxWait,
+      result,
+      timerId,
+      lastCallTime,
+      lastInvokeTime = 0,
+      leading = false,
+      maxing = false,
+      trailing = true;
+
+  if (typeof func != 'function') {
+    throw new TypeError(FUNC_ERROR_TEXT);
+  }
+  wait = toNumber(wait) || 0;
+  if (isObject(options)) {
+    leading = !!options.leading;
+    maxing = 'maxWait' in options;
+    maxWait = maxing ? nativeMax(toNumber(options.maxWait) || 0, wait) : maxWait;
+    trailing = 'trailing' in options ? !!options.trailing : trailing;
+  }
+
+  function invokeFunc(time) {
+    var args = lastArgs,
+        thisArg = lastThis;
+
+    lastArgs = lastThis = undefined;
+    lastInvokeTime = time;
+    result = func.apply(thisArg, args);
+    return result;
+  }
+
+  function leadingEdge(time) {
+    // Reset any `maxWait` timer.
+    lastInvokeTime = time;
+    // Start the timer for the trailing edge.
+    timerId = setTimeout(timerExpired, wait);
+    // Invoke the leading edge.
+    return leading ? invokeFunc(time) : result;
+  }
+
+  function remainingWait(time) {
+    var timeSinceLastCall = time - lastCallTime,
+        timeSinceLastInvoke = time - lastInvokeTime,
+        result = wait - timeSinceLastCall;
+
+    return maxing ? nativeMin(result, maxWait - timeSinceLastInvoke) : result;
+  }
+
+  function shouldInvoke(time) {
+    var timeSinceLastCall = time - lastCallTime,
+        timeSinceLastInvoke = time - lastInvokeTime;
+
+    // Either this is the first call, activity has stopped and we're at the
+    // trailing edge, the system time has gone backwards and we're treating
+    // it as the trailing edge, or we've hit the `maxWait` limit.
+    return (lastCallTime === undefined || (timeSinceLastCall >= wait) ||
+      (timeSinceLastCall < 0) || (maxing && timeSinceLastInvoke >= maxWait));
+  }
+
+  function timerExpired() {
+    var time = now();
+    if (shouldInvoke(time)) {
+      return trailingEdge(time);
+    }
+    // Restart the timer.
+    timerId = setTimeout(timerExpired, remainingWait(time));
+  }
+
+  function trailingEdge(time) {
+    timerId = undefined;
+
+    // Only invoke if we have `lastArgs` which means `func` has been
+    // debounced at least once.
+    if (trailing && lastArgs) {
+      return invokeFunc(time);
+    }
+    lastArgs = lastThis = undefined;
+    return result;
+  }
+
+  function cancel() {
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+    }
+    lastInvokeTime = 0;
+    lastArgs = lastCallTime = lastThis = timerId = undefined;
+  }
+
+  function flush() {
+    return timerId === undefined ? result : trailingEdge(now());
+  }
+
+  function debounced() {
+    var time = now(),
+        isInvoking = shouldInvoke(time);
+
+    lastArgs = arguments;
+    lastThis = this;
+    lastCallTime = time;
+
+    if (isInvoking) {
+      if (timerId === undefined) {
+        return leadingEdge(lastCallTime);
+      }
+      if (maxing) {
+        // Handle invocations in a tight loop.
+        timerId = setTimeout(timerExpired, wait);
+        return invokeFunc(lastCallTime);
+      }
+    }
+    if (timerId === undefined) {
+      timerId = setTimeout(timerExpired, wait);
+    }
+    return result;
+  }
+  debounced.cancel = cancel;
+  debounced.flush = flush;
+  return debounced;
+}
+
+/**
+ * Checks if `value` is the
+ * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
+ * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(_.noop);
+ * // => true
+ *
+ * _.isObject(null);
+ * // => false
+ */
+function isObject(value) {
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+/**
+ * Checks if `value` is object-like. A value is object-like if it's not `null`
+ * and has a `typeof` result of "object".
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ * @example
+ *
+ * _.isObjectLike({});
+ * // => true
+ *
+ * _.isObjectLike([1, 2, 3]);
+ * // => true
+ *
+ * _.isObjectLike(_.noop);
+ * // => false
+ *
+ * _.isObjectLike(null);
+ * // => false
+ */
+function isObjectLike(value) {
+  return !!value && typeof value == 'object';
+}
+
+/**
+ * Checks if `value` is classified as a `Symbol` primitive or object.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
+ * @example
+ *
+ * _.isSymbol(Symbol.iterator);
+ * // => true
+ *
+ * _.isSymbol('abc');
+ * // => false
+ */
+function isSymbol(value) {
+  return typeof value == 'symbol' ||
+    (isObjectLike(value) && objectToString.call(value) == symbolTag);
+}
+
+/**
+ * Converts `value` to a number.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to process.
+ * @returns {number} Returns the number.
+ * @example
+ *
+ * _.toNumber(3.2);
+ * // => 3.2
+ *
+ * _.toNumber(Number.MIN_VALUE);
+ * // => 5e-324
+ *
+ * _.toNumber(Infinity);
+ * // => Infinity
+ *
+ * _.toNumber('3.2');
+ * // => 3.2
+ */
+function toNumber(value) {
+  if (typeof value == 'number') {
+    return value;
+  }
+  if (isSymbol(value)) {
+    return NAN;
+  }
+  if (isObject(value)) {
+    var other = typeof value.valueOf == 'function' ? value.valueOf() : value;
+    value = isObject(other) ? (other + '') : other;
+  }
+  if (typeof value != 'string') {
+    return value === 0 ? value : +value;
+  }
+  value = value.replace(reTrim, '');
+  var isBinary = reIsBinary.test(value);
+  return (isBinary || reIsOctal.test(value))
+    ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
+    : (reIsBadHex.test(value) ? NAN : +value);
+}
+
+module.exports = debounce;
+
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(38)))
+
+/***/ }),
+/* 172 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -13915,7 +31181,7 @@ module.exports = Array.isArray || function (arr) {
 if (process.env.NODE_ENV !== 'production') {
   var invariant = __webpack_require__(1);
   var warning = __webpack_require__(2);
-  var ReactPropTypesSecret = __webpack_require__(61);
+  var ReactPropTypesSecret = __webpack_require__(76);
   var loggedTypeFailures = {};
 }
 
@@ -13966,11 +31232,11 @@ module.exports = checkPropTypes;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 127 */
+/* 173 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-/* WEBPACK VAR INJECTION */(function(process) {/**
+/**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
  *
@@ -13981,472 +31247,170 @@ module.exports = checkPropTypes;
 
 
 
-var emptyFunction = __webpack_require__(10);
+var emptyFunction = __webpack_require__(11);
 var invariant = __webpack_require__(1);
-var warning = __webpack_require__(2);
 
-var ReactPropTypesSecret = __webpack_require__(61);
-var checkPropTypes = __webpack_require__(126);
-
-module.exports = function(isValidElement, throwOnDirectAccess) {
-  /* global Symbol */
-  var ITERATOR_SYMBOL = typeof Symbol === 'function' && Symbol.iterator;
-  var FAUX_ITERATOR_SYMBOL = '@@iterator'; // Before Symbol spec.
-
-  /**
-   * Returns the iterator method function contained on the iterable object.
-   *
-   * Be sure to invoke the function with the iterable as context:
-   *
-   *     var iteratorFn = getIteratorFn(myIterable);
-   *     if (iteratorFn) {
-   *       var iterator = iteratorFn.call(myIterable);
-   *       ...
-   *     }
-   *
-   * @param {?object} maybeIterable
-   * @return {?function}
-   */
-  function getIteratorFn(maybeIterable) {
-    var iteratorFn = maybeIterable && (ITERATOR_SYMBOL && maybeIterable[ITERATOR_SYMBOL] || maybeIterable[FAUX_ITERATOR_SYMBOL]);
-    if (typeof iteratorFn === 'function') {
-      return iteratorFn;
-    }
-  }
-
-  /**
-   * Collection of methods that allow declaration and validation of props that are
-   * supplied to React components. Example usage:
-   *
-   *   var Props = require('ReactPropTypes');
-   *   var MyArticle = React.createClass({
-   *     propTypes: {
-   *       // An optional string prop named "description".
-   *       description: Props.string,
-   *
-   *       // A required enum prop named "category".
-   *       category: Props.oneOf(['News','Photos']).isRequired,
-   *
-   *       // A prop named "dialog" that requires an instance of Dialog.
-   *       dialog: Props.instanceOf(Dialog).isRequired
-   *     },
-   *     render: function() { ... }
-   *   });
-   *
-   * A more formal specification of how these methods are used:
-   *
-   *   type := array|bool|func|object|number|string|oneOf([...])|instanceOf(...)
-   *   decl := ReactPropTypes.{type}(.isRequired)?
-   *
-   * Each and every declaration produces a function with the same signature. This
-   * allows the creation of custom validation functions. For example:
-   *
-   *  var MyLink = React.createClass({
-   *    propTypes: {
-   *      // An optional string or URI prop named "href".
-   *      href: function(props, propName, componentName) {
-   *        var propValue = props[propName];
-   *        if (propValue != null && typeof propValue !== 'string' &&
-   *            !(propValue instanceof URI)) {
-   *          return new Error(
-   *            'Expected a string or an URI for ' + propName + ' in ' +
-   *            componentName
-   *          );
-   *        }
-   *      }
-   *    },
-   *    render: function() {...}
-   *  });
-   *
-   * @internal
-   */
-
-  var ANONYMOUS = '<<anonymous>>';
-
+module.exports = function() {
   // Important!
-  // Keep this list in sync with production version in `./factoryWithThrowingShims.js`.
+  // Keep this list in sync with production version in `./factoryWithTypeCheckers.js`.
+  function shim() {
+    invariant(
+      false,
+      'Calling PropTypes validators directly is not supported by the `prop-types` package. ' +
+      'Use PropTypes.checkPropTypes() to call them. ' +
+      'Read more at http://fb.me/use-check-prop-types'
+    );
+  };
+  shim.isRequired = shim;
+  function getShim() {
+    return shim;
+  };
   var ReactPropTypes = {
-    array: createPrimitiveTypeChecker('array'),
-    bool: createPrimitiveTypeChecker('boolean'),
-    func: createPrimitiveTypeChecker('function'),
-    number: createPrimitiveTypeChecker('number'),
-    object: createPrimitiveTypeChecker('object'),
-    string: createPrimitiveTypeChecker('string'),
-    symbol: createPrimitiveTypeChecker('symbol'),
+    array: shim,
+    bool: shim,
+    func: shim,
+    number: shim,
+    object: shim,
+    string: shim,
+    symbol: shim,
 
-    any: createAnyTypeChecker(),
-    arrayOf: createArrayOfTypeChecker,
-    element: createElementTypeChecker(),
-    instanceOf: createInstanceTypeChecker,
-    node: createNodeChecker(),
-    objectOf: createObjectOfTypeChecker,
-    oneOf: createEnumTypeChecker,
-    oneOfType: createUnionTypeChecker,
-    shape: createShapeTypeChecker
+    any: shim,
+    arrayOf: getShim,
+    element: shim,
+    instanceOf: getShim,
+    node: shim,
+    objectOf: getShim,
+    oneOf: getShim,
+    oneOfType: getShim,
+    shape: getShim
   };
 
-  /**
-   * inlined Object.is polyfill to avoid requiring consumers ship their own
-   * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is
-   */
-  /*eslint-disable no-self-compare*/
-  function is(x, y) {
-    // SameValue algorithm
-    if (x === y) {
-      // Steps 1-5, 7-10
-      // Steps 6.b-6.e: +0 != -0
-      return x !== 0 || 1 / x === 1 / y;
-    } else {
-      // Step 6.a: NaN == NaN
-      return x !== x && y !== y;
-    }
-  }
-  /*eslint-enable no-self-compare*/
-
-  /**
-   * We use an Error-like object for backward compatibility as people may call
-   * PropTypes directly and inspect their output. However, we don't use real
-   * Errors anymore. We don't inspect their stack anyway, and creating them
-   * is prohibitively expensive if they are created too often, such as what
-   * happens in oneOfType() for any type before the one that matched.
-   */
-  function PropTypeError(message) {
-    this.message = message;
-    this.stack = '';
-  }
-  // Make `instanceof Error` still work for returned errors.
-  PropTypeError.prototype = Error.prototype;
-
-  function createChainableTypeChecker(validate) {
-    if (process.env.NODE_ENV !== 'production') {
-      var manualPropTypeCallCache = {};
-    }
-    function checkType(isRequired, props, propName, componentName, location, propFullName, secret) {
-      componentName = componentName || ANONYMOUS;
-      propFullName = propFullName || propName;
-
-      if (secret !== ReactPropTypesSecret) {
-        if (throwOnDirectAccess) {
-          // New behavior only for users of `prop-types` package
-          invariant(
-            false,
-            'Calling PropTypes validators directly is not supported by the `prop-types` package. ' +
-            'Use `PropTypes.checkPropTypes()` to call them. ' +
-            'Read more at http://fb.me/use-check-prop-types'
-          );
-        } else if (process.env.NODE_ENV !== 'production' && typeof console !== 'undefined') {
-          // Old behavior for people using React.PropTypes
-          var cacheKey = componentName + ':' + propName;
-          if (!manualPropTypeCallCache[cacheKey]) {
-            warning(
-              false,
-              'You are manually calling a React.PropTypes validation ' +
-              'function for the `%s` prop on `%s`. This is deprecated ' +
-              'and will throw in the standalone `prop-types` package. ' +
-              'You may be seeing this warning due to a third-party PropTypes ' +
-              'library. See https://fb.me/react-warning-dont-call-proptypes ' + 'for details.',
-              propFullName,
-              componentName
-            );
-            manualPropTypeCallCache[cacheKey] = true;
-          }
-        }
-      }
-      if (props[propName] == null) {
-        if (isRequired) {
-          if (props[propName] === null) {
-            return new PropTypeError('The ' + location + ' `' + propFullName + '` is marked as required ' + ('in `' + componentName + '`, but its value is `null`.'));
-          }
-          return new PropTypeError('The ' + location + ' `' + propFullName + '` is marked as required in ' + ('`' + componentName + '`, but its value is `undefined`.'));
-        }
-        return null;
-      } else {
-        return validate(props, propName, componentName, location, propFullName);
-      }
-    }
-
-    var chainedCheckType = checkType.bind(null, false);
-    chainedCheckType.isRequired = checkType.bind(null, true);
-
-    return chainedCheckType;
-  }
-
-  function createPrimitiveTypeChecker(expectedType) {
-    function validate(props, propName, componentName, location, propFullName, secret) {
-      var propValue = props[propName];
-      var propType = getPropType(propValue);
-      if (propType !== expectedType) {
-        // `propValue` being instance of, say, date/regexp, pass the 'object'
-        // check, but we can offer a more precise error message here rather than
-        // 'of type `object`'.
-        var preciseType = getPreciseType(propValue);
-
-        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + preciseType + '` supplied to `' + componentName + '`, expected ') + ('`' + expectedType + '`.'));
-      }
-      return null;
-    }
-    return createChainableTypeChecker(validate);
-  }
-
-  function createAnyTypeChecker() {
-    return createChainableTypeChecker(emptyFunction.thatReturnsNull);
-  }
-
-  function createArrayOfTypeChecker(typeChecker) {
-    function validate(props, propName, componentName, location, propFullName) {
-      if (typeof typeChecker !== 'function') {
-        return new PropTypeError('Property `' + propFullName + '` of component `' + componentName + '` has invalid PropType notation inside arrayOf.');
-      }
-      var propValue = props[propName];
-      if (!Array.isArray(propValue)) {
-        var propType = getPropType(propValue);
-        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + propType + '` supplied to `' + componentName + '`, expected an array.'));
-      }
-      for (var i = 0; i < propValue.length; i++) {
-        var error = typeChecker(propValue, i, componentName, location, propFullName + '[' + i + ']', ReactPropTypesSecret);
-        if (error instanceof Error) {
-          return error;
-        }
-      }
-      return null;
-    }
-    return createChainableTypeChecker(validate);
-  }
-
-  function createElementTypeChecker() {
-    function validate(props, propName, componentName, location, propFullName) {
-      var propValue = props[propName];
-      if (!isValidElement(propValue)) {
-        var propType = getPropType(propValue);
-        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + propType + '` supplied to `' + componentName + '`, expected a single ReactElement.'));
-      }
-      return null;
-    }
-    return createChainableTypeChecker(validate);
-  }
-
-  function createInstanceTypeChecker(expectedClass) {
-    function validate(props, propName, componentName, location, propFullName) {
-      if (!(props[propName] instanceof expectedClass)) {
-        var expectedClassName = expectedClass.name || ANONYMOUS;
-        var actualClassName = getClassName(props[propName]);
-        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + actualClassName + '` supplied to `' + componentName + '`, expected ') + ('instance of `' + expectedClassName + '`.'));
-      }
-      return null;
-    }
-    return createChainableTypeChecker(validate);
-  }
-
-  function createEnumTypeChecker(expectedValues) {
-    if (!Array.isArray(expectedValues)) {
-      process.env.NODE_ENV !== 'production' ? warning(false, 'Invalid argument supplied to oneOf, expected an instance of array.') : void 0;
-      return emptyFunction.thatReturnsNull;
-    }
-
-    function validate(props, propName, componentName, location, propFullName) {
-      var propValue = props[propName];
-      for (var i = 0; i < expectedValues.length; i++) {
-        if (is(propValue, expectedValues[i])) {
-          return null;
-        }
-      }
-
-      var valuesString = JSON.stringify(expectedValues);
-      return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of value `' + propValue + '` ' + ('supplied to `' + componentName + '`, expected one of ' + valuesString + '.'));
-    }
-    return createChainableTypeChecker(validate);
-  }
-
-  function createObjectOfTypeChecker(typeChecker) {
-    function validate(props, propName, componentName, location, propFullName) {
-      if (typeof typeChecker !== 'function') {
-        return new PropTypeError('Property `' + propFullName + '` of component `' + componentName + '` has invalid PropType notation inside objectOf.');
-      }
-      var propValue = props[propName];
-      var propType = getPropType(propValue);
-      if (propType !== 'object') {
-        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + propType + '` supplied to `' + componentName + '`, expected an object.'));
-      }
-      for (var key in propValue) {
-        if (propValue.hasOwnProperty(key)) {
-          var error = typeChecker(propValue, key, componentName, location, propFullName + '.' + key, ReactPropTypesSecret);
-          if (error instanceof Error) {
-            return error;
-          }
-        }
-      }
-      return null;
-    }
-    return createChainableTypeChecker(validate);
-  }
-
-  function createUnionTypeChecker(arrayOfTypeCheckers) {
-    if (!Array.isArray(arrayOfTypeCheckers)) {
-      process.env.NODE_ENV !== 'production' ? warning(false, 'Invalid argument supplied to oneOfType, expected an instance of array.') : void 0;
-      return emptyFunction.thatReturnsNull;
-    }
-
-    function validate(props, propName, componentName, location, propFullName) {
-      for (var i = 0; i < arrayOfTypeCheckers.length; i++) {
-        var checker = arrayOfTypeCheckers[i];
-        if (checker(props, propName, componentName, location, propFullName, ReactPropTypesSecret) == null) {
-          return null;
-        }
-      }
-
-      return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` supplied to ' + ('`' + componentName + '`.'));
-    }
-    return createChainableTypeChecker(validate);
-  }
-
-  function createNodeChecker() {
-    function validate(props, propName, componentName, location, propFullName) {
-      if (!isNode(props[propName])) {
-        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` supplied to ' + ('`' + componentName + '`, expected a ReactNode.'));
-      }
-      return null;
-    }
-    return createChainableTypeChecker(validate);
-  }
-
-  function createShapeTypeChecker(shapeTypes) {
-    function validate(props, propName, componentName, location, propFullName) {
-      var propValue = props[propName];
-      var propType = getPropType(propValue);
-      if (propType !== 'object') {
-        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type `' + propType + '` ' + ('supplied to `' + componentName + '`, expected `object`.'));
-      }
-      for (var key in shapeTypes) {
-        var checker = shapeTypes[key];
-        if (!checker) {
-          continue;
-        }
-        var error = checker(propValue, key, componentName, location, propFullName + '.' + key, ReactPropTypesSecret);
-        if (error) {
-          return error;
-        }
-      }
-      return null;
-    }
-    return createChainableTypeChecker(validate);
-  }
-
-  function isNode(propValue) {
-    switch (typeof propValue) {
-      case 'number':
-      case 'string':
-      case 'undefined':
-        return true;
-      case 'boolean':
-        return !propValue;
-      case 'object':
-        if (Array.isArray(propValue)) {
-          return propValue.every(isNode);
-        }
-        if (propValue === null || isValidElement(propValue)) {
-          return true;
-        }
-
-        var iteratorFn = getIteratorFn(propValue);
-        if (iteratorFn) {
-          var iterator = iteratorFn.call(propValue);
-          var step;
-          if (iteratorFn !== propValue.entries) {
-            while (!(step = iterator.next()).done) {
-              if (!isNode(step.value)) {
-                return false;
-              }
-            }
-          } else {
-            // Iterator will provide entry [k,v] tuples rather than values.
-            while (!(step = iterator.next()).done) {
-              var entry = step.value;
-              if (entry) {
-                if (!isNode(entry[1])) {
-                  return false;
-                }
-              }
-            }
-          }
-        } else {
-          return false;
-        }
-
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  function isSymbol(propType, propValue) {
-    // Native Symbol.
-    if (propType === 'symbol') {
-      return true;
-    }
-
-    // 19.4.3.5 Symbol.prototype[@@toStringTag] === 'Symbol'
-    if (propValue['@@toStringTag'] === 'Symbol') {
-      return true;
-    }
-
-    // Fallback for non-spec compliant Symbols which are polyfilled.
-    if (typeof Symbol === 'function' && propValue instanceof Symbol) {
-      return true;
-    }
-
-    return false;
-  }
-
-  // Equivalent of `typeof` but with special handling for array and regexp.
-  function getPropType(propValue) {
-    var propType = typeof propValue;
-    if (Array.isArray(propValue)) {
-      return 'array';
-    }
-    if (propValue instanceof RegExp) {
-      // Old webkits (at least until Android 4.0) return 'function' rather than
-      // 'object' for typeof a RegExp. We'll normalize this here so that /bla/
-      // passes PropTypes.object.
-      return 'object';
-    }
-    if (isSymbol(propType, propValue)) {
-      return 'symbol';
-    }
-    return propType;
-  }
-
-  // This handles more types than `getPropType`. Only used for error messages.
-  // See `createPrimitiveTypeChecker`.
-  function getPreciseType(propValue) {
-    var propType = getPropType(propValue);
-    if (propType === 'object') {
-      if (propValue instanceof Date) {
-        return 'date';
-      } else if (propValue instanceof RegExp) {
-        return 'regexp';
-      }
-    }
-    return propType;
-  }
-
-  // Returns class name of the object, if any.
-  function getClassName(propValue) {
-    if (!propValue.constructor || !propValue.constructor.name) {
-      return ANONYMOUS;
-    }
-    return propValue.constructor.name;
-  }
-
-  ReactPropTypes.checkPropTypes = checkPropTypes;
+  ReactPropTypes.checkPropTypes = emptyFunction;
   ReactPropTypes.PropTypes = ReactPropTypes;
 
   return ReactPropTypes;
 };
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 128 */
+/* 174 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var React = __webpack_require__(9);
+var ReactDOM = __webpack_require__(63);
+var findDOMNode = ReactDOM.findDOMNode;
+var className = __webpack_require__(142);
+var debounce = __webpack_require__(171);
+
+function normalizeLineEndings(str) {
+	if (!str) return str;
+	return str.replace(/\r\n|\r/g, '\n');
+}
+
+var CodeMirror = React.createClass({
+	displayName: 'CodeMirror',
+
+	propTypes: {
+		className: React.PropTypes.any,
+		codeMirrorInstance: React.PropTypes.func,
+		defaultValue: React.PropTypes.string,
+		onChange: React.PropTypes.func,
+		onFocusChange: React.PropTypes.func,
+		onScroll: React.PropTypes.func,
+		options: React.PropTypes.object,
+		path: React.PropTypes.string,
+		value: React.PropTypes.string,
+		preserveScrollPosition: React.PropTypes.bool
+	},
+	getDefaultProps: function getDefaultProps() {
+		return {
+			preserveScrollPosition: false
+		};
+	},
+	getCodeMirrorInstance: function getCodeMirrorInstance() {
+		return this.props.codeMirrorInstance || __webpack_require__(143);
+	},
+	getInitialState: function getInitialState() {
+		return {
+			isFocused: false
+		};
+	},
+	componentWillMount: function componentWillMount() {
+		this.componentWillReceiveProps = debounce(this.componentWillReceiveProps, 0);
+	},
+	componentDidMount: function componentDidMount() {
+		var textareaNode = findDOMNode(this.refs.textarea);
+		var codeMirrorInstance = this.getCodeMirrorInstance();
+		this.codeMirror = codeMirrorInstance.fromTextArea(textareaNode, this.props.options);
+		this.codeMirror.on('change', this.codemirrorValueChanged);
+		this.codeMirror.on('focus', this.focusChanged.bind(this, true));
+		this.codeMirror.on('blur', this.focusChanged.bind(this, false));
+		this.codeMirror.on('scroll', this.scrollChanged);
+		this.codeMirror.setValue(this.props.defaultValue || this.props.value || '');
+	},
+	componentWillUnmount: function componentWillUnmount() {
+		// is there a lighter-weight way to remove the cm instance?
+		if (this.codeMirror) {
+			this.codeMirror.toTextArea();
+		}
+	},
+	componentWillReceiveProps: function componentWillReceiveProps(nextProps) {
+		if (this.codeMirror && nextProps.value !== undefined && normalizeLineEndings(this.codeMirror.getValue()) !== normalizeLineEndings(nextProps.value)) {
+			if (this.props.preserveScrollPosition) {
+				var prevScrollPosition = this.codeMirror.getScrollInfo();
+				this.codeMirror.setValue(nextProps.value);
+				this.codeMirror.scrollTo(prevScrollPosition.left, prevScrollPosition.top);
+			} else {
+				this.codeMirror.setValue(nextProps.value);
+			}
+		}
+		if (typeof nextProps.options === 'object') {
+			for (var optionName in nextProps.options) {
+				if (nextProps.options.hasOwnProperty(optionName)) {
+					this.codeMirror.setOption(optionName, nextProps.options[optionName]);
+				}
+			}
+		}
+	},
+	getCodeMirror: function getCodeMirror() {
+		return this.codeMirror;
+	},
+	focus: function focus() {
+		if (this.codeMirror) {
+			this.codeMirror.focus();
+		}
+	},
+	focusChanged: function focusChanged(focused) {
+		this.setState({
+			isFocused: focused
+		});
+		this.props.onFocusChange && this.props.onFocusChange(focused);
+	},
+	scrollChanged: function scrollChanged(cm) {
+		this.props.onScroll && this.props.onScroll(cm.getScrollInfo());
+	},
+	codemirrorValueChanged: function codemirrorValueChanged(doc, change) {
+		if (this.props.onChange && change.origin !== 'setValue') {
+			this.props.onChange(doc.getValue(), change);
+		}
+	},
+	render: function render() {
+		var editorClassName = className('ReactCodeMirror', this.state.isFocused ? 'ReactCodeMirror--focused' : null, this.props.className);
+		return React.createElement(
+			'div',
+			{ className: editorClassName },
+			React.createElement('textarea', { ref: 'textarea', name: this.props.path, defaultValue: this.props.value, autoComplete: 'off' })
+		);
+	}
+});
+
+module.exports = CodeMirror;
+
+/***/ }),
+/* 175 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14525,7 +31489,7 @@ var ARIADOMPropertyConfig = {
 module.exports = ARIADOMPropertyConfig;
 
 /***/ }),
-/* 129 */
+/* 176 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14543,7 +31507,7 @@ module.exports = ARIADOMPropertyConfig;
 
 var ReactDOMComponentTree = __webpack_require__(5);
 
-var focusNode = __webpack_require__(58);
+var focusNode = __webpack_require__(70);
 
 var AutoFocusUtils = {
   focusDOMComponent: function () {
@@ -14554,7 +31518,7 @@ var AutoFocusUtils = {
 module.exports = AutoFocusUtils;
 
 /***/ }),
-/* 130 */
+/* 177 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14570,11 +31534,11 @@ module.exports = AutoFocusUtils;
 
 
 
-var EventPropagators = __webpack_require__(23);
+var EventPropagators = __webpack_require__(25);
 var ExecutionEnvironment = __webpack_require__(6);
-var FallbackCompositionState = __webpack_require__(136);
-var SyntheticCompositionEvent = __webpack_require__(179);
-var SyntheticInputEvent = __webpack_require__(182);
+var FallbackCompositionState = __webpack_require__(183);
+var SyntheticCompositionEvent = __webpack_require__(226);
+var SyntheticInputEvent = __webpack_require__(229);
 
 var END_KEYCODES = [9, 13, 27, 32]; // Tab, Return, Esc, Space
 var START_KEYCODE = 229;
@@ -14944,7 +31908,7 @@ var BeforeInputEventPlugin = {
 module.exports = BeforeInputEventPlugin;
 
 /***/ }),
-/* 131 */
+/* 178 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -14960,14 +31924,14 @@ module.exports = BeforeInputEventPlugin;
 
 
 
-var CSSProperty = __webpack_require__(62);
+var CSSProperty = __webpack_require__(77);
 var ExecutionEnvironment = __webpack_require__(6);
-var ReactInstrumentation = __webpack_require__(9);
+var ReactInstrumentation = __webpack_require__(12);
 
-var camelizeStyleName = __webpack_require__(111);
-var dangerousStyleValue = __webpack_require__(189);
-var hyphenateStyleName = __webpack_require__(118);
-var memoizeStringOnly = __webpack_require__(121);
+var camelizeStyleName = __webpack_require__(146);
+var dangerousStyleValue = __webpack_require__(236);
+var hyphenateStyleName = __webpack_require__(153);
+var memoizeStringOnly = __webpack_require__(156);
 var warning = __webpack_require__(2);
 
 var processStyleName = memoizeStringOnly(function (styleName) {
@@ -15159,7 +32123,7 @@ module.exports = CSSPropertyOperations;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 132 */
+/* 179 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15175,16 +32139,16 @@ module.exports = CSSPropertyOperations;
 
 
 
-var EventPluginHub = __webpack_require__(22);
-var EventPropagators = __webpack_require__(23);
+var EventPluginHub = __webpack_require__(24);
+var EventPropagators = __webpack_require__(25);
 var ExecutionEnvironment = __webpack_require__(6);
 var ReactDOMComponentTree = __webpack_require__(5);
-var ReactUpdates = __webpack_require__(11);
-var SyntheticEvent = __webpack_require__(13);
+var ReactUpdates = __webpack_require__(13);
+var SyntheticEvent = __webpack_require__(15);
 
-var getEventTarget = __webpack_require__(46);
-var isEventSupported = __webpack_require__(47);
-var isTextInputElement = __webpack_require__(80);
+var getEventTarget = __webpack_require__(54);
+var isEventSupported = __webpack_require__(55);
+var isTextInputElement = __webpack_require__(95);
 
 var eventTypes = {
   change: {
@@ -15510,7 +32474,7 @@ var ChangeEventPlugin = {
 module.exports = ChangeEventPlugin;
 
 /***/ }),
-/* 133 */
+/* 180 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15528,11 +32492,11 @@ module.exports = ChangeEventPlugin;
 
 var _prodInvariant = __webpack_require__(3);
 
-var DOMLazyTree = __webpack_require__(18);
+var DOMLazyTree = __webpack_require__(20);
 var ExecutionEnvironment = __webpack_require__(6);
 
-var createNodesFromMarkup = __webpack_require__(114);
-var emptyFunction = __webpack_require__(10);
+var createNodesFromMarkup = __webpack_require__(149);
+var emptyFunction = __webpack_require__(11);
 var invariant = __webpack_require__(1);
 
 var Danger = {
@@ -15564,7 +32528,7 @@ module.exports = Danger;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 134 */
+/* 181 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15595,7 +32559,7 @@ var DefaultEventPluginOrder = ['ResponderEventPlugin', 'SimpleEventPlugin', 'Tap
 module.exports = DefaultEventPluginOrder;
 
 /***/ }),
-/* 135 */
+/* 182 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15611,9 +32575,9 @@ module.exports = DefaultEventPluginOrder;
 
 
 
-var EventPropagators = __webpack_require__(23);
+var EventPropagators = __webpack_require__(25);
 var ReactDOMComponentTree = __webpack_require__(5);
-var SyntheticMouseEvent = __webpack_require__(28);
+var SyntheticMouseEvent = __webpack_require__(30);
 
 var eventTypes = {
   mouseEnter: {
@@ -15700,7 +32664,7 @@ var EnterLeaveEventPlugin = {
 module.exports = EnterLeaveEventPlugin;
 
 /***/ }),
-/* 136 */
+/* 183 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15718,9 +32682,9 @@ module.exports = EnterLeaveEventPlugin;
 
 var _assign = __webpack_require__(4);
 
-var PooledClass = __webpack_require__(15);
+var PooledClass = __webpack_require__(17);
 
-var getTextContentAccessor = __webpack_require__(78);
+var getTextContentAccessor = __webpack_require__(93);
 
 /**
  * This helper class stores information about text content of a target node,
@@ -15800,7 +32764,7 @@ PooledClass.addPoolingTo(FallbackCompositionState);
 module.exports = FallbackCompositionState;
 
 /***/ }),
-/* 137 */
+/* 184 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -15816,7 +32780,7 @@ module.exports = FallbackCompositionState;
 
 
 
-var DOMProperty = __webpack_require__(14);
+var DOMProperty = __webpack_require__(16);
 
 var MUST_USE_PROPERTY = DOMProperty.injection.MUST_USE_PROPERTY;
 var HAS_BOOLEAN_VALUE = DOMProperty.injection.HAS_BOOLEAN_VALUE;
@@ -16041,7 +33005,7 @@ var HTMLDOMPropertyConfig = {
 module.exports = HTMLDOMPropertyConfig;
 
 /***/ }),
-/* 138 */
+/* 185 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -16057,12 +33021,12 @@ module.exports = HTMLDOMPropertyConfig;
 
 
 
-var ReactReconciler = __webpack_require__(19);
+var ReactReconciler = __webpack_require__(21);
 
-var instantiateReactComponent = __webpack_require__(79);
-var KeyEscapeUtils = __webpack_require__(38);
-var shouldUpdateReactComponent = __webpack_require__(48);
-var traverseAllChildren = __webpack_require__(82);
+var instantiateReactComponent = __webpack_require__(94);
+var KeyEscapeUtils = __webpack_require__(46);
+var shouldUpdateReactComponent = __webpack_require__(56);
+var traverseAllChildren = __webpack_require__(97);
 var warning = __webpack_require__(2);
 
 var ReactComponentTreeHook;
@@ -16073,7 +33037,7 @@ if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 't
   // https://github.com/facebook/react/issues/7240
   // Remove the inline requires when we don't need them anymore:
   // https://github.com/facebook/react/pull/7178
-  ReactComponentTreeHook = __webpack_require__(7);
+  ReactComponentTreeHook = __webpack_require__(8);
 }
 
 function instantiateChild(childInstances, child, name, selfDebugID) {
@@ -16081,7 +33045,7 @@ function instantiateChild(childInstances, child, name, selfDebugID) {
   var keyUnique = childInstances[name] === undefined;
   if (process.env.NODE_ENV !== 'production') {
     if (!ReactComponentTreeHook) {
-      ReactComponentTreeHook = __webpack_require__(7);
+      ReactComponentTreeHook = __webpack_require__(8);
     }
     if (!keyUnique) {
       process.env.NODE_ENV !== 'production' ? warning(false, 'flattenChildren(...): Encountered two children with the same key, ' + '`%s`. Child keys must be unique; when two children share a key, only ' + 'the first child will be used.%s', KeyEscapeUtils.unescape(name), ReactComponentTreeHook.getStackAddendumByID(selfDebugID)) : void 0;
@@ -16201,7 +33165,7 @@ module.exports = ReactChildReconciler;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 139 */
+/* 186 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -16217,8 +33181,8 @@ module.exports = ReactChildReconciler;
 
 
 
-var DOMChildrenOperations = __webpack_require__(35);
-var ReactDOMIDOperations = __webpack_require__(146);
+var DOMChildrenOperations = __webpack_require__(43);
+var ReactDOMIDOperations = __webpack_require__(193);
 
 /**
  * Abstracts away all functionality of the reconciler that requires knowledge of
@@ -16236,7 +33200,7 @@ var ReactComponentBrowserEnvironment = {
 module.exports = ReactComponentBrowserEnvironment;
 
 /***/ }),
-/* 140 */
+/* 187 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -16255,23 +33219,23 @@ module.exports = ReactComponentBrowserEnvironment;
 var _prodInvariant = __webpack_require__(3),
     _assign = __webpack_require__(4);
 
-var React = __webpack_require__(20);
-var ReactComponentEnvironment = __webpack_require__(40);
-var ReactCurrentOwner = __webpack_require__(12);
-var ReactErrorUtils = __webpack_require__(41);
-var ReactInstanceMap = __webpack_require__(24);
-var ReactInstrumentation = __webpack_require__(9);
-var ReactNodeTypes = __webpack_require__(72);
-var ReactReconciler = __webpack_require__(19);
+var React = __webpack_require__(22);
+var ReactComponentEnvironment = __webpack_require__(48);
+var ReactCurrentOwner = __webpack_require__(14);
+var ReactErrorUtils = __webpack_require__(49);
+var ReactInstanceMap = __webpack_require__(26);
+var ReactInstrumentation = __webpack_require__(12);
+var ReactNodeTypes = __webpack_require__(87);
+var ReactReconciler = __webpack_require__(21);
 
 if (process.env.NODE_ENV !== 'production') {
-  var checkReactTypeSpec = __webpack_require__(188);
+  var checkReactTypeSpec = __webpack_require__(235);
 }
 
-var emptyObject = __webpack_require__(21);
+var emptyObject = __webpack_require__(23);
 var invariant = __webpack_require__(1);
-var shallowEqual = __webpack_require__(34);
-var shouldUpdateReactComponent = __webpack_require__(48);
+var shallowEqual = __webpack_require__(41);
+var shouldUpdateReactComponent = __webpack_require__(56);
 var warning = __webpack_require__(2);
 
 var CompositeTypes = {
@@ -17144,7 +34108,7 @@ module.exports = ReactCompositeComponent;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 141 */
+/* 188 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -17163,15 +34127,15 @@ module.exports = ReactCompositeComponent;
 
 
 var ReactDOMComponentTree = __webpack_require__(5);
-var ReactDefaultInjection = __webpack_require__(158);
-var ReactMount = __webpack_require__(71);
-var ReactReconciler = __webpack_require__(19);
-var ReactUpdates = __webpack_require__(11);
-var ReactVersion = __webpack_require__(173);
+var ReactDefaultInjection = __webpack_require__(205);
+var ReactMount = __webpack_require__(86);
+var ReactReconciler = __webpack_require__(21);
+var ReactUpdates = __webpack_require__(13);
+var ReactVersion = __webpack_require__(220);
 
-var findDOMNode = __webpack_require__(190);
-var getHostComponentFromComposite = __webpack_require__(77);
-var renderSubtreeIntoContainer = __webpack_require__(197);
+var findDOMNode = __webpack_require__(237);
+var getHostComponentFromComposite = __webpack_require__(92);
+var renderSubtreeIntoContainer = __webpack_require__(244);
 var warning = __webpack_require__(2);
 
 ReactDefaultInjection.inject();
@@ -17247,10 +34211,10 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 if (process.env.NODE_ENV !== 'production') {
-  var ReactInstrumentation = __webpack_require__(9);
-  var ReactDOMUnknownPropertyHook = __webpack_require__(155);
-  var ReactDOMNullInputValuePropHook = __webpack_require__(149);
-  var ReactDOMInvalidARIAHook = __webpack_require__(148);
+  var ReactInstrumentation = __webpack_require__(12);
+  var ReactDOMUnknownPropertyHook = __webpack_require__(202);
+  var ReactDOMNullInputValuePropHook = __webpack_require__(196);
+  var ReactDOMInvalidARIAHook = __webpack_require__(195);
 
   ReactInstrumentation.debugTool.addHook(ReactDOMUnknownPropertyHook);
   ReactInstrumentation.debugTool.addHook(ReactDOMNullInputValuePropHook);
@@ -17261,7 +34225,7 @@ module.exports = ReactDOM;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 142 */
+/* 189 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -17282,31 +34246,31 @@ module.exports = ReactDOM;
 var _prodInvariant = __webpack_require__(3),
     _assign = __webpack_require__(4);
 
-var AutoFocusUtils = __webpack_require__(129);
-var CSSPropertyOperations = __webpack_require__(131);
-var DOMLazyTree = __webpack_require__(18);
-var DOMNamespaces = __webpack_require__(36);
-var DOMProperty = __webpack_require__(14);
-var DOMPropertyOperations = __webpack_require__(64);
-var EventPluginHub = __webpack_require__(22);
-var EventPluginRegistry = __webpack_require__(26);
-var ReactBrowserEventEmitter = __webpack_require__(27);
-var ReactDOMComponentFlags = __webpack_require__(65);
+var AutoFocusUtils = __webpack_require__(176);
+var CSSPropertyOperations = __webpack_require__(178);
+var DOMLazyTree = __webpack_require__(20);
+var DOMNamespaces = __webpack_require__(44);
+var DOMProperty = __webpack_require__(16);
+var DOMPropertyOperations = __webpack_require__(79);
+var EventPluginHub = __webpack_require__(24);
+var EventPluginRegistry = __webpack_require__(28);
+var ReactBrowserEventEmitter = __webpack_require__(29);
+var ReactDOMComponentFlags = __webpack_require__(80);
 var ReactDOMComponentTree = __webpack_require__(5);
-var ReactDOMInput = __webpack_require__(147);
-var ReactDOMOption = __webpack_require__(150);
-var ReactDOMSelect = __webpack_require__(66);
-var ReactDOMTextarea = __webpack_require__(153);
-var ReactInstrumentation = __webpack_require__(9);
-var ReactMultiChild = __webpack_require__(166);
-var ReactServerRenderingTransaction = __webpack_require__(171);
+var ReactDOMInput = __webpack_require__(194);
+var ReactDOMOption = __webpack_require__(197);
+var ReactDOMSelect = __webpack_require__(81);
+var ReactDOMTextarea = __webpack_require__(200);
+var ReactInstrumentation = __webpack_require__(12);
+var ReactMultiChild = __webpack_require__(213);
+var ReactServerRenderingTransaction = __webpack_require__(218);
 
-var emptyFunction = __webpack_require__(10);
-var escapeTextContentForBrowser = __webpack_require__(30);
+var emptyFunction = __webpack_require__(11);
+var escapeTextContentForBrowser = __webpack_require__(32);
 var invariant = __webpack_require__(1);
-var isEventSupported = __webpack_require__(47);
-var shallowEqual = __webpack_require__(34);
-var validateDOMNesting = __webpack_require__(49);
+var isEventSupported = __webpack_require__(55);
+var shallowEqual = __webpack_require__(41);
+var validateDOMNesting = __webpack_require__(57);
 var warning = __webpack_require__(2);
 
 var Flags = ReactDOMComponentFlags;
@@ -18268,7 +35232,7 @@ module.exports = ReactDOMComponent;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 143 */
+/* 190 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -18284,7 +35248,7 @@ module.exports = ReactDOMComponent;
 
 
 
-var validateDOMNesting = __webpack_require__(49);
+var validateDOMNesting = __webpack_require__(57);
 
 var DOC_NODE_TYPE = 9;
 
@@ -18307,7 +35271,7 @@ module.exports = ReactDOMContainerInfo;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 144 */
+/* 191 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -18325,7 +35289,7 @@ module.exports = ReactDOMContainerInfo;
 
 var _assign = __webpack_require__(4);
 
-var DOMLazyTree = __webpack_require__(18);
+var DOMLazyTree = __webpack_require__(20);
 var ReactDOMComponentTree = __webpack_require__(5);
 
 var ReactDOMEmptyComponent = function (instantiate) {
@@ -18372,7 +35336,7 @@ _assign(ReactDOMEmptyComponent.prototype, {
 module.exports = ReactDOMEmptyComponent;
 
 /***/ }),
-/* 145 */
+/* 192 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -18396,7 +35360,7 @@ var ReactDOMFeatureFlags = {
 module.exports = ReactDOMFeatureFlags;
 
 /***/ }),
-/* 146 */
+/* 193 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -18412,7 +35376,7 @@ module.exports = ReactDOMFeatureFlags;
 
 
 
-var DOMChildrenOperations = __webpack_require__(35);
+var DOMChildrenOperations = __webpack_require__(43);
 var ReactDOMComponentTree = __webpack_require__(5);
 
 /**
@@ -18435,7 +35399,7 @@ var ReactDOMIDOperations = {
 module.exports = ReactDOMIDOperations;
 
 /***/ }),
-/* 147 */
+/* 194 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -18454,10 +35418,10 @@ module.exports = ReactDOMIDOperations;
 var _prodInvariant = __webpack_require__(3),
     _assign = __webpack_require__(4);
 
-var DOMPropertyOperations = __webpack_require__(64);
-var LinkedValueUtils = __webpack_require__(39);
+var DOMPropertyOperations = __webpack_require__(79);
+var LinkedValueUtils = __webpack_require__(47);
 var ReactDOMComponentTree = __webpack_require__(5);
-var ReactUpdates = __webpack_require__(11);
+var ReactUpdates = __webpack_require__(13);
 
 var invariant = __webpack_require__(1);
 var warning = __webpack_require__(2);
@@ -18726,7 +35690,7 @@ module.exports = ReactDOMInput;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 148 */
+/* 195 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -18742,8 +35706,8 @@ module.exports = ReactDOMInput;
 
 
 
-var DOMProperty = __webpack_require__(14);
-var ReactComponentTreeHook = __webpack_require__(7);
+var DOMProperty = __webpack_require__(16);
+var ReactComponentTreeHook = __webpack_require__(8);
 
 var warning = __webpack_require__(2);
 
@@ -18825,7 +35789,7 @@ module.exports = ReactDOMInvalidARIAHook;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 149 */
+/* 196 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -18841,7 +35805,7 @@ module.exports = ReactDOMInvalidARIAHook;
 
 
 
-var ReactComponentTreeHook = __webpack_require__(7);
+var ReactComponentTreeHook = __webpack_require__(8);
 
 var warning = __webpack_require__(2);
 
@@ -18874,7 +35838,7 @@ module.exports = ReactDOMNullInputValuePropHook;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 150 */
+/* 197 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -18892,9 +35856,9 @@ module.exports = ReactDOMNullInputValuePropHook;
 
 var _assign = __webpack_require__(4);
 
-var React = __webpack_require__(20);
+var React = __webpack_require__(22);
 var ReactDOMComponentTree = __webpack_require__(5);
-var ReactDOMSelect = __webpack_require__(66);
+var ReactDOMSelect = __webpack_require__(81);
 
 var warning = __webpack_require__(2);
 var didWarnInvalidOptionChildren = false;
@@ -19003,7 +35967,7 @@ module.exports = ReactDOMOption;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 151 */
+/* 198 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -19021,8 +35985,8 @@ module.exports = ReactDOMOption;
 
 var ExecutionEnvironment = __webpack_require__(6);
 
-var getNodeForCharacterOffset = __webpack_require__(194);
-var getTextContentAccessor = __webpack_require__(78);
+var getNodeForCharacterOffset = __webpack_require__(241);
+var getTextContentAccessor = __webpack_require__(93);
 
 /**
  * While `isCollapsed` is available on the Selection object and `collapsed`
@@ -19220,7 +36184,7 @@ var ReactDOMSelection = {
 module.exports = ReactDOMSelection;
 
 /***/ }),
-/* 152 */
+/* 199 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -19239,13 +36203,13 @@ module.exports = ReactDOMSelection;
 var _prodInvariant = __webpack_require__(3),
     _assign = __webpack_require__(4);
 
-var DOMChildrenOperations = __webpack_require__(35);
-var DOMLazyTree = __webpack_require__(18);
+var DOMChildrenOperations = __webpack_require__(43);
+var DOMLazyTree = __webpack_require__(20);
 var ReactDOMComponentTree = __webpack_require__(5);
 
-var escapeTextContentForBrowser = __webpack_require__(30);
+var escapeTextContentForBrowser = __webpack_require__(32);
 var invariant = __webpack_require__(1);
-var validateDOMNesting = __webpack_require__(49);
+var validateDOMNesting = __webpack_require__(57);
 
 /**
  * Text nodes violate a couple assumptions that React makes about components:
@@ -19390,7 +36354,7 @@ module.exports = ReactDOMTextComponent;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 153 */
+/* 200 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -19409,9 +36373,9 @@ module.exports = ReactDOMTextComponent;
 var _prodInvariant = __webpack_require__(3),
     _assign = __webpack_require__(4);
 
-var LinkedValueUtils = __webpack_require__(39);
+var LinkedValueUtils = __webpack_require__(47);
 var ReactDOMComponentTree = __webpack_require__(5);
-var ReactUpdates = __webpack_require__(11);
+var ReactUpdates = __webpack_require__(13);
 
 var invariant = __webpack_require__(1);
 var warning = __webpack_require__(2);
@@ -19556,7 +36520,7 @@ module.exports = ReactDOMTextarea;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 154 */
+/* 201 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -19698,7 +36662,7 @@ module.exports = {
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 155 */
+/* 202 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -19714,9 +36678,9 @@ module.exports = {
 
 
 
-var DOMProperty = __webpack_require__(14);
-var EventPluginRegistry = __webpack_require__(26);
-var ReactComponentTreeHook = __webpack_require__(7);
+var DOMProperty = __webpack_require__(16);
+var EventPluginRegistry = __webpack_require__(28);
+var ReactComponentTreeHook = __webpack_require__(8);
 
 var warning = __webpack_require__(2);
 
@@ -19816,7 +36780,7 @@ module.exports = ReactDOMUnknownPropertyHook;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 156 */
+/* 203 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -19833,12 +36797,12 @@ module.exports = ReactDOMUnknownPropertyHook;
 
 
 
-var ReactInvalidSetStateWarningHook = __webpack_require__(164);
-var ReactHostOperationHistoryHook = __webpack_require__(162);
-var ReactComponentTreeHook = __webpack_require__(7);
+var ReactInvalidSetStateWarningHook = __webpack_require__(211);
+var ReactHostOperationHistoryHook = __webpack_require__(209);
+var ReactComponentTreeHook = __webpack_require__(8);
 var ExecutionEnvironment = __webpack_require__(6);
 
-var performanceNow = __webpack_require__(123);
+var performanceNow = __webpack_require__(158);
 var warning = __webpack_require__(2);
 
 var hooks = [];
@@ -20181,7 +37145,7 @@ module.exports = ReactDebugTool;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 157 */
+/* 204 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -20199,10 +37163,10 @@ module.exports = ReactDebugTool;
 
 var _assign = __webpack_require__(4);
 
-var ReactUpdates = __webpack_require__(11);
-var Transaction = __webpack_require__(29);
+var ReactUpdates = __webpack_require__(13);
+var Transaction = __webpack_require__(31);
 
-var emptyFunction = __webpack_require__(10);
+var emptyFunction = __webpack_require__(11);
 
 var RESET_BATCHED_UPDATES = {
   initialize: emptyFunction,
@@ -20254,7 +37218,7 @@ var ReactDefaultBatchingStrategy = {
 module.exports = ReactDefaultBatchingStrategy;
 
 /***/ }),
-/* 158 */
+/* 205 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -20270,25 +37234,25 @@ module.exports = ReactDefaultBatchingStrategy;
 
 
 
-var ARIADOMPropertyConfig = __webpack_require__(128);
-var BeforeInputEventPlugin = __webpack_require__(130);
-var ChangeEventPlugin = __webpack_require__(132);
-var DefaultEventPluginOrder = __webpack_require__(134);
-var EnterLeaveEventPlugin = __webpack_require__(135);
-var HTMLDOMPropertyConfig = __webpack_require__(137);
-var ReactComponentBrowserEnvironment = __webpack_require__(139);
-var ReactDOMComponent = __webpack_require__(142);
+var ARIADOMPropertyConfig = __webpack_require__(175);
+var BeforeInputEventPlugin = __webpack_require__(177);
+var ChangeEventPlugin = __webpack_require__(179);
+var DefaultEventPluginOrder = __webpack_require__(181);
+var EnterLeaveEventPlugin = __webpack_require__(182);
+var HTMLDOMPropertyConfig = __webpack_require__(184);
+var ReactComponentBrowserEnvironment = __webpack_require__(186);
+var ReactDOMComponent = __webpack_require__(189);
 var ReactDOMComponentTree = __webpack_require__(5);
-var ReactDOMEmptyComponent = __webpack_require__(144);
-var ReactDOMTreeTraversal = __webpack_require__(154);
-var ReactDOMTextComponent = __webpack_require__(152);
-var ReactDefaultBatchingStrategy = __webpack_require__(157);
-var ReactEventListener = __webpack_require__(161);
-var ReactInjection = __webpack_require__(163);
-var ReactReconcileTransaction = __webpack_require__(169);
-var SVGDOMPropertyConfig = __webpack_require__(174);
-var SelectEventPlugin = __webpack_require__(175);
-var SimpleEventPlugin = __webpack_require__(176);
+var ReactDOMEmptyComponent = __webpack_require__(191);
+var ReactDOMTreeTraversal = __webpack_require__(201);
+var ReactDOMTextComponent = __webpack_require__(199);
+var ReactDefaultBatchingStrategy = __webpack_require__(204);
+var ReactEventListener = __webpack_require__(208);
+var ReactInjection = __webpack_require__(210);
+var ReactReconcileTransaction = __webpack_require__(216);
+var SVGDOMPropertyConfig = __webpack_require__(221);
+var SelectEventPlugin = __webpack_require__(222);
+var SimpleEventPlugin = __webpack_require__(223);
 
 var alreadyInjected = false;
 
@@ -20345,7 +37309,7 @@ module.exports = {
 };
 
 /***/ }),
-/* 159 */
+/* 206 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -20370,7 +37334,7 @@ var REACT_ELEMENT_TYPE = typeof Symbol === 'function' && Symbol['for'] && Symbol
 module.exports = REACT_ELEMENT_TYPE;
 
 /***/ }),
-/* 160 */
+/* 207 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -20386,7 +37350,7 @@ module.exports = REACT_ELEMENT_TYPE;
 
 
 
-var EventPluginHub = __webpack_require__(22);
+var EventPluginHub = __webpack_require__(24);
 
 function runEventQueueInBatch(events) {
   EventPluginHub.enqueueEvents(events);
@@ -20408,7 +37372,7 @@ var ReactEventEmitterMixin = {
 module.exports = ReactEventEmitterMixin;
 
 /***/ }),
-/* 161 */
+/* 208 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -20426,14 +37390,14 @@ module.exports = ReactEventEmitterMixin;
 
 var _assign = __webpack_require__(4);
 
-var EventListener = __webpack_require__(57);
+var EventListener = __webpack_require__(69);
 var ExecutionEnvironment = __webpack_require__(6);
-var PooledClass = __webpack_require__(15);
+var PooledClass = __webpack_require__(17);
 var ReactDOMComponentTree = __webpack_require__(5);
-var ReactUpdates = __webpack_require__(11);
+var ReactUpdates = __webpack_require__(13);
 
-var getEventTarget = __webpack_require__(46);
-var getUnboundedScrollPosition = __webpack_require__(116);
+var getEventTarget = __webpack_require__(54);
+var getUnboundedScrollPosition = __webpack_require__(151);
 
 /**
  * Find the deepest React component completely containing the root of the
@@ -20568,7 +37532,7 @@ var ReactEventListener = {
 module.exports = ReactEventListener;
 
 /***/ }),
-/* 162 */
+/* 209 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -20607,7 +37571,7 @@ var ReactHostOperationHistoryHook = {
 module.exports = ReactHostOperationHistoryHook;
 
 /***/ }),
-/* 163 */
+/* 210 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -20623,14 +37587,14 @@ module.exports = ReactHostOperationHistoryHook;
 
 
 
-var DOMProperty = __webpack_require__(14);
-var EventPluginHub = __webpack_require__(22);
-var EventPluginUtils = __webpack_require__(37);
-var ReactComponentEnvironment = __webpack_require__(40);
-var ReactEmptyComponent = __webpack_require__(67);
-var ReactBrowserEventEmitter = __webpack_require__(27);
-var ReactHostComponent = __webpack_require__(69);
-var ReactUpdates = __webpack_require__(11);
+var DOMProperty = __webpack_require__(16);
+var EventPluginHub = __webpack_require__(24);
+var EventPluginUtils = __webpack_require__(45);
+var ReactComponentEnvironment = __webpack_require__(48);
+var ReactEmptyComponent = __webpack_require__(82);
+var ReactBrowserEventEmitter = __webpack_require__(29);
+var ReactHostComponent = __webpack_require__(84);
+var ReactUpdates = __webpack_require__(13);
 
 var ReactInjection = {
   Component: ReactComponentEnvironment.injection,
@@ -20646,7 +37610,7 @@ var ReactInjection = {
 module.exports = ReactInjection;
 
 /***/ }),
-/* 164 */
+/* 211 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -20689,7 +37653,7 @@ module.exports = ReactInvalidSetStateWarningHook;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 165 */
+/* 212 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -20705,7 +37669,7 @@ module.exports = ReactInvalidSetStateWarningHook;
 
 
 
-var adler32 = __webpack_require__(187);
+var adler32 = __webpack_require__(234);
 
 var TAG_END = /\/?>/;
 var COMMENT_START = /^<\!\-\-/;
@@ -20744,7 +37708,7 @@ var ReactMarkupChecksum = {
 module.exports = ReactMarkupChecksum;
 
 /***/ }),
-/* 166 */
+/* 213 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -20762,16 +37726,16 @@ module.exports = ReactMarkupChecksum;
 
 var _prodInvariant = __webpack_require__(3);
 
-var ReactComponentEnvironment = __webpack_require__(40);
-var ReactInstanceMap = __webpack_require__(24);
-var ReactInstrumentation = __webpack_require__(9);
+var ReactComponentEnvironment = __webpack_require__(48);
+var ReactInstanceMap = __webpack_require__(26);
+var ReactInstrumentation = __webpack_require__(12);
 
-var ReactCurrentOwner = __webpack_require__(12);
-var ReactReconciler = __webpack_require__(19);
-var ReactChildReconciler = __webpack_require__(138);
+var ReactCurrentOwner = __webpack_require__(14);
+var ReactReconciler = __webpack_require__(21);
+var ReactChildReconciler = __webpack_require__(185);
 
-var emptyFunction = __webpack_require__(10);
-var flattenChildren = __webpack_require__(191);
+var emptyFunction = __webpack_require__(11);
+var flattenChildren = __webpack_require__(238);
 var invariant = __webpack_require__(1);
 
 /**
@@ -21200,7 +38164,7 @@ module.exports = ReactMultiChild;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 167 */
+/* 214 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -21300,7 +38264,7 @@ module.exports = ReactOwner;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 168 */
+/* 215 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -21331,7 +38295,7 @@ module.exports = ReactPropTypeLocationNames;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 169 */
+/* 216 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -21349,13 +38313,13 @@ module.exports = ReactPropTypeLocationNames;
 
 var _assign = __webpack_require__(4);
 
-var CallbackQueue = __webpack_require__(63);
-var PooledClass = __webpack_require__(15);
-var ReactBrowserEventEmitter = __webpack_require__(27);
-var ReactInputSelection = __webpack_require__(70);
-var ReactInstrumentation = __webpack_require__(9);
-var Transaction = __webpack_require__(29);
-var ReactUpdateQueue = __webpack_require__(42);
+var CallbackQueue = __webpack_require__(78);
+var PooledClass = __webpack_require__(17);
+var ReactBrowserEventEmitter = __webpack_require__(29);
+var ReactInputSelection = __webpack_require__(85);
+var ReactInstrumentation = __webpack_require__(12);
+var Transaction = __webpack_require__(31);
+var ReactUpdateQueue = __webpack_require__(50);
 
 /**
  * Ensures that, when possible, the selection range (currently selected text
@@ -21515,7 +38479,7 @@ module.exports = ReactReconcileTransaction;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 170 */
+/* 217 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -21532,7 +38496,7 @@ module.exports = ReactReconcileTransaction;
 
 
 
-var ReactOwner = __webpack_require__(167);
+var ReactOwner = __webpack_require__(214);
 
 var ReactRef = {};
 
@@ -21609,7 +38573,7 @@ ReactRef.detachRefs = function (instance, element) {
 module.exports = ReactRef;
 
 /***/ }),
-/* 171 */
+/* 218 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -21627,10 +38591,10 @@ module.exports = ReactRef;
 
 var _assign = __webpack_require__(4);
 
-var PooledClass = __webpack_require__(15);
-var Transaction = __webpack_require__(29);
-var ReactInstrumentation = __webpack_require__(9);
-var ReactServerUpdateQueue = __webpack_require__(172);
+var PooledClass = __webpack_require__(17);
+var Transaction = __webpack_require__(31);
+var ReactInstrumentation = __webpack_require__(12);
+var ReactServerUpdateQueue = __webpack_require__(219);
 
 /**
  * Executed within the scope of the `Transaction` instance. Consider these as
@@ -21705,7 +38669,7 @@ module.exports = ReactServerRenderingTransaction;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 172 */
+/* 219 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -21724,7 +38688,7 @@ module.exports = ReactServerRenderingTransaction;
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var ReactUpdateQueue = __webpack_require__(42);
+var ReactUpdateQueue = __webpack_require__(50);
 
 var warning = __webpack_require__(2);
 
@@ -21850,7 +38814,7 @@ module.exports = ReactServerUpdateQueue;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 173 */
+/* 220 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -21869,7 +38833,7 @@ module.exports = ReactServerUpdateQueue;
 module.exports = '15.5.4';
 
 /***/ }),
-/* 174 */
+/* 221 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -22176,7 +39140,7 @@ Object.keys(ATTRS).forEach(function (key) {
 module.exports = SVGDOMPropertyConfig;
 
 /***/ }),
-/* 175 */
+/* 222 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -22192,15 +39156,15 @@ module.exports = SVGDOMPropertyConfig;
 
 
 
-var EventPropagators = __webpack_require__(23);
+var EventPropagators = __webpack_require__(25);
 var ExecutionEnvironment = __webpack_require__(6);
 var ReactDOMComponentTree = __webpack_require__(5);
-var ReactInputSelection = __webpack_require__(70);
-var SyntheticEvent = __webpack_require__(13);
+var ReactInputSelection = __webpack_require__(85);
+var SyntheticEvent = __webpack_require__(15);
 
-var getActiveElement = __webpack_require__(59);
-var isTextInputElement = __webpack_require__(80);
-var shallowEqual = __webpack_require__(34);
+var getActiveElement = __webpack_require__(71);
+var isTextInputElement = __webpack_require__(95);
+var shallowEqual = __webpack_require__(41);
 
 var skipSelectionChangeEvent = ExecutionEnvironment.canUseDOM && 'documentMode' in document && document.documentMode <= 11;
 
@@ -22372,7 +39336,7 @@ var SelectEventPlugin = {
 module.exports = SelectEventPlugin;
 
 /***/ }),
-/* 176 */
+/* 223 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -22391,23 +39355,23 @@ module.exports = SelectEventPlugin;
 
 var _prodInvariant = __webpack_require__(3);
 
-var EventListener = __webpack_require__(57);
-var EventPropagators = __webpack_require__(23);
+var EventListener = __webpack_require__(69);
+var EventPropagators = __webpack_require__(25);
 var ReactDOMComponentTree = __webpack_require__(5);
-var SyntheticAnimationEvent = __webpack_require__(177);
-var SyntheticClipboardEvent = __webpack_require__(178);
-var SyntheticEvent = __webpack_require__(13);
-var SyntheticFocusEvent = __webpack_require__(181);
-var SyntheticKeyboardEvent = __webpack_require__(183);
-var SyntheticMouseEvent = __webpack_require__(28);
-var SyntheticDragEvent = __webpack_require__(180);
-var SyntheticTouchEvent = __webpack_require__(184);
-var SyntheticTransitionEvent = __webpack_require__(185);
-var SyntheticUIEvent = __webpack_require__(25);
-var SyntheticWheelEvent = __webpack_require__(186);
+var SyntheticAnimationEvent = __webpack_require__(224);
+var SyntheticClipboardEvent = __webpack_require__(225);
+var SyntheticEvent = __webpack_require__(15);
+var SyntheticFocusEvent = __webpack_require__(228);
+var SyntheticKeyboardEvent = __webpack_require__(230);
+var SyntheticMouseEvent = __webpack_require__(30);
+var SyntheticDragEvent = __webpack_require__(227);
+var SyntheticTouchEvent = __webpack_require__(231);
+var SyntheticTransitionEvent = __webpack_require__(232);
+var SyntheticUIEvent = __webpack_require__(27);
+var SyntheticWheelEvent = __webpack_require__(233);
 
-var emptyFunction = __webpack_require__(10);
-var getEventCharCode = __webpack_require__(44);
+var emptyFunction = __webpack_require__(11);
+var getEventCharCode = __webpack_require__(52);
 var invariant = __webpack_require__(1);
 
 /**
@@ -22606,7 +39570,7 @@ module.exports = SimpleEventPlugin;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 177 */
+/* 224 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -22622,7 +39586,7 @@ module.exports = SimpleEventPlugin;
 
 
 
-var SyntheticEvent = __webpack_require__(13);
+var SyntheticEvent = __webpack_require__(15);
 
 /**
  * @interface Event
@@ -22650,7 +39614,7 @@ SyntheticEvent.augmentClass(SyntheticAnimationEvent, AnimationEventInterface);
 module.exports = SyntheticAnimationEvent;
 
 /***/ }),
-/* 178 */
+/* 225 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -22666,7 +39630,7 @@ module.exports = SyntheticAnimationEvent;
 
 
 
-var SyntheticEvent = __webpack_require__(13);
+var SyntheticEvent = __webpack_require__(15);
 
 /**
  * @interface Event
@@ -22693,7 +39657,7 @@ SyntheticEvent.augmentClass(SyntheticClipboardEvent, ClipboardEventInterface);
 module.exports = SyntheticClipboardEvent;
 
 /***/ }),
-/* 179 */
+/* 226 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -22709,7 +39673,7 @@ module.exports = SyntheticClipboardEvent;
 
 
 
-var SyntheticEvent = __webpack_require__(13);
+var SyntheticEvent = __webpack_require__(15);
 
 /**
  * @interface Event
@@ -22734,7 +39698,7 @@ SyntheticEvent.augmentClass(SyntheticCompositionEvent, CompositionEventInterface
 module.exports = SyntheticCompositionEvent;
 
 /***/ }),
-/* 180 */
+/* 227 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -22750,7 +39714,7 @@ module.exports = SyntheticCompositionEvent;
 
 
 
-var SyntheticMouseEvent = __webpack_require__(28);
+var SyntheticMouseEvent = __webpack_require__(30);
 
 /**
  * @interface DragEvent
@@ -22775,7 +39739,7 @@ SyntheticMouseEvent.augmentClass(SyntheticDragEvent, DragEventInterface);
 module.exports = SyntheticDragEvent;
 
 /***/ }),
-/* 181 */
+/* 228 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -22791,7 +39755,7 @@ module.exports = SyntheticDragEvent;
 
 
 
-var SyntheticUIEvent = __webpack_require__(25);
+var SyntheticUIEvent = __webpack_require__(27);
 
 /**
  * @interface FocusEvent
@@ -22816,7 +39780,7 @@ SyntheticUIEvent.augmentClass(SyntheticFocusEvent, FocusEventInterface);
 module.exports = SyntheticFocusEvent;
 
 /***/ }),
-/* 182 */
+/* 229 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -22832,7 +39796,7 @@ module.exports = SyntheticFocusEvent;
 
 
 
-var SyntheticEvent = __webpack_require__(13);
+var SyntheticEvent = __webpack_require__(15);
 
 /**
  * @interface Event
@@ -22858,7 +39822,7 @@ SyntheticEvent.augmentClass(SyntheticInputEvent, InputEventInterface);
 module.exports = SyntheticInputEvent;
 
 /***/ }),
-/* 183 */
+/* 230 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -22874,11 +39838,11 @@ module.exports = SyntheticInputEvent;
 
 
 
-var SyntheticUIEvent = __webpack_require__(25);
+var SyntheticUIEvent = __webpack_require__(27);
 
-var getEventCharCode = __webpack_require__(44);
-var getEventKey = __webpack_require__(192);
-var getEventModifierState = __webpack_require__(45);
+var getEventCharCode = __webpack_require__(52);
+var getEventKey = __webpack_require__(239);
+var getEventModifierState = __webpack_require__(53);
 
 /**
  * @interface KeyboardEvent
@@ -22947,7 +39911,7 @@ SyntheticUIEvent.augmentClass(SyntheticKeyboardEvent, KeyboardEventInterface);
 module.exports = SyntheticKeyboardEvent;
 
 /***/ }),
-/* 184 */
+/* 231 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -22963,9 +39927,9 @@ module.exports = SyntheticKeyboardEvent;
 
 
 
-var SyntheticUIEvent = __webpack_require__(25);
+var SyntheticUIEvent = __webpack_require__(27);
 
-var getEventModifierState = __webpack_require__(45);
+var getEventModifierState = __webpack_require__(53);
 
 /**
  * @interface TouchEvent
@@ -22997,7 +39961,7 @@ SyntheticUIEvent.augmentClass(SyntheticTouchEvent, TouchEventInterface);
 module.exports = SyntheticTouchEvent;
 
 /***/ }),
-/* 185 */
+/* 232 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23013,7 +39977,7 @@ module.exports = SyntheticTouchEvent;
 
 
 
-var SyntheticEvent = __webpack_require__(13);
+var SyntheticEvent = __webpack_require__(15);
 
 /**
  * @interface Event
@@ -23041,7 +40005,7 @@ SyntheticEvent.augmentClass(SyntheticTransitionEvent, TransitionEventInterface);
 module.exports = SyntheticTransitionEvent;
 
 /***/ }),
-/* 186 */
+/* 233 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23057,7 +40021,7 @@ module.exports = SyntheticTransitionEvent;
 
 
 
-var SyntheticMouseEvent = __webpack_require__(28);
+var SyntheticMouseEvent = __webpack_require__(30);
 
 /**
  * @interface WheelEvent
@@ -23100,7 +40064,7 @@ SyntheticMouseEvent.augmentClass(SyntheticWheelEvent, WheelEventInterface);
 module.exports = SyntheticWheelEvent;
 
 /***/ }),
-/* 187 */
+/* 234 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23149,7 +40113,7 @@ function adler32(data) {
 module.exports = adler32;
 
 /***/ }),
-/* 188 */
+/* 235 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23167,8 +40131,8 @@ module.exports = adler32;
 
 var _prodInvariant = __webpack_require__(3);
 
-var ReactPropTypeLocationNames = __webpack_require__(168);
-var ReactPropTypesSecret = __webpack_require__(73);
+var ReactPropTypeLocationNames = __webpack_require__(215);
+var ReactPropTypesSecret = __webpack_require__(88);
 
 var invariant = __webpack_require__(1);
 var warning = __webpack_require__(2);
@@ -23181,7 +40145,7 @@ if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 't
   // https://github.com/facebook/react/issues/7240
   // Remove the inline requires when we don't need them anymore:
   // https://github.com/facebook/react/pull/7178
-  ReactComponentTreeHook = __webpack_require__(7);
+  ReactComponentTreeHook = __webpack_require__(8);
 }
 
 var loggedTypeFailures = {};
@@ -23223,7 +40187,7 @@ function checkReactTypeSpec(typeSpecs, values, location, componentName, element,
 
         if (process.env.NODE_ENV !== 'production') {
           if (!ReactComponentTreeHook) {
-            ReactComponentTreeHook = __webpack_require__(7);
+            ReactComponentTreeHook = __webpack_require__(8);
           }
           if (debugID !== null) {
             componentStackInfo = ReactComponentTreeHook.getStackAddendumByID(debugID);
@@ -23242,7 +40206,7 @@ module.exports = checkReactTypeSpec;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 189 */
+/* 236 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23258,7 +40222,7 @@ module.exports = checkReactTypeSpec;
 
 
 
-var CSSProperty = __webpack_require__(62);
+var CSSProperty = __webpack_require__(77);
 var warning = __webpack_require__(2);
 
 var isUnitlessNumber = CSSProperty.isUnitlessNumber;
@@ -23327,7 +40291,7 @@ module.exports = dangerousStyleValue;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 190 */
+/* 237 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23345,11 +40309,11 @@ module.exports = dangerousStyleValue;
 
 var _prodInvariant = __webpack_require__(3);
 
-var ReactCurrentOwner = __webpack_require__(12);
+var ReactCurrentOwner = __webpack_require__(14);
 var ReactDOMComponentTree = __webpack_require__(5);
-var ReactInstanceMap = __webpack_require__(24);
+var ReactInstanceMap = __webpack_require__(26);
 
-var getHostComponentFromComposite = __webpack_require__(77);
+var getHostComponentFromComposite = __webpack_require__(92);
 var invariant = __webpack_require__(1);
 var warning = __webpack_require__(2);
 
@@ -23393,7 +40357,7 @@ module.exports = findDOMNode;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 191 */
+/* 238 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23410,8 +40374,8 @@ module.exports = findDOMNode;
 
 
 
-var KeyEscapeUtils = __webpack_require__(38);
-var traverseAllChildren = __webpack_require__(82);
+var KeyEscapeUtils = __webpack_require__(46);
+var traverseAllChildren = __webpack_require__(97);
 var warning = __webpack_require__(2);
 
 var ReactComponentTreeHook;
@@ -23422,7 +40386,7 @@ if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 't
   // https://github.com/facebook/react/issues/7240
   // Remove the inline requires when we don't need them anymore:
   // https://github.com/facebook/react/pull/7178
-  ReactComponentTreeHook = __webpack_require__(7);
+  ReactComponentTreeHook = __webpack_require__(8);
 }
 
 /**
@@ -23438,7 +40402,7 @@ function flattenSingleChildIntoContext(traverseContext, child, name, selfDebugID
     var keyUnique = result[name] === undefined;
     if (process.env.NODE_ENV !== 'production') {
       if (!ReactComponentTreeHook) {
-        ReactComponentTreeHook = __webpack_require__(7);
+        ReactComponentTreeHook = __webpack_require__(8);
       }
       if (!keyUnique) {
         process.env.NODE_ENV !== 'production' ? warning(false, 'flattenChildren(...): Encountered two children with the same key, ' + '`%s`. Child keys must be unique; when two children share a key, only ' + 'the first child will be used.%s', KeyEscapeUtils.unescape(name), ReactComponentTreeHook.getStackAddendumByID(selfDebugID)) : void 0;
@@ -23475,7 +40439,7 @@ module.exports = flattenChildren;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 192 */
+/* 239 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23491,7 +40455,7 @@ module.exports = flattenChildren;
 
 
 
-var getEventCharCode = __webpack_require__(44);
+var getEventCharCode = __webpack_require__(52);
 
 /**
  * Normalization of deprecated HTML5 `key` values
@@ -23582,7 +40546,7 @@ function getEventKey(nativeEvent) {
 module.exports = getEventKey;
 
 /***/ }),
-/* 193 */
+/* 240 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23628,7 +40592,7 @@ function getIteratorFn(maybeIterable) {
 module.exports = getIteratorFn;
 
 /***/ }),
-/* 194 */
+/* 241 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23707,7 +40671,7 @@ function getNodeForCharacterOffset(root, offset) {
 module.exports = getNodeForCharacterOffset;
 
 /***/ }),
-/* 195 */
+/* 242 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23813,7 +40777,7 @@ function getVendorPrefixedEventName(eventName) {
 module.exports = getVendorPrefixedEventName;
 
 /***/ }),
-/* 196 */
+/* 243 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23829,7 +40793,7 @@ module.exports = getVendorPrefixedEventName;
 
 
 
-var escapeTextContentForBrowser = __webpack_require__(30);
+var escapeTextContentForBrowser = __webpack_require__(32);
 
 /**
  * Escapes attribute value to prevent scripting attacks.
@@ -23844,7 +40808,7 @@ function quoteAttributeValueForBrowser(value) {
 module.exports = quoteAttributeValueForBrowser;
 
 /***/ }),
-/* 197 */
+/* 244 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23860,12 +40824,634 @@ module.exports = quoteAttributeValueForBrowser;
 
 
 
-var ReactMount = __webpack_require__(71);
+var ReactMount = __webpack_require__(86);
 
 module.exports = ReactMount.renderSubtreeIntoContainer;
 
 /***/ }),
-/* 198 */
+/* 245 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+exports.default = MarkdownRenderer;
+
+var _react = __webpack_require__(9);
+
+var _react2 = _interopRequireDefault(_react);
+
+var _remarkable = __webpack_require__(271);
+
+var _remarkable2 = _interopRequireDefault(_remarkable);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _objectWithoutProperties(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
+
+function MarkdownRenderer(_ref) {
+    var markdown = _ref.markdown,
+        _ref$options = _ref.options,
+        options = _ref$options === undefined ? {} : _ref$options,
+        props = _objectWithoutProperties(_ref, ['markdown', 'options']);
+
+    var remarkable = new _remarkable2.default(options);
+    var html = remarkable.render(markdown);
+
+    return _react2.default.createElement('div', _extends({}, props, { dangerouslySetInnerHTML: { __html: html } }));
+}
+MarkdownRenderer.propTypes = {
+    markdown: __webpack_require__(9).PropTypes.string.isRequired,
+    options: __webpack_require__(9).PropTypes.object
+};
+
+/***/ }),
+/* 246 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* WEBPACK VAR INJECTION */(function(process) {/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_react__ = __webpack_require__(9);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_react___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_react__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_prop_types__ = __webpack_require__(75);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_prop_types___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_prop_types__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__utils_PropTypes__ = __webpack_require__(100);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__utils_warning__ = __webpack_require__(58);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return Provider; });
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+
+
+
+
+
+var didWarnAboutReceivingStore = false;
+function warnAboutReceivingStore() {
+  if (didWarnAboutReceivingStore) {
+    return;
+  }
+  didWarnAboutReceivingStore = true;
+
+  __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__utils_warning__["a" /* default */])('<Provider> does not support changing `store` on the fly. ' + 'It is most likely that you see this error because you updated to ' + 'Redux 2.x and React Redux 2.x which no longer hot reload reducers ' + 'automatically. See https://github.com/reactjs/react-redux/releases/' + 'tag/v2.0.0 for the migration instructions.');
+}
+
+var Provider = function (_Component) {
+  _inherits(Provider, _Component);
+
+  Provider.prototype.getChildContext = function getChildContext() {
+    return { store: this.store, storeSubscription: null };
+  };
+
+  function Provider(props, context) {
+    _classCallCheck(this, Provider);
+
+    var _this = _possibleConstructorReturn(this, _Component.call(this, props, context));
+
+    _this.store = props.store;
+    return _this;
+  }
+
+  Provider.prototype.render = function render() {
+    return __WEBPACK_IMPORTED_MODULE_0_react__["Children"].only(this.props.children);
+  };
+
+  return Provider;
+}(__WEBPACK_IMPORTED_MODULE_0_react__["Component"]);
+
+
+
+
+if (process.env.NODE_ENV !== 'production') {
+  Provider.prototype.componentWillReceiveProps = function (nextProps) {
+    var store = this.store;
+    var nextStore = nextProps.store;
+
+
+    if (store !== nextStore) {
+      warnAboutReceivingStore();
+    }
+  };
+}
+
+Provider.propTypes = {
+  store: __WEBPACK_IMPORTED_MODULE_2__utils_PropTypes__["a" /* storeShape */].isRequired,
+  children: __WEBPACK_IMPORTED_MODULE_1_prop_types___default.a.element.isRequired
+};
+Provider.childContextTypes = {
+  store: __WEBPACK_IMPORTED_MODULE_2__utils_PropTypes__["a" /* storeShape */].isRequired,
+  storeSubscription: __WEBPACK_IMPORTED_MODULE_2__utils_PropTypes__["b" /* subscriptionShape */]
+};
+Provider.displayName = 'Provider';
+/* WEBPACK VAR INJECTION */}.call(__webpack_exports__, __webpack_require__(0)))
+
+/***/ }),
+/* 247 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__components_connectAdvanced__ = __webpack_require__(98);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__utils_shallowEqual__ = __webpack_require__(254);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__mapDispatchToProps__ = __webpack_require__(248);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__mapStateToProps__ = __webpack_require__(249);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__mergeProps__ = __webpack_require__(250);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5__selectorFactory__ = __webpack_require__(251);
+/* unused harmony export createConnect */
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+function _objectWithoutProperties(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
+
+
+
+
+
+
+
+
+/*
+  connect is a facade over connectAdvanced. It turns its args into a compatible
+  selectorFactory, which has the signature:
+
+    (dispatch, options) => (nextState, nextOwnProps) => nextFinalProps
+  
+  connect passes its args to connectAdvanced as options, which will in turn pass them to
+  selectorFactory each time a Connect component instance is instantiated or hot reloaded.
+
+  selectorFactory returns a final props selector from its mapStateToProps,
+  mapStateToPropsFactories, mapDispatchToProps, mapDispatchToPropsFactories, mergeProps,
+  mergePropsFactories, and pure args.
+
+  The resulting final props selector is called by the Connect component instance whenever
+  it receives new props or store state.
+ */
+
+function match(arg, factories, name) {
+  for (var i = factories.length - 1; i >= 0; i--) {
+    var result = factories[i](arg);
+    if (result) return result;
+  }
+
+  return function (dispatch, options) {
+    throw new Error('Invalid value of type ' + typeof arg + ' for ' + name + ' argument when connecting component ' + options.wrappedComponentName + '.');
+  };
+}
+
+function strictEqual(a, b) {
+  return a === b;
+}
+
+// createConnect with default args builds the 'official' connect behavior. Calling it with
+// different options opens up some testing and extensibility scenarios
+function createConnect() {
+  var _ref = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+      _ref$connectHOC = _ref.connectHOC,
+      connectHOC = _ref$connectHOC === undefined ? __WEBPACK_IMPORTED_MODULE_0__components_connectAdvanced__["a" /* default */] : _ref$connectHOC,
+      _ref$mapStateToPropsF = _ref.mapStateToPropsFactories,
+      mapStateToPropsFactories = _ref$mapStateToPropsF === undefined ? __WEBPACK_IMPORTED_MODULE_3__mapStateToProps__["a" /* default */] : _ref$mapStateToPropsF,
+      _ref$mapDispatchToPro = _ref.mapDispatchToPropsFactories,
+      mapDispatchToPropsFactories = _ref$mapDispatchToPro === undefined ? __WEBPACK_IMPORTED_MODULE_2__mapDispatchToProps__["a" /* default */] : _ref$mapDispatchToPro,
+      _ref$mergePropsFactor = _ref.mergePropsFactories,
+      mergePropsFactories = _ref$mergePropsFactor === undefined ? __WEBPACK_IMPORTED_MODULE_4__mergeProps__["a" /* default */] : _ref$mergePropsFactor,
+      _ref$selectorFactory = _ref.selectorFactory,
+      selectorFactory = _ref$selectorFactory === undefined ? __WEBPACK_IMPORTED_MODULE_5__selectorFactory__["a" /* default */] : _ref$selectorFactory;
+
+  return function connect(mapStateToProps, mapDispatchToProps, mergeProps) {
+    var _ref2 = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : {},
+        _ref2$pure = _ref2.pure,
+        pure = _ref2$pure === undefined ? true : _ref2$pure,
+        _ref2$areStatesEqual = _ref2.areStatesEqual,
+        areStatesEqual = _ref2$areStatesEqual === undefined ? strictEqual : _ref2$areStatesEqual,
+        _ref2$areOwnPropsEqua = _ref2.areOwnPropsEqual,
+        areOwnPropsEqual = _ref2$areOwnPropsEqua === undefined ? __WEBPACK_IMPORTED_MODULE_1__utils_shallowEqual__["a" /* default */] : _ref2$areOwnPropsEqua,
+        _ref2$areStatePropsEq = _ref2.areStatePropsEqual,
+        areStatePropsEqual = _ref2$areStatePropsEq === undefined ? __WEBPACK_IMPORTED_MODULE_1__utils_shallowEqual__["a" /* default */] : _ref2$areStatePropsEq,
+        _ref2$areMergedPropsE = _ref2.areMergedPropsEqual,
+        areMergedPropsEqual = _ref2$areMergedPropsE === undefined ? __WEBPACK_IMPORTED_MODULE_1__utils_shallowEqual__["a" /* default */] : _ref2$areMergedPropsE,
+        extraOptions = _objectWithoutProperties(_ref2, ['pure', 'areStatesEqual', 'areOwnPropsEqual', 'areStatePropsEqual', 'areMergedPropsEqual']);
+
+    var initMapStateToProps = match(mapStateToProps, mapStateToPropsFactories, 'mapStateToProps');
+    var initMapDispatchToProps = match(mapDispatchToProps, mapDispatchToPropsFactories, 'mapDispatchToProps');
+    var initMergeProps = match(mergeProps, mergePropsFactories, 'mergeProps');
+
+    return connectHOC(selectorFactory, _extends({
+      // used in error messages
+      methodName: 'connect',
+
+      // used to compute Connect's displayName from the wrapped component's displayName.
+      getDisplayName: function getDisplayName(name) {
+        return 'Connect(' + name + ')';
+      },
+
+      // if mapStateToProps is falsy, the Connect component doesn't subscribe to store state changes
+      shouldHandleStateChanges: Boolean(mapStateToProps),
+
+      // passed through to selectorFactory
+      initMapStateToProps: initMapStateToProps,
+      initMapDispatchToProps: initMapDispatchToProps,
+      initMergeProps: initMergeProps,
+      pure: pure,
+      areStatesEqual: areStatesEqual,
+      areOwnPropsEqual: areOwnPropsEqual,
+      areStatePropsEqual: areStatePropsEqual,
+      areMergedPropsEqual: areMergedPropsEqual
+
+    }, extraOptions));
+  };
+}
+
+/* harmony default export */ __webpack_exports__["a"] = (createConnect());
+
+/***/ }),
+/* 248 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_redux__ = __webpack_require__(108);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__wrapMapToProps__ = __webpack_require__(99);
+/* unused harmony export whenMapDispatchToPropsIsFunction */
+/* unused harmony export whenMapDispatchToPropsIsMissing */
+/* unused harmony export whenMapDispatchToPropsIsObject */
+
+
+
+function whenMapDispatchToPropsIsFunction(mapDispatchToProps) {
+  return typeof mapDispatchToProps === 'function' ? __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1__wrapMapToProps__["a" /* wrapMapToPropsFunc */])(mapDispatchToProps, 'mapDispatchToProps') : undefined;
+}
+
+function whenMapDispatchToPropsIsMissing(mapDispatchToProps) {
+  return !mapDispatchToProps ? __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1__wrapMapToProps__["b" /* wrapMapToPropsConstant */])(function (dispatch) {
+    return { dispatch: dispatch };
+  }) : undefined;
+}
+
+function whenMapDispatchToPropsIsObject(mapDispatchToProps) {
+  return mapDispatchToProps && typeof mapDispatchToProps === 'object' ? __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1__wrapMapToProps__["b" /* wrapMapToPropsConstant */])(function (dispatch) {
+    return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0_redux__["bindActionCreators"])(mapDispatchToProps, dispatch);
+  }) : undefined;
+}
+
+/* harmony default export */ __webpack_exports__["a"] = ([whenMapDispatchToPropsIsFunction, whenMapDispatchToPropsIsMissing, whenMapDispatchToPropsIsObject]);
+
+/***/ }),
+/* 249 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__wrapMapToProps__ = __webpack_require__(99);
+/* unused harmony export whenMapStateToPropsIsFunction */
+/* unused harmony export whenMapStateToPropsIsMissing */
+
+
+function whenMapStateToPropsIsFunction(mapStateToProps) {
+  return typeof mapStateToProps === 'function' ? __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__wrapMapToProps__["a" /* wrapMapToPropsFunc */])(mapStateToProps, 'mapStateToProps') : undefined;
+}
+
+function whenMapStateToPropsIsMissing(mapStateToProps) {
+  return !mapStateToProps ? __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__wrapMapToProps__["b" /* wrapMapToPropsConstant */])(function () {
+    return {};
+  }) : undefined;
+}
+
+/* harmony default export */ __webpack_exports__["a"] = ([whenMapStateToPropsIsFunction, whenMapStateToPropsIsMissing]);
+
+/***/ }),
+/* 250 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* WEBPACK VAR INJECTION */(function(process) {/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__utils_verifyPlainObject__ = __webpack_require__(101);
+/* unused harmony export defaultMergeProps */
+/* unused harmony export wrapMergePropsFunc */
+/* unused harmony export whenMergePropsIsFunction */
+/* unused harmony export whenMergePropsIsOmitted */
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+
+
+function defaultMergeProps(stateProps, dispatchProps, ownProps) {
+  return _extends({}, ownProps, stateProps, dispatchProps);
+}
+
+function wrapMergePropsFunc(mergeProps) {
+  return function initMergePropsProxy(dispatch, _ref) {
+    var displayName = _ref.displayName,
+        pure = _ref.pure,
+        areMergedPropsEqual = _ref.areMergedPropsEqual;
+
+    var hasRunOnce = false;
+    var mergedProps = void 0;
+
+    return function mergePropsProxy(stateProps, dispatchProps, ownProps) {
+      var nextMergedProps = mergeProps(stateProps, dispatchProps, ownProps);
+
+      if (hasRunOnce) {
+        if (!pure || !areMergedPropsEqual(nextMergedProps, mergedProps)) mergedProps = nextMergedProps;
+      } else {
+        hasRunOnce = true;
+        mergedProps = nextMergedProps;
+
+        if (process.env.NODE_ENV !== 'production') __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__utils_verifyPlainObject__["a" /* default */])(mergedProps, displayName, 'mergeProps');
+      }
+
+      return mergedProps;
+    };
+  };
+}
+
+function whenMergePropsIsFunction(mergeProps) {
+  return typeof mergeProps === 'function' ? wrapMergePropsFunc(mergeProps) : undefined;
+}
+
+function whenMergePropsIsOmitted(mergeProps) {
+  return !mergeProps ? function () {
+    return defaultMergeProps;
+  } : undefined;
+}
+
+/* harmony default export */ __webpack_exports__["a"] = ([whenMergePropsIsFunction, whenMergePropsIsOmitted]);
+/* WEBPACK VAR INJECTION */}.call(__webpack_exports__, __webpack_require__(0)))
+
+/***/ }),
+/* 251 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* WEBPACK VAR INJECTION */(function(process) {/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__verifySubselectors__ = __webpack_require__(252);
+/* unused harmony export impureFinalPropsSelectorFactory */
+/* unused harmony export pureFinalPropsSelectorFactory */
+/* harmony export (immutable) */ __webpack_exports__["a"] = finalPropsSelectorFactory;
+function _objectWithoutProperties(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
+
+
+
+function impureFinalPropsSelectorFactory(mapStateToProps, mapDispatchToProps, mergeProps, dispatch) {
+  return function impureFinalPropsSelector(state, ownProps) {
+    return mergeProps(mapStateToProps(state, ownProps), mapDispatchToProps(dispatch, ownProps), ownProps);
+  };
+}
+
+function pureFinalPropsSelectorFactory(mapStateToProps, mapDispatchToProps, mergeProps, dispatch, _ref) {
+  var areStatesEqual = _ref.areStatesEqual,
+      areOwnPropsEqual = _ref.areOwnPropsEqual,
+      areStatePropsEqual = _ref.areStatePropsEqual;
+
+  var hasRunAtLeastOnce = false;
+  var state = void 0;
+  var ownProps = void 0;
+  var stateProps = void 0;
+  var dispatchProps = void 0;
+  var mergedProps = void 0;
+
+  function handleFirstCall(firstState, firstOwnProps) {
+    state = firstState;
+    ownProps = firstOwnProps;
+    stateProps = mapStateToProps(state, ownProps);
+    dispatchProps = mapDispatchToProps(dispatch, ownProps);
+    mergedProps = mergeProps(stateProps, dispatchProps, ownProps);
+    hasRunAtLeastOnce = true;
+    return mergedProps;
+  }
+
+  function handleNewPropsAndNewState() {
+    stateProps = mapStateToProps(state, ownProps);
+
+    if (mapDispatchToProps.dependsOnOwnProps) dispatchProps = mapDispatchToProps(dispatch, ownProps);
+
+    mergedProps = mergeProps(stateProps, dispatchProps, ownProps);
+    return mergedProps;
+  }
+
+  function handleNewProps() {
+    if (mapStateToProps.dependsOnOwnProps) stateProps = mapStateToProps(state, ownProps);
+
+    if (mapDispatchToProps.dependsOnOwnProps) dispatchProps = mapDispatchToProps(dispatch, ownProps);
+
+    mergedProps = mergeProps(stateProps, dispatchProps, ownProps);
+    return mergedProps;
+  }
+
+  function handleNewState() {
+    var nextStateProps = mapStateToProps(state, ownProps);
+    var statePropsChanged = !areStatePropsEqual(nextStateProps, stateProps);
+    stateProps = nextStateProps;
+
+    if (statePropsChanged) mergedProps = mergeProps(stateProps, dispatchProps, ownProps);
+
+    return mergedProps;
+  }
+
+  function handleSubsequentCalls(nextState, nextOwnProps) {
+    var propsChanged = !areOwnPropsEqual(nextOwnProps, ownProps);
+    var stateChanged = !areStatesEqual(nextState, state);
+    state = nextState;
+    ownProps = nextOwnProps;
+
+    if (propsChanged && stateChanged) return handleNewPropsAndNewState();
+    if (propsChanged) return handleNewProps();
+    if (stateChanged) return handleNewState();
+    return mergedProps;
+  }
+
+  return function pureFinalPropsSelector(nextState, nextOwnProps) {
+    return hasRunAtLeastOnce ? handleSubsequentCalls(nextState, nextOwnProps) : handleFirstCall(nextState, nextOwnProps);
+  };
+}
+
+// TODO: Add more comments
+
+// If pure is true, the selector returned by selectorFactory will memoize its results,
+// allowing connectAdvanced's shouldComponentUpdate to return false if final
+// props have not changed. If false, the selector will always return a new
+// object and shouldComponentUpdate will always return true.
+
+function finalPropsSelectorFactory(dispatch, _ref2) {
+  var initMapStateToProps = _ref2.initMapStateToProps,
+      initMapDispatchToProps = _ref2.initMapDispatchToProps,
+      initMergeProps = _ref2.initMergeProps,
+      options = _objectWithoutProperties(_ref2, ['initMapStateToProps', 'initMapDispatchToProps', 'initMergeProps']);
+
+  var mapStateToProps = initMapStateToProps(dispatch, options);
+  var mapDispatchToProps = initMapDispatchToProps(dispatch, options);
+  var mergeProps = initMergeProps(dispatch, options);
+
+  if (process.env.NODE_ENV !== 'production') {
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__verifySubselectors__["a" /* default */])(mapStateToProps, mapDispatchToProps, mergeProps, options.displayName);
+  }
+
+  var selectorFactory = options.pure ? pureFinalPropsSelectorFactory : impureFinalPropsSelectorFactory;
+
+  return selectorFactory(mapStateToProps, mapDispatchToProps, mergeProps, dispatch, options);
+}
+/* WEBPACK VAR INJECTION */}.call(__webpack_exports__, __webpack_require__(0)))
+
+/***/ }),
+/* 252 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__utils_warning__ = __webpack_require__(58);
+/* harmony export (immutable) */ __webpack_exports__["a"] = verifySubselectors;
+
+
+function verify(selector, methodName, displayName) {
+  if (!selector) {
+    throw new Error('Unexpected value for ' + methodName + ' in ' + displayName + '.');
+  } else if (methodName === 'mapStateToProps' || methodName === 'mapDispatchToProps') {
+    if (!selector.hasOwnProperty('dependsOnOwnProps')) {
+      __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__utils_warning__["a" /* default */])('The selector for ' + methodName + ' of ' + displayName + ' did not specify a value for dependsOnOwnProps.');
+    }
+  }
+}
+
+function verifySubselectors(mapStateToProps, mapDispatchToProps, mergeProps, displayName) {
+  verify(mapStateToProps, 'mapStateToProps', displayName);
+  verify(mapDispatchToProps, 'mapDispatchToProps', displayName);
+  verify(mergeProps, 'mergeProps', displayName);
+}
+
+/***/ }),
+/* 253 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return Subscription; });
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+// encapsulates the subscription logic for connecting a component to the redux store, as
+// well as nesting subscriptions of descendant components, so that we can ensure the
+// ancestor components re-render before descendants
+
+var CLEARED = null;
+var nullListeners = {
+  notify: function notify() {}
+};
+
+function createListenerCollection() {
+  // the current/next pattern is copied from redux's createStore code.
+  // TODO: refactor+expose that code to be reusable here?
+  var current = [];
+  var next = [];
+
+  return {
+    clear: function clear() {
+      next = CLEARED;
+      current = CLEARED;
+    },
+    notify: function notify() {
+      var listeners = current = next;
+      for (var i = 0; i < listeners.length; i++) {
+        listeners[i]();
+      }
+    },
+    subscribe: function subscribe(listener) {
+      var isSubscribed = true;
+      if (next === current) next = current.slice();
+      next.push(listener);
+
+      return function unsubscribe() {
+        if (!isSubscribed || current === CLEARED) return;
+        isSubscribed = false;
+
+        if (next === current) next = current.slice();
+        next.splice(next.indexOf(listener), 1);
+      };
+    }
+  };
+}
+
+var Subscription = function () {
+  function Subscription(store, parentSub, onStateChange) {
+    _classCallCheck(this, Subscription);
+
+    this.store = store;
+    this.parentSub = parentSub;
+    this.onStateChange = onStateChange;
+    this.unsubscribe = null;
+    this.listeners = nullListeners;
+  }
+
+  Subscription.prototype.addNestedSub = function addNestedSub(listener) {
+    this.trySubscribe();
+    return this.listeners.subscribe(listener);
+  };
+
+  Subscription.prototype.notifyNestedSubs = function notifyNestedSubs() {
+    this.listeners.notify();
+  };
+
+  Subscription.prototype.isSubscribed = function isSubscribed() {
+    return Boolean(this.unsubscribe);
+  };
+
+  Subscription.prototype.trySubscribe = function trySubscribe() {
+    if (!this.unsubscribe) {
+      this.unsubscribe = this.parentSub ? this.parentSub.addNestedSub(this.onStateChange) : this.store.subscribe(this.onStateChange);
+
+      this.listeners = createListenerCollection();
+    }
+  };
+
+  Subscription.prototype.tryUnsubscribe = function tryUnsubscribe() {
+    if (this.unsubscribe) {
+      this.unsubscribe();
+      this.unsubscribe = null;
+      this.listeners.clear();
+      this.listeners = nullListeners;
+    }
+  };
+
+  return Subscription;
+}();
+
+
+
+/***/ }),
+/* 254 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony export (immutable) */ __webpack_exports__["a"] = shallowEqual;
+var hasOwn = Object.prototype.hasOwnProperty;
+
+function is(x, y) {
+  if (x === y) {
+    return x !== 0 || y !== 0 || 1 / x === 1 / y;
+  } else {
+    return x !== x && y !== y;
+  }
+}
+
+function shallowEqual(objA, objB) {
+  if (is(objA, objB)) return true;
+
+  if (typeof objA !== 'object' || objA === null || typeof objB !== 'object' || objB === null) {
+    return false;
+  }
+
+  var keysA = Object.keys(objA);
+  var keysB = Object.keys(objB);
+
+  if (keysA.length !== keysB.length) return false;
+
+  for (var i = 0; i < keysA.length; i++) {
+    if (!hasOwn.call(objB, keysA[i]) || !is(objA[keysA[i]], objB[keysA[i]])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/***/ }),
+/* 255 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23929,7 +41515,7 @@ var KeyEscapeUtils = {
 module.exports = KeyEscapeUtils;
 
 /***/ }),
-/* 199 */
+/* 256 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23946,7 +41532,7 @@ module.exports = KeyEscapeUtils;
 
 
 
-var _prodInvariant = __webpack_require__(17);
+var _prodInvariant = __webpack_require__(19);
 
 var invariant = __webpack_require__(1);
 
@@ -24047,7 +41633,7 @@ module.exports = PooledClass;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 200 */
+/* 257 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -24063,11 +41649,11 @@ module.exports = PooledClass;
 
 
 
-var PooledClass = __webpack_require__(199);
-var ReactElement = __webpack_require__(16);
+var PooledClass = __webpack_require__(256);
+var ReactElement = __webpack_require__(18);
 
-var emptyFunction = __webpack_require__(10);
-var traverseAllChildren = __webpack_require__(210);
+var emptyFunction = __webpack_require__(11);
+var traverseAllChildren = __webpack_require__(267);
 
 var twoArgumentPooler = PooledClass.twoArgumentPooler;
 var fourArgumentPooler = PooledClass.fourArgumentPooler;
@@ -24243,7 +41829,7 @@ var ReactChildren = {
 module.exports = ReactChildren;
 
 /***/ }),
-/* 201 */
+/* 258 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -24259,15 +41845,15 @@ module.exports = ReactChildren;
 
 
 
-var _prodInvariant = __webpack_require__(17),
+var _prodInvariant = __webpack_require__(19),
     _assign = __webpack_require__(4);
 
-var ReactComponent = __webpack_require__(50);
-var ReactElement = __webpack_require__(16);
-var ReactPropTypeLocationNames = __webpack_require__(85);
-var ReactNoopUpdateQueue = __webpack_require__(51);
+var ReactComponent = __webpack_require__(59);
+var ReactElement = __webpack_require__(18);
+var ReactPropTypeLocationNames = __webpack_require__(104);
+var ReactNoopUpdateQueue = __webpack_require__(60);
 
-var emptyObject = __webpack_require__(21);
+var emptyObject = __webpack_require__(23);
 var invariant = __webpack_require__(1);
 var warning = __webpack_require__(2);
 
@@ -24972,7 +42558,7 @@ module.exports = ReactClass;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 202 */
+/* 259 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -24988,7 +42574,7 @@ module.exports = ReactClass;
 
 
 
-var ReactElement = __webpack_require__(16);
+var ReactElement = __webpack_require__(18);
 
 /**
  * Create a factory that creates HTML tag elements.
@@ -24997,7 +42583,7 @@ var ReactElement = __webpack_require__(16);
  */
 var createDOMFactory = ReactElement.createFactory;
 if (process.env.NODE_ENV !== 'production') {
-  var ReactElementValidator = __webpack_require__(84);
+  var ReactElementValidator = __webpack_require__(103);
   createDOMFactory = ReactElementValidator.createFactory;
 }
 
@@ -25148,7 +42734,7 @@ module.exports = ReactDOMFactories;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 203 */
+/* 260 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -25164,15 +42750,15 @@ module.exports = ReactDOMFactories;
 
 
 
-var _require = __webpack_require__(16),
+var _require = __webpack_require__(18),
     isValidElement = _require.isValidElement;
 
-var factory = __webpack_require__(60);
+var factory = __webpack_require__(73);
 
 module.exports = factory(isValidElement);
 
 /***/ }),
-/* 204 */
+/* 261 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -25194,7 +42780,7 @@ var ReactPropTypesSecret = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
 module.exports = ReactPropTypesSecret;
 
 /***/ }),
-/* 205 */
+/* 262 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -25212,10 +42798,10 @@ module.exports = ReactPropTypesSecret;
 
 var _assign = __webpack_require__(4);
 
-var ReactComponent = __webpack_require__(50);
-var ReactNoopUpdateQueue = __webpack_require__(51);
+var ReactComponent = __webpack_require__(59);
+var ReactNoopUpdateQueue = __webpack_require__(60);
 
-var emptyObject = __webpack_require__(21);
+var emptyObject = __webpack_require__(23);
 
 /**
  * Base class helpers for the updating state of a component.
@@ -25241,7 +42827,7 @@ ReactPureComponent.prototype.isPureReactComponent = true;
 module.exports = ReactPureComponent;
 
 /***/ }),
-/* 206 */
+/* 263 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -25260,7 +42846,7 @@ module.exports = ReactPureComponent;
 module.exports = '15.5.4';
 
 /***/ }),
-/* 207 */
+/* 264 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -25276,10 +42862,10 @@ module.exports = '15.5.4';
 
 
 
-var _prodInvariant = __webpack_require__(17);
+var _prodInvariant = __webpack_require__(19);
 
-var ReactPropTypeLocationNames = __webpack_require__(85);
-var ReactPropTypesSecret = __webpack_require__(204);
+var ReactPropTypeLocationNames = __webpack_require__(104);
+var ReactPropTypesSecret = __webpack_require__(261);
 
 var invariant = __webpack_require__(1);
 var warning = __webpack_require__(2);
@@ -25292,7 +42878,7 @@ if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 't
   // https://github.com/facebook/react/issues/7240
   // Remove the inline requires when we don't need them anymore:
   // https://github.com/facebook/react/pull/7178
-  ReactComponentTreeHook = __webpack_require__(7);
+  ReactComponentTreeHook = __webpack_require__(8);
 }
 
 var loggedTypeFailures = {};
@@ -25334,7 +42920,7 @@ function checkReactTypeSpec(typeSpecs, values, location, componentName, element,
 
         if (process.env.NODE_ENV !== 'production') {
           if (!ReactComponentTreeHook) {
-            ReactComponentTreeHook = __webpack_require__(7);
+            ReactComponentTreeHook = __webpack_require__(8);
           }
           if (debugID !== null) {
             componentStackInfo = ReactComponentTreeHook.getStackAddendumByID(debugID);
@@ -25353,7 +42939,7 @@ module.exports = checkReactTypeSpec;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 208 */
+/* 265 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -25379,7 +42965,7 @@ function getNextDebugID() {
 module.exports = getNextDebugID;
 
 /***/ }),
-/* 209 */
+/* 266 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -25394,9 +42980,9 @@ module.exports = getNextDebugID;
  */
 
 
-var _prodInvariant = __webpack_require__(17);
+var _prodInvariant = __webpack_require__(19);
 
-var ReactElement = __webpack_require__(16);
+var ReactElement = __webpack_require__(18);
 
 var invariant = __webpack_require__(1);
 
@@ -25423,7 +43009,7 @@ module.exports = onlyChild;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 210 */
+/* 267 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -25439,14 +43025,14 @@ module.exports = onlyChild;
 
 
 
-var _prodInvariant = __webpack_require__(17);
+var _prodInvariant = __webpack_require__(19);
 
-var ReactCurrentOwner = __webpack_require__(12);
-var REACT_ELEMENT_TYPE = __webpack_require__(83);
+var ReactCurrentOwner = __webpack_require__(14);
+var REACT_ELEMENT_TYPE = __webpack_require__(102);
 
-var getIteratorFn = __webpack_require__(86);
+var getIteratorFn = __webpack_require__(105);
 var invariant = __webpack_require__(1);
-var KeyEscapeUtils = __webpack_require__(198);
+var KeyEscapeUtils = __webpack_require__(255);
 var warning = __webpack_require__(2);
 
 var SEPARATOR = '.';
@@ -25605,30 +43191,5552 @@ module.exports = traverseAllChildren;
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 211 */
-/***/ (function(module, exports) {
+/* 268 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
 
-var g;
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__compose__ = __webpack_require__(106);
+/* harmony export (immutable) */ __webpack_exports__["a"] = applyMiddleware;
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
-// This works in non-strict mode
-g = (function() {
-	return this;
-})();
 
-try {
-	// This works if eval is allowed (see CSP)
-	g = g || Function("return this")() || (1,eval)("this");
-} catch(e) {
-	// This works if the window reference is available
-	if(typeof window === "object")
-		g = window;
+
+/**
+ * Creates a store enhancer that applies middleware to the dispatch method
+ * of the Redux store. This is handy for a variety of tasks, such as expressing
+ * asynchronous actions in a concise manner, or logging every action payload.
+ *
+ * See `redux-thunk` package as an example of the Redux middleware.
+ *
+ * Because middleware is potentially asynchronous, this should be the first
+ * store enhancer in the composition chain.
+ *
+ * Note that each middleware will be given the `dispatch` and `getState` functions
+ * as named arguments.
+ *
+ * @param {...Function} middlewares The middleware chain to be applied.
+ * @returns {Function} A store enhancer applying the middleware.
+ */
+function applyMiddleware() {
+  for (var _len = arguments.length, middlewares = Array(_len), _key = 0; _key < _len; _key++) {
+    middlewares[_key] = arguments[_key];
+  }
+
+  return function (createStore) {
+    return function (reducer, preloadedState, enhancer) {
+      var store = createStore(reducer, preloadedState, enhancer);
+      var _dispatch = store.dispatch;
+      var chain = [];
+
+      var middlewareAPI = {
+        getState: store.getState,
+        dispatch: function dispatch(action) {
+          return _dispatch(action);
+        }
+      };
+      chain = middlewares.map(function (middleware) {
+        return middleware(middlewareAPI);
+      });
+      _dispatch = __WEBPACK_IMPORTED_MODULE_0__compose__["a" /* default */].apply(undefined, chain)(store.dispatch);
+
+      return _extends({}, store, {
+        dispatch: _dispatch
+      });
+    };
+  };
 }
 
-// g can still be undefined, but nothing to do about it...
-// We return undefined, instead of nothing here, so it's
-// easier to handle this case. if(!global) { ...}
+/***/ }),
+/* 269 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
 
-module.exports = g;
+"use strict";
+/* harmony export (immutable) */ __webpack_exports__["a"] = bindActionCreators;
+function bindActionCreator(actionCreator, dispatch) {
+  return function () {
+    return dispatch(actionCreator.apply(undefined, arguments));
+  };
+}
+
+/**
+ * Turns an object whose values are action creators, into an object with the
+ * same keys, but with every function wrapped into a `dispatch` call so they
+ * may be invoked directly. This is just a convenience method, as you can call
+ * `store.dispatch(MyActionCreators.doSomething())` yourself just fine.
+ *
+ * For convenience, you can also pass a single function as the first argument,
+ * and get a function in return.
+ *
+ * @param {Function|Object} actionCreators An object whose values are action
+ * creator functions. One handy way to obtain it is to use ES6 `import * as`
+ * syntax. You may also pass a single function.
+ *
+ * @param {Function} dispatch The `dispatch` function available on your Redux
+ * store.
+ *
+ * @returns {Function|Object} The object mimicking the original object, but with
+ * every action creator wrapped into the `dispatch` call. If you passed a
+ * function as `actionCreators`, the return value will also be a single
+ * function.
+ */
+function bindActionCreators(actionCreators, dispatch) {
+  if (typeof actionCreators === 'function') {
+    return bindActionCreator(actionCreators, dispatch);
+  }
+
+  if (typeof actionCreators !== 'object' || actionCreators === null) {
+    throw new Error('bindActionCreators expected an object or a function, instead received ' + (actionCreators === null ? 'null' : typeof actionCreators) + '. ' + 'Did you write "import ActionCreators from" instead of "import * as ActionCreators from"?');
+  }
+
+  var keys = Object.keys(actionCreators);
+  var boundActionCreators = {};
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    var actionCreator = actionCreators[key];
+    if (typeof actionCreator === 'function') {
+      boundActionCreators[key] = bindActionCreator(actionCreator, dispatch);
+    }
+  }
+  return boundActionCreators;
+}
+
+/***/ }),
+/* 270 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* WEBPACK VAR INJECTION */(function(process) {/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__createStore__ = __webpack_require__(107);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_lodash_es_isPlainObject__ = __webpack_require__(42);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__utils_warning__ = __webpack_require__(109);
+/* harmony export (immutable) */ __webpack_exports__["a"] = combineReducers;
+
+
+
+
+function getUndefinedStateErrorMessage(key, action) {
+  var actionType = action && action.type;
+  var actionName = actionType && '"' + actionType.toString() + '"' || 'an action';
+
+  return 'Given action ' + actionName + ', reducer "' + key + '" returned undefined. ' + 'To ignore an action, you must explicitly return the previous state.';
+}
+
+function getUnexpectedStateShapeWarningMessage(inputState, reducers, action, unexpectedKeyCache) {
+  var reducerKeys = Object.keys(reducers);
+  var argumentName = action && action.type === __WEBPACK_IMPORTED_MODULE_0__createStore__["b" /* ActionTypes */].INIT ? 'preloadedState argument passed to createStore' : 'previous state received by the reducer';
+
+  if (reducerKeys.length === 0) {
+    return 'Store does not have a valid reducer. Make sure the argument passed ' + 'to combineReducers is an object whose values are reducers.';
+  }
+
+  if (!__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1_lodash_es_isPlainObject__["a" /* default */])(inputState)) {
+    return 'The ' + argumentName + ' has unexpected type of "' + {}.toString.call(inputState).match(/\s([a-z|A-Z]+)/)[1] + '". Expected argument to be an object with the following ' + ('keys: "' + reducerKeys.join('", "') + '"');
+  }
+
+  var unexpectedKeys = Object.keys(inputState).filter(function (key) {
+    return !reducers.hasOwnProperty(key) && !unexpectedKeyCache[key];
+  });
+
+  unexpectedKeys.forEach(function (key) {
+    unexpectedKeyCache[key] = true;
+  });
+
+  if (unexpectedKeys.length > 0) {
+    return 'Unexpected ' + (unexpectedKeys.length > 1 ? 'keys' : 'key') + ' ' + ('"' + unexpectedKeys.join('", "') + '" found in ' + argumentName + '. ') + 'Expected to find one of the known reducer keys instead: ' + ('"' + reducerKeys.join('", "') + '". Unexpected keys will be ignored.');
+  }
+}
+
+function assertReducerSanity(reducers) {
+  Object.keys(reducers).forEach(function (key) {
+    var reducer = reducers[key];
+    var initialState = reducer(undefined, { type: __WEBPACK_IMPORTED_MODULE_0__createStore__["b" /* ActionTypes */].INIT });
+
+    if (typeof initialState === 'undefined') {
+      throw new Error('Reducer "' + key + '" returned undefined during initialization. ' + 'If the state passed to the reducer is undefined, you must ' + 'explicitly return the initial state. The initial state may ' + 'not be undefined.');
+    }
+
+    var type = '@@redux/PROBE_UNKNOWN_ACTION_' + Math.random().toString(36).substring(7).split('').join('.');
+    if (typeof reducer(undefined, { type: type }) === 'undefined') {
+      throw new Error('Reducer "' + key + '" returned undefined when probed with a random type. ' + ('Don\'t try to handle ' + __WEBPACK_IMPORTED_MODULE_0__createStore__["b" /* ActionTypes */].INIT + ' or other actions in "redux/*" ') + 'namespace. They are considered private. Instead, you must return the ' + 'current state for any unknown actions, unless it is undefined, ' + 'in which case you must return the initial state, regardless of the ' + 'action type. The initial state may not be undefined.');
+    }
+  });
+}
+
+/**
+ * Turns an object whose values are different reducer functions, into a single
+ * reducer function. It will call every child reducer, and gather their results
+ * into a single state object, whose keys correspond to the keys of the passed
+ * reducer functions.
+ *
+ * @param {Object} reducers An object whose values correspond to different
+ * reducer functions that need to be combined into one. One handy way to obtain
+ * it is to use ES6 `import * as reducers` syntax. The reducers may never return
+ * undefined for any action. Instead, they should return their initial state
+ * if the state passed to them was undefined, and the current state for any
+ * unrecognized action.
+ *
+ * @returns {Function} A reducer function that invokes every reducer inside the
+ * passed object, and builds a state object with the same shape.
+ */
+function combineReducers(reducers) {
+  var reducerKeys = Object.keys(reducers);
+  var finalReducers = {};
+  for (var i = 0; i < reducerKeys.length; i++) {
+    var key = reducerKeys[i];
+
+    if (process.env.NODE_ENV !== 'production') {
+      if (typeof reducers[key] === 'undefined') {
+        __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__utils_warning__["a" /* default */])('No reducer provided for key "' + key + '"');
+      }
+    }
+
+    if (typeof reducers[key] === 'function') {
+      finalReducers[key] = reducers[key];
+    }
+  }
+  var finalReducerKeys = Object.keys(finalReducers);
+
+  if (process.env.NODE_ENV !== 'production') {
+    var unexpectedKeyCache = {};
+  }
+
+  var sanityError;
+  try {
+    assertReducerSanity(finalReducers);
+  } catch (e) {
+    sanityError = e;
+  }
+
+  return function combination() {
+    var state = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
+    var action = arguments[1];
+
+    if (sanityError) {
+      throw sanityError;
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+      var warningMessage = getUnexpectedStateShapeWarningMessage(state, finalReducers, action, unexpectedKeyCache);
+      if (warningMessage) {
+        __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__utils_warning__["a" /* default */])(warningMessage);
+      }
+    }
+
+    var hasChanged = false;
+    var nextState = {};
+    for (var i = 0; i < finalReducerKeys.length; i++) {
+      var key = finalReducerKeys[i];
+      var reducer = finalReducers[key];
+      var previousStateForKey = state[key];
+      var nextStateForKey = reducer(previousStateForKey, action);
+      if (typeof nextStateForKey === 'undefined') {
+        var errorMessage = getUndefinedStateErrorMessage(key, action);
+        throw new Error(errorMessage);
+      }
+      nextState[key] = nextStateForKey;
+      hasChanged = hasChanged || nextStateForKey !== previousStateForKey;
+    }
+    return hasChanged ? nextState : state;
+  };
+}
+/* WEBPACK VAR INJECTION */}.call(__webpack_exports__, __webpack_require__(0)))
+
+/***/ }),
+/* 271 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+module.exports = __webpack_require__(278);
+
+
+/***/ }),
+/* 272 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// List of valid html blocks names, accorting to commonmark spec
+// http://jgm.github.io/CommonMark/spec.html#html-blocks
+
+
+
+var html_blocks = {};
+
+[
+  'article',
+  'aside',
+  'button',
+  'blockquote',
+  'body',
+  'canvas',
+  'caption',
+  'col',
+  'colgroup',
+  'dd',
+  'div',
+  'dl',
+  'dt',
+  'embed',
+  'fieldset',
+  'figcaption',
+  'figure',
+  'footer',
+  'form',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'header',
+  'hgroup',
+  'hr',
+  'iframe',
+  'li',
+  'map',
+  'object',
+  'ol',
+  'output',
+  'p',
+  'pre',
+  'progress',
+  'script',
+  'section',
+  'style',
+  'table',
+  'tbody',
+  'td',
+  'textarea',
+  'tfoot',
+  'th',
+  'tr',
+  'thead',
+  'ul',
+  'video'
+].forEach(function (name) { html_blocks[name] = true; });
+
+
+module.exports = html_blocks;
+
+
+/***/ }),
+/* 273 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Regexps to match html elements
+
+
+
+
+function replace(regex, options) {
+  regex = regex.source;
+  options = options || '';
+
+  return function self(name, val) {
+    if (!name) {
+      return new RegExp(regex, options);
+    }
+    val = val.source || val;
+    regex = regex.replace(name, val);
+    return self;
+  };
+}
+
+
+var attr_name     = /[a-zA-Z_:][a-zA-Z0-9:._-]*/;
+
+var unquoted      = /[^"'=<>`\x00-\x20]+/;
+var single_quoted = /'[^']*'/;
+var double_quoted = /"[^"]*"/;
+
+/*eslint no-spaced-func:0*/
+var attr_value  = replace(/(?:unquoted|single_quoted|double_quoted)/)
+                    ('unquoted', unquoted)
+                    ('single_quoted', single_quoted)
+                    ('double_quoted', double_quoted)
+                    ();
+
+var attribute   = replace(/(?:\s+attr_name(?:\s*=\s*attr_value)?)/)
+                    ('attr_name', attr_name)
+                    ('attr_value', attr_value)
+                    ();
+
+var open_tag    = replace(/<[A-Za-z][A-Za-z0-9]*attribute*\s*\/?>/)
+                    ('attribute', attribute)
+                    ();
+
+var close_tag   = /<\/[A-Za-z][A-Za-z0-9]*\s*>/;
+var comment     = /<!--([^-]+|[-][^-]+)*-->/;
+var processing  = /<[?].*?[?]>/;
+var declaration = /<![A-Z]+\s+[^>]*>/;
+var cdata       = /<!\[CDATA\[([^\]]+|\][^\]]|\]\][^>])*\]\]>/;
+
+var HTML_TAG_RE = replace(/^(?:open_tag|close_tag|comment|processing|declaration|cdata)/)
+  ('open_tag', open_tag)
+  ('close_tag', close_tag)
+  ('comment', comment)
+  ('processing', processing)
+  ('declaration', declaration)
+  ('cdata', cdata)
+  ();
+
+
+module.exports.HTML_TAG_RE = HTML_TAG_RE;
+
+
+/***/ }),
+/* 274 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// List of valid url schemas, accorting to commonmark spec
+// http://jgm.github.io/CommonMark/spec.html#autolinks
+
+
+
+
+module.exports = [
+  'coap',
+  'doi',
+  'javascript',
+  'aaa',
+  'aaas',
+  'about',
+  'acap',
+  'cap',
+  'cid',
+  'crid',
+  'data',
+  'dav',
+  'dict',
+  'dns',
+  'file',
+  'ftp',
+  'geo',
+  'go',
+  'gopher',
+  'h323',
+  'http',
+  'https',
+  'iax',
+  'icap',
+  'im',
+  'imap',
+  'info',
+  'ipp',
+  'iris',
+  'iris.beep',
+  'iris.xpc',
+  'iris.xpcs',
+  'iris.lwz',
+  'ldap',
+  'mailto',
+  'mid',
+  'msrp',
+  'msrps',
+  'mtqp',
+  'mupdate',
+  'news',
+  'nfs',
+  'ni',
+  'nih',
+  'nntp',
+  'opaquelocktoken',
+  'pop',
+  'pres',
+  'rtsp',
+  'service',
+  'session',
+  'shttp',
+  'sieve',
+  'sip',
+  'sips',
+  'sms',
+  'snmp',
+  'soap.beep',
+  'soap.beeps',
+  'tag',
+  'tel',
+  'telnet',
+  'tftp',
+  'thismessage',
+  'tn3270',
+  'tip',
+  'tv',
+  'urn',
+  'vemmi',
+  'ws',
+  'wss',
+  'xcon',
+  'xcon-userid',
+  'xmlrpc.beep',
+  'xmlrpc.beeps',
+  'xmpp',
+  'z39.50r',
+  'z39.50s',
+  'adiumxtra',
+  'afp',
+  'afs',
+  'aim',
+  'apt',
+  'attachment',
+  'aw',
+  'beshare',
+  'bitcoin',
+  'bolo',
+  'callto',
+  'chrome',
+  'chrome-extension',
+  'com-eventbrite-attendee',
+  'content',
+  'cvs',
+  'dlna-playsingle',
+  'dlna-playcontainer',
+  'dtn',
+  'dvb',
+  'ed2k',
+  'facetime',
+  'feed',
+  'finger',
+  'fish',
+  'gg',
+  'git',
+  'gizmoproject',
+  'gtalk',
+  'hcp',
+  'icon',
+  'ipn',
+  'irc',
+  'irc6',
+  'ircs',
+  'itms',
+  'jar',
+  'jms',
+  'keyparc',
+  'lastfm',
+  'ldaps',
+  'magnet',
+  'maps',
+  'market',
+  'message',
+  'mms',
+  'ms-help',
+  'msnim',
+  'mumble',
+  'mvn',
+  'notes',
+  'oid',
+  'palm',
+  'paparazzi',
+  'platform',
+  'proxy',
+  'psyc',
+  'query',
+  'res',
+  'resource',
+  'rmi',
+  'rsync',
+  'rtmp',
+  'secondlife',
+  'sftp',
+  'sgn',
+  'skype',
+  'smb',
+  'soldat',
+  'spotify',
+  'ssh',
+  'steam',
+  'svn',
+  'teamspeak',
+  'things',
+  'udp',
+  'unreal',
+  'ut2004',
+  'ventrilo',
+  'view-source',
+  'webcal',
+  'wtai',
+  'wyciwyg',
+  'xfire',
+  'xri',
+  'ymsgr'
+];
+
+
+/***/ }),
+/* 275 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Commonmark default options
+
+
+
+
+module.exports = {
+  options: {
+    html:         true,         // Enable HTML tags in source
+    xhtmlOut:     true,         // Use '/' to close single tags (<br />)
+    breaks:       false,        // Convert '\n' in paragraphs into <br>
+    langPrefix:   'language-',  // CSS language prefix for fenced blocks
+    linkify:      false,        // autoconvert URL-like texts to links
+    linkTarget:   '',           // set target to open link in
+
+    // Enable some language-neutral replacements + quotes beautification
+    typographer:  false,
+
+    // Double + single quotes replacement pairs, when typographer enabled,
+    // and smartquotes on. Set doubles to '«»' for Russian, '„“' for German.
+    quotes: '“”‘’',
+
+    // Highlighter function. Should return escaped HTML,
+    // or '' if input not changed
+    //
+    // function (/*str, lang*/) { return ''; }
+    //
+    highlight: null,
+
+    maxNesting:   20            // Internal protection, recursion limit
+  },
+
+  components: {
+
+    core: {
+      rules: [
+        'block',
+        'inline',
+        'references',
+        'abbr2'
+      ]
+    },
+
+    block: {
+      rules: [
+        'blockquote',
+        'code',
+        'fences',
+        'heading',
+        'hr',
+        'htmlblock',
+        'lheading',
+        'list',
+        'paragraph'
+      ]
+    },
+
+    inline: {
+      rules: [
+        'autolink',
+        'backticks',
+        'emphasis',
+        'entity',
+        'escape',
+        'htmltag',
+        'links',
+        'newline',
+        'text'
+      ]
+    }
+  }
+};
+
+
+/***/ }),
+/* 276 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Remarkable default options
+
+
+
+
+module.exports = {
+  options: {
+    html:         false,        // Enable HTML tags in source
+    xhtmlOut:     false,        // Use '/' to close single tags (<br />)
+    breaks:       false,        // Convert '\n' in paragraphs into <br>
+    langPrefix:   'language-',  // CSS language prefix for fenced blocks
+    linkify:      false,        // autoconvert URL-like texts to links
+    linkTarget:   '',           // set target to open link in
+
+    // Enable some language-neutral replacements + quotes beautification
+    typographer:  false,
+
+    // Double + single quotes replacement pairs, when typographer enabled,
+    // and smartquotes on. Set doubles to '«»' for Russian, '„“' for German.
+    quotes: '“”‘’',
+
+    // Highlighter function. Should return escaped HTML,
+    // or '' if input not changed
+    //
+    // function (/*str, lang*/) { return ''; }
+    //
+    highlight: null,
+
+    maxNesting:   20            // Internal protection, recursion limit
+  },
+
+  components: {
+
+    core: {
+      rules: [
+        'block',
+        'inline',
+        'references',
+        'replacements',
+        'linkify',
+        'smartquotes',
+        'references',
+        'abbr2',
+        'footnote_tail'
+      ]
+    },
+
+    block: {
+      rules: [
+        'blockquote',
+        'code',
+        'fences',
+        'footnote',
+        'heading',
+        'hr',
+        'htmlblock',
+        'lheading',
+        'list',
+        'paragraph',
+        'table'
+      ]
+    },
+
+    inline: {
+      rules: [
+        'autolink',
+        'backticks',
+        'del',
+        'emphasis',
+        'entity',
+        'escape',
+        'footnote_ref',
+        'htmltag',
+        'links',
+        'newline',
+        'text'
+      ]
+    }
+  }
+};
+
+
+/***/ }),
+/* 277 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Remarkable default options
+
+
+
+
+module.exports = {
+  options: {
+    html:         false,        // Enable HTML tags in source
+    xhtmlOut:     false,        // Use '/' to close single tags (<br />)
+    breaks:       false,        // Convert '\n' in paragraphs into <br>
+    langPrefix:   'language-',  // CSS language prefix for fenced blocks
+    linkify:      false,        // autoconvert URL-like texts to links
+    linkTarget:   '',           // set target to open link in
+
+    // Enable some language-neutral replacements + quotes beautification
+    typographer:  false,
+
+    // Double + single quotes replacement pairs, when typographer enabled,
+    // and smartquotes on. Set doubles to '«»' for Russian, '„“' for German.
+    quotes:       '“”‘’',
+
+    // Highlighter function. Should return escaped HTML,
+    // or '' if input not changed
+    //
+    // function (/*str, lang*/) { return ''; }
+    //
+    highlight:     null,
+
+    maxNesting:    20            // Internal protection, recursion limit
+  },
+
+  components: {
+    // Don't restrict core/block/inline rules
+    core: {},
+    block: {},
+    inline: {}
+  }
+};
+
+
+/***/ }),
+/* 278 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+/**
+ * Local dependencies
+ */
+
+var assign       = __webpack_require__(7).assign;
+var Renderer     = __webpack_require__(282);
+var ParserCore   = __webpack_require__(280);
+var ParserBlock  = __webpack_require__(279);
+var ParserInline = __webpack_require__(281);
+var Ruler        = __webpack_require__(37);
+
+/**
+ * Preset configs
+ */
+
+var config = {
+  'default':    __webpack_require__(276),
+  'full':       __webpack_require__(277),
+  'commonmark': __webpack_require__(275)
+};
+
+/**
+ * The `StateCore` class manages state.
+ *
+ * @param {Object} `instance` Remarkable instance
+ * @param {String} `str` Markdown string
+ * @param {Object} `env`
+ */
+
+function StateCore(instance, str, env) {
+  this.src = str;
+  this.env = env;
+  this.options = instance.options;
+  this.tokens = [];
+  this.inlineMode = false;
+
+  this.inline = instance.inline;
+  this.block = instance.block;
+  this.renderer = instance.renderer;
+  this.typographer = instance.typographer;
+}
+
+/**
+ * The main `Remarkable` class. Create an instance of
+ * `Remarkable` with a `preset` and/or `options`.
+ *
+ * @param {String} `preset` If no preset is given, `default` is used.
+ * @param {Object} `options`
+ */
+
+function Remarkable(preset, options) {
+  if (typeof preset !== 'string') {
+    options = preset;
+    preset = 'default';
+  }
+
+  this.inline   = new ParserInline();
+  this.block    = new ParserBlock();
+  this.core     = new ParserCore();
+  this.renderer = new Renderer();
+  this.ruler    = new Ruler();
+
+  this.options  = {};
+  this.configure(config[preset]);
+  this.set(options || {});
+}
+
+/**
+ * Set options as an alternative to passing them
+ * to the constructor.
+ *
+ * ```js
+ * md.set({typographer: true});
+ * ```
+ * @param {Object} `options`
+ * @api public
+ */
+
+Remarkable.prototype.set = function (options) {
+  assign(this.options, options);
+};
+
+/**
+ * Batch loader for components rules states, and options
+ *
+ * @param  {Object} `presets`
+ */
+
+Remarkable.prototype.configure = function (presets) {
+  var self = this;
+
+  if (!presets) { throw new Error('Wrong `remarkable` preset, check name/content'); }
+  if (presets.options) { self.set(presets.options); }
+  if (presets.components) {
+    Object.keys(presets.components).forEach(function (name) {
+      if (presets.components[name].rules) {
+        self[name].ruler.enable(presets.components[name].rules, true);
+      }
+    });
+  }
+};
+
+/**
+ * Use a plugin.
+ *
+ * ```js
+ * var md = new Remarkable();
+ *
+ * md.use(plugin1)
+ *   .use(plugin2, opts)
+ *   .use(plugin3);
+ * ```
+ *
+ * @param  {Function} `plugin`
+ * @param  {Object} `options`
+ * @return {Object} `Remarkable` for chaining
+ */
+
+Remarkable.prototype.use = function (plugin, options) {
+  plugin(this, options);
+  return this;
+};
+
+
+/**
+ * Parse the input `string` and return a tokens array.
+ * Modifies `env` with definitions data.
+ *
+ * @param  {String} `string`
+ * @param  {Object} `env`
+ * @return {Array} Array of tokens
+ */
+
+Remarkable.prototype.parse = function (str, env) {
+  var state = new StateCore(this, str, env);
+  this.core.process(state);
+  return state.tokens;
+};
+
+/**
+ * The main `.render()` method that does all the magic :)
+ *
+ * @param  {String} `string`
+ * @param  {Object} `env`
+ * @return {String} Rendered HTML.
+ */
+
+Remarkable.prototype.render = function (str, env) {
+  env = env || {};
+  return this.renderer.render(this.parse(str, env), this.options, env);
+};
+
+/**
+ * Parse the given content `string` as a single string.
+ *
+ * @param  {String} `string`
+ * @param  {Object} `env`
+ * @return {Array} Array of tokens
+ */
+
+Remarkable.prototype.parseInline = function (str, env) {
+  var state = new StateCore(this, str, env);
+  state.inlineMode = true;
+  this.core.process(state);
+  return state.tokens;
+};
+
+/**
+ * Render a single content `string`, without wrapping it
+ * to paragraphs
+ *
+ * @param  {String} `str`
+ * @param  {Object} `env`
+ * @return {String}
+ */
+
+Remarkable.prototype.renderInline = function (str, env) {
+  env = env || {};
+  return this.renderer.render(this.parseInline(str, env), this.options, env);
+};
+
+/**
+ * Expose `Remarkable`
+ */
+
+module.exports = Remarkable;
+
+/**
+ * Expose `utils`, Useful helper functions for custom
+ * rendering.
+ */
+
+module.exports.utils = __webpack_require__(7);
+
+
+/***/ }),
+/* 279 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+/**
+ * Local dependencies
+ */
+
+var Ruler      = __webpack_require__(37);
+var StateBlock = __webpack_require__(295);
+
+/**
+ * Parser rules
+ */
+
+var _rules = [
+  [ 'code',       __webpack_require__(285) ],
+  [ 'fences',     __webpack_require__(287),     [ 'paragraph', 'blockquote', 'list' ] ],
+  [ 'blockquote', __webpack_require__(284), [ 'paragraph', 'blockquote', 'list' ] ],
+  [ 'hr',         __webpack_require__(290),         [ 'paragraph', 'blockquote', 'list' ] ],
+  [ 'list',       __webpack_require__(293),       [ 'paragraph', 'blockquote' ] ],
+  [ 'footnote',   __webpack_require__(288),   [ 'paragraph' ] ],
+  [ 'heading',    __webpack_require__(289),    [ 'paragraph', 'blockquote' ] ],
+  [ 'lheading',   __webpack_require__(292) ],
+  [ 'htmlblock',  __webpack_require__(291),  [ 'paragraph', 'blockquote' ] ],
+  [ 'table',      __webpack_require__(296),      [ 'paragraph' ] ],
+  [ 'deflist',    __webpack_require__(286),    [ 'paragraph' ] ],
+  [ 'paragraph',  __webpack_require__(294) ]
+];
+
+/**
+ * Block Parser class
+ *
+ * @api private
+ */
+
+function ParserBlock() {
+  this.ruler = new Ruler();
+  for (var i = 0; i < _rules.length; i++) {
+    this.ruler.push(_rules[i][0], _rules[i][1], {
+      alt: (_rules[i][2] || []).slice()
+    });
+  }
+}
+
+/**
+ * Generate tokens for the given input range.
+ *
+ * @param  {Object} `state` Has properties like `src`, `parser`, `options` etc
+ * @param  {Number} `startLine`
+ * @param  {Number} `endLine`
+ * @api private
+ */
+
+ParserBlock.prototype.tokenize = function (state, startLine, endLine) {
+  var rules = this.ruler.getRules('');
+  var len = rules.length;
+  var line = startLine;
+  var hasEmptyLines = false;
+  var ok, i;
+
+  while (line < endLine) {
+    state.line = line = state.skipEmptyLines(line);
+    if (line >= endLine) {
+      break;
+    }
+
+    // Termination condition for nested calls.
+    // Nested calls currently used for blockquotes & lists
+    if (state.tShift[line] < state.blkIndent) {
+      break;
+    }
+
+    // Try all possible rules.
+    // On success, rule should:
+    //
+    // - update `state.line`
+    // - update `state.tokens`
+    // - return true
+
+    for (i = 0; i < len; i++) {
+      ok = rules[i](state, line, endLine, false);
+      if (ok) {
+        break;
+      }
+    }
+
+    // set state.tight iff we had an empty line before current tag
+    // i.e. latest empty line should not count
+    state.tight = !hasEmptyLines;
+
+    // paragraph might "eat" one newline after it in nested lists
+    if (state.isEmpty(state.line - 1)) {
+      hasEmptyLines = true;
+    }
+
+    line = state.line;
+
+    if (line < endLine && state.isEmpty(line)) {
+      hasEmptyLines = true;
+      line++;
+
+      // two empty lines should stop the parser in list mode
+      if (line < endLine && state.parentType === 'list' && state.isEmpty(line)) { break; }
+      state.line = line;
+    }
+  }
+};
+
+var TABS_SCAN_RE = /[\n\t]/g;
+var NEWLINES_RE  = /\r[\n\u0085]|[\u2424\u2028\u0085]/g;
+var SPACES_RE    = /\u00a0/g;
+
+/**
+ * Tokenize the given `str`.
+ *
+ * @param  {String} `str` Source string
+ * @param  {Object} `options`
+ * @param  {Object} `env`
+ * @param  {Array} `outTokens`
+ * @api private
+ */
+
+ParserBlock.prototype.parse = function (str, options, env, outTokens) {
+  var state, lineStart = 0, lastTabPos = 0;
+  if (!str) { return []; }
+
+  // Normalize spaces
+  str = str.replace(SPACES_RE, ' ');
+
+  // Normalize newlines
+  str = str.replace(NEWLINES_RE, '\n');
+
+  // Replace tabs with proper number of spaces (1..4)
+  if (str.indexOf('\t') >= 0) {
+    str = str.replace(TABS_SCAN_RE, function (match, offset) {
+      var result;
+      if (str.charCodeAt(offset) === 0x0A) {
+        lineStart = offset + 1;
+        lastTabPos = 0;
+        return match;
+      }
+      result = '    '.slice((offset - lineStart - lastTabPos) % 4);
+      lastTabPos = offset - lineStart + 1;
+      return result;
+    });
+  }
+
+  state = new StateBlock(str, this, options, env, outTokens);
+  this.tokenize(state, state.line, state.lineMax);
+};
+
+/**
+ * Expose `ParserBlock`
+ */
+
+module.exports = ParserBlock;
+
+
+/***/ }),
+/* 280 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+/**
+ * Local dependencies
+ */
+
+var Ruler = __webpack_require__(37);
+
+/**
+ * Core parser `rules`
+ */
+
+var _rules = [
+  [ 'block',          __webpack_require__(299)          ],
+  [ 'abbr',           __webpack_require__(297)           ],
+  [ 'references',     __webpack_require__(303)     ],
+  [ 'inline',         __webpack_require__(301)         ],
+  [ 'footnote_tail',  __webpack_require__(300)  ],
+  [ 'abbr2',          __webpack_require__(298)          ],
+  [ 'replacements',   __webpack_require__(304)   ],
+  [ 'smartquotes',    __webpack_require__(305)    ],
+  [ 'linkify',        __webpack_require__(302)        ]
+];
+
+/**
+ * Class for top level (`core`) parser rules
+ *
+ * @api private
+ */
+
+function Core() {
+  this.options = {};
+  this.ruler = new Ruler();
+  for (var i = 0; i < _rules.length; i++) {
+    this.ruler.push(_rules[i][0], _rules[i][1]);
+  }
+}
+
+/**
+ * Process rules with the given `state`
+ *
+ * @param  {Object} `state`
+ * @api private
+ */
+
+Core.prototype.process = function (state) {
+  var i, l, rules;
+  rules = this.ruler.getRules('');
+  for (i = 0, l = rules.length; i < l; i++) {
+    rules[i](state);
+  }
+};
+
+/**
+ * Expose `Core`
+ */
+
+module.exports = Core;
+
+
+/***/ }),
+/* 281 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+/**
+ * Local dependencies
+ */
+
+var Ruler       = __webpack_require__(37);
+var StateInline = __webpack_require__(61);
+var utils       = __webpack_require__(7);
+
+/**
+ * Inline Parser `rules`
+ */
+
+var _rules = [
+  [ 'text',            __webpack_require__(321) ],
+  [ 'newline',         __webpack_require__(318) ],
+  [ 'escape',          __webpack_require__(311) ],
+  [ 'backticks',       __webpack_require__(307) ],
+  [ 'del',             __webpack_require__(308) ],
+  [ 'ins',             __webpack_require__(315) ],
+  [ 'mark',            __webpack_require__(317) ],
+  [ 'emphasis',        __webpack_require__(309) ],
+  [ 'sub',             __webpack_require__(319) ],
+  [ 'sup',             __webpack_require__(320) ],
+  [ 'links',           __webpack_require__(316) ],
+  [ 'footnote_inline', __webpack_require__(312) ],
+  [ 'footnote_ref',    __webpack_require__(313) ],
+  [ 'autolink',        __webpack_require__(306) ],
+  [ 'htmltag',         __webpack_require__(314) ],
+  [ 'entity',          __webpack_require__(310) ]
+];
+
+/**
+ * Inline Parser class. Note that link validation is stricter
+ * in Remarkable than what is specified by CommonMark. If you
+ * want to change this you can use a custom validator.
+ *
+ * @api private
+ */
+
+function ParserInline() {
+  this.ruler = new Ruler();
+  for (var i = 0; i < _rules.length; i++) {
+    this.ruler.push(_rules[i][0], _rules[i][1]);
+  }
+
+  // Can be overridden with a custom validator
+  this.validateLink = validateLink;
+}
+
+/**
+ * Skip a single token by running all rules in validation mode.
+ * Returns `true` if any rule reports success.
+ *
+ * @param  {Object} `state`
+ * @api privage
+ */
+
+ParserInline.prototype.skipToken = function (state) {
+  var rules = this.ruler.getRules('');
+  var len = rules.length;
+  var pos = state.pos;
+  var i, cached_pos;
+
+  if ((cached_pos = state.cacheGet(pos)) > 0) {
+    state.pos = cached_pos;
+    return;
+  }
+
+  for (i = 0; i < len; i++) {
+    if (rules[i](state, true)) {
+      state.cacheSet(pos, state.pos);
+      return;
+    }
+  }
+
+  state.pos++;
+  state.cacheSet(pos, state.pos);
+};
+
+/**
+ * Generate tokens for the given input range.
+ *
+ * @param  {Object} `state`
+ * @api private
+ */
+
+ParserInline.prototype.tokenize = function (state) {
+  var rules = this.ruler.getRules('');
+  var len = rules.length;
+  var end = state.posMax;
+  var ok, i;
+
+  while (state.pos < end) {
+
+    // Try all possible rules.
+    // On success, the rule should:
+    //
+    // - update `state.pos`
+    // - update `state.tokens`
+    // - return true
+    for (i = 0; i < len; i++) {
+      ok = rules[i](state, false);
+
+      if (ok) {
+        break;
+      }
+    }
+
+    if (ok) {
+      if (state.pos >= end) { break; }
+      continue;
+    }
+
+    state.pending += state.src[state.pos++];
+  }
+
+  if (state.pending) {
+    state.pushPending();
+  }
+};
+
+/**
+ * Parse the given input string.
+ *
+ * @param  {String} `str`
+ * @param  {Object} `options`
+ * @param  {Object} `env`
+ * @param  {Array} `outTokens`
+ * @api private
+ */
+
+ParserInline.prototype.parse = function (str, options, env, outTokens) {
+  var state = new StateInline(str, this, options, env, outTokens);
+  this.tokenize(state);
+};
+
+/**
+ * Validate the given `url` by checking for bad protocols.
+ *
+ * @param  {String} `url`
+ * @return {Boolean}
+ */
+
+function validateLink(url) {
+  var BAD_PROTOCOLS = [ 'vbscript', 'javascript', 'file', 'data' ];
+  var str = url.trim().toLowerCase();
+  // Care about digital entities "javascript&#x3A;alert(1)"
+  str = utils.replaceEntities(str);
+  if (str.indexOf(':') !== -1 && BAD_PROTOCOLS.indexOf(str.split(':')[0]) !== -1) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Expose `ParserInline`
+ */
+
+module.exports = ParserInline;
+
+
+/***/ }),
+/* 282 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+/**
+ * Local dependencies
+ */
+
+var utils = __webpack_require__(7);
+var rules = __webpack_require__(283);
+
+/**
+ * Expose `Renderer`
+ */
+
+module.exports = Renderer;
+
+/**
+ * Renderer class. Renders HTML and exposes `rules` to allow
+ * local modifications.
+ */
+
+function Renderer() {
+  this.rules = utils.assign({}, rules);
+
+  // exported helper, for custom rules only
+  this.getBreak = rules.getBreak;
+}
+
+/**
+ * Render a string of inline HTML with the given `tokens` and
+ * `options`.
+ *
+ * @param  {Array} `tokens`
+ * @param  {Object} `options`
+ * @param  {Object} `env`
+ * @return {String}
+ * @api public
+ */
+
+Renderer.prototype.renderInline = function (tokens, options, env) {
+  var _rules = this.rules;
+  var len = tokens.length, i = 0;
+  var result = '';
+
+  while (len--) {
+    result += _rules[tokens[i].type](tokens, i++, options, env, this);
+  }
+
+  return result;
+};
+
+/**
+ * Render a string of HTML with the given `tokens` and
+ * `options`.
+ *
+ * @param  {Array} `tokens`
+ * @param  {Object} `options`
+ * @param  {Object} `env`
+ * @return {String}
+ * @api public
+ */
+
+Renderer.prototype.render = function (tokens, options, env) {
+  var _rules = this.rules;
+  var len = tokens.length, i = -1;
+  var result = '';
+
+  while (++i < len) {
+    if (tokens[i].type === 'inline') {
+      result += this.renderInline(tokens[i].children, options, env);
+    } else {
+      result += _rules[tokens[i].type](tokens, i, options, env, this);
+    }
+  }
+  return result;
+};
+
+
+/***/ }),
+/* 283 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+/**
+ * Local dependencies
+ */
+
+var has             = __webpack_require__(7).has;
+var unescapeMd      = __webpack_require__(7).unescapeMd;
+var replaceEntities = __webpack_require__(7).replaceEntities;
+var escapeHtml      = __webpack_require__(7).escapeHtml;
+
+/**
+ * Renderer rules cache
+ */
+
+var rules = {};
+
+/**
+ * Blockquotes
+ */
+
+rules.blockquote_open = function(/* tokens, idx, options, env */) {
+  return '<blockquote>\n';
+};
+
+rules.blockquote_close = function(tokens, idx /*, options, env */) {
+  return '</blockquote>' + getBreak(tokens, idx);
+};
+
+/**
+ * Code
+ */
+
+rules.code = function(tokens, idx /*, options, env */) {
+  if (tokens[idx].block) {
+    return '<pre><code>' + escapeHtml(tokens[idx].content) + '</code></pre>' + getBreak(tokens, idx);
+  }
+  return '<code>' + escapeHtml(tokens[idx].content) + '</code>';
+};
+
+/**
+ * Fenced code blocks
+ */
+
+rules.fence = function(tokens, idx, options, env, instance) {
+  var token = tokens[idx];
+  var langClass = '';
+  var langPrefix = options.langPrefix;
+  var langName = '', fences, fenceName;
+  var highlighted;
+
+  if (token.params) {
+
+    //
+    // ```foo bar
+    //
+    // Try custom renderer "foo" first. That will simplify overwrite
+    // for diagrams, latex, and any other fenced block with custom look
+    //
+
+    fences = token.params.split(/\s+/g);
+    fenceName = fences.join(' ');
+
+    if (has(instance.rules.fence_custom, fences[0])) {
+      return instance.rules.fence_custom[fences[0]](tokens, idx, options, env, instance);
+    }
+
+    langName = escapeHtml(replaceEntities(unescapeMd(fenceName)));
+    langClass = ' class="' + langPrefix + langName + '"';
+  }
+
+  if (options.highlight) {
+    highlighted = options.highlight.apply(options.highlight, [ token.content ].concat(fences))
+      || escapeHtml(token.content);
+  } else {
+    highlighted = escapeHtml(token.content);
+  }
+
+  return '<pre><code' + langClass + '>'
+        + highlighted
+        + '</code></pre>'
+        + getBreak(tokens, idx);
+};
+
+rules.fence_custom = {};
+
+/**
+ * Headings
+ */
+
+rules.heading_open = function(tokens, idx /*, options, env */) {
+  return '<h' + tokens[idx].hLevel + '>';
+};
+rules.heading_close = function(tokens, idx /*, options, env */) {
+  return '</h' + tokens[idx].hLevel + '>\n';
+};
+
+/**
+ * Horizontal rules
+ */
+
+rules.hr = function(tokens, idx, options /*, env */) {
+  return (options.xhtmlOut ? '<hr />' : '<hr>') + getBreak(tokens, idx);
+};
+
+/**
+ * Bullets
+ */
+
+rules.bullet_list_open = function(/* tokens, idx, options, env */) {
+  return '<ul>\n';
+};
+rules.bullet_list_close = function(tokens, idx /*, options, env */) {
+  return '</ul>' + getBreak(tokens, idx);
+};
+
+/**
+ * List items
+ */
+
+rules.list_item_open = function(/* tokens, idx, options, env */) {
+  return '<li>';
+};
+rules.list_item_close = function(/* tokens, idx, options, env */) {
+  return '</li>\n';
+};
+
+/**
+ * Ordered list items
+ */
+
+rules.ordered_list_open = function(tokens, idx /*, options, env */) {
+  var token = tokens[idx];
+  var order = token.order > 1 ? ' start="' + token.order + '"' : '';
+  return '<ol' + order + '>\n';
+};
+rules.ordered_list_close = function(tokens, idx /*, options, env */) {
+  return '</ol>' + getBreak(tokens, idx);
+};
+
+/**
+ * Paragraphs
+ */
+
+rules.paragraph_open = function(tokens, idx /*, options, env */) {
+  return tokens[idx].tight ? '' : '<p>';
+};
+rules.paragraph_close = function(tokens, idx /*, options, env */) {
+  var addBreak = !(tokens[idx].tight && idx && tokens[idx - 1].type === 'inline' && !tokens[idx - 1].content);
+  return (tokens[idx].tight ? '' : '</p>') + (addBreak ? getBreak(tokens, idx) : '');
+};
+
+/**
+ * Links
+ */
+
+rules.link_open = function(tokens, idx, options /* env */) {
+  var title = tokens[idx].title ? (' title="' + escapeHtml(replaceEntities(tokens[idx].title)) + '"') : '';
+  var target = options.linkTarget ? (' target="' + options.linkTarget + '"') : '';
+  return '<a href="' + escapeHtml(tokens[idx].href) + '"' + title + target + '>';
+};
+rules.link_close = function(/* tokens, idx, options, env */) {
+  return '</a>';
+};
+
+/**
+ * Images
+ */
+
+rules.image = function(tokens, idx, options /*, env */) {
+  var src = ' src="' + escapeHtml(tokens[idx].src) + '"';
+  var title = tokens[idx].title ? (' title="' + escapeHtml(replaceEntities(tokens[idx].title)) + '"') : '';
+  var alt = ' alt="' + (tokens[idx].alt ? escapeHtml(replaceEntities(unescapeMd(tokens[idx].alt))) : '') + '"';
+  var suffix = options.xhtmlOut ? ' /' : '';
+  return '<img' + src + alt + title + suffix + '>';
+};
+
+/**
+ * Tables
+ */
+
+rules.table_open = function(/* tokens, idx, options, env */) {
+  return '<table>\n';
+};
+rules.table_close = function(/* tokens, idx, options, env */) {
+  return '</table>\n';
+};
+rules.thead_open = function(/* tokens, idx, options, env */) {
+  return '<thead>\n';
+};
+rules.thead_close = function(/* tokens, idx, options, env */) {
+  return '</thead>\n';
+};
+rules.tbody_open = function(/* tokens, idx, options, env */) {
+  return '<tbody>\n';
+};
+rules.tbody_close = function(/* tokens, idx, options, env */) {
+  return '</tbody>\n';
+};
+rules.tr_open = function(/* tokens, idx, options, env */) {
+  return '<tr>';
+};
+rules.tr_close = function(/* tokens, idx, options, env */) {
+  return '</tr>\n';
+};
+rules.th_open = function(tokens, idx /*, options, env */) {
+  var token = tokens[idx];
+  return '<th'
+    + (token.align ? ' style="text-align:' + token.align + '"' : '')
+    + '>';
+};
+rules.th_close = function(/* tokens, idx, options, env */) {
+  return '</th>';
+};
+rules.td_open = function(tokens, idx /*, options, env */) {
+  var token = tokens[idx];
+  return '<td'
+    + (token.align ? ' style="text-align:' + token.align + '"' : '')
+    + '>';
+};
+rules.td_close = function(/* tokens, idx, options, env */) {
+  return '</td>';
+};
+
+/**
+ * Bold
+ */
+
+rules.strong_open = function(/* tokens, idx, options, env */) {
+  return '<strong>';
+};
+rules.strong_close = function(/* tokens, idx, options, env */) {
+  return '</strong>';
+};
+
+/**
+ * Italicize
+ */
+
+rules.em_open = function(/* tokens, idx, options, env */) {
+  return '<em>';
+};
+rules.em_close = function(/* tokens, idx, options, env */) {
+  return '</em>';
+};
+
+/**
+ * Strikethrough
+ */
+
+rules.del_open = function(/* tokens, idx, options, env */) {
+  return '<del>';
+};
+rules.del_close = function(/* tokens, idx, options, env */) {
+  return '</del>';
+};
+
+/**
+ * Insert
+ */
+
+rules.ins_open = function(/* tokens, idx, options, env */) {
+  return '<ins>';
+};
+rules.ins_close = function(/* tokens, idx, options, env */) {
+  return '</ins>';
+};
+
+/**
+ * Highlight
+ */
+
+rules.mark_open = function(/* tokens, idx, options, env */) {
+  return '<mark>';
+};
+rules.mark_close = function(/* tokens, idx, options, env */) {
+  return '</mark>';
+};
+
+/**
+ * Super- and sub-script
+ */
+
+rules.sub = function(tokens, idx /*, options, env */) {
+  return '<sub>' + escapeHtml(tokens[idx].content) + '</sub>';
+};
+rules.sup = function(tokens, idx /*, options, env */) {
+  return '<sup>' + escapeHtml(tokens[idx].content) + '</sup>';
+};
+
+/**
+ * Breaks
+ */
+
+rules.hardbreak = function(tokens, idx, options /*, env */) {
+  return options.xhtmlOut ? '<br />\n' : '<br>\n';
+};
+rules.softbreak = function(tokens, idx, options /*, env */) {
+  return options.breaks ? (options.xhtmlOut ? '<br />\n' : '<br>\n') : '\n';
+};
+
+/**
+ * Text
+ */
+
+rules.text = function(tokens, idx /*, options, env */) {
+  return escapeHtml(tokens[idx].content);
+};
+
+/**
+ * Content
+ */
+
+rules.htmlblock = function(tokens, idx /*, options, env */) {
+  return tokens[idx].content;
+};
+rules.htmltag = function(tokens, idx /*, options, env */) {
+  return tokens[idx].content;
+};
+
+/**
+ * Abbreviations, initialism
+ */
+
+rules.abbr_open = function(tokens, idx /*, options, env */) {
+  return '<abbr title="' + escapeHtml(replaceEntities(tokens[idx].title)) + '">';
+};
+rules.abbr_close = function(/* tokens, idx, options, env */) {
+  return '</abbr>';
+};
+
+/**
+ * Footnotes
+ */
+
+rules.footnote_ref = function(tokens, idx) {
+  var n = Number(tokens[idx].id + 1).toString();
+  var id = 'fnref' + n;
+  if (tokens[idx].subId > 0) {
+    id += ':' + tokens[idx].subId;
+  }
+  return '<sup class="footnote-ref"><a href="#fn' + n + '" id="' + id + '">[' + n + ']</a></sup>';
+};
+rules.footnote_block_open = function(tokens, idx, options) {
+  var hr = options.xhtmlOut
+    ? '<hr class="footnotes-sep" />\n'
+    : '<hr class="footnotes-sep">\n';
+  return hr + '<section class="footnotes">\n<ol class="footnotes-list">\n';
+};
+rules.footnote_block_close = function() {
+  return '</ol>\n</section>\n';
+};
+rules.footnote_open = function(tokens, idx) {
+  var id = Number(tokens[idx].id + 1).toString();
+  return '<li id="fn' + id + '"  class="footnote-item">';
+};
+rules.footnote_close = function() {
+  return '</li>\n';
+};
+rules.footnote_anchor = function(tokens, idx) {
+  var n = Number(tokens[idx].id + 1).toString();
+  var id = 'fnref' + n;
+  if (tokens[idx].subId > 0) {
+    id += ':' + tokens[idx].subId;
+  }
+  return ' <a href="#' + id + '" class="footnote-backref">↩</a>';
+};
+
+/**
+ * Definition lists
+ */
+
+rules.dl_open = function() {
+  return '<dl>\n';
+};
+rules.dt_open = function() {
+  return '<dt>';
+};
+rules.dd_open = function() {
+  return '<dd>';
+};
+rules.dl_close = function() {
+  return '</dl>\n';
+};
+rules.dt_close = function() {
+  return '</dt>\n';
+};
+rules.dd_close = function() {
+  return '</dd>\n';
+};
+
+/**
+ * Helper functions
+ */
+
+function nextToken(tokens, idx) {
+  if (++idx >= tokens.length - 2) {
+    return idx;
+  }
+  if ((tokens[idx].type === 'paragraph_open' && tokens[idx].tight) &&
+      (tokens[idx + 1].type === 'inline' && tokens[idx + 1].content.length === 0) &&
+      (tokens[idx + 2].type === 'paragraph_close' && tokens[idx + 2].tight)) {
+    return nextToken(tokens, idx + 2);
+  }
+  return idx;
+}
+
+/**
+ * Check to see if `\n` is needed before the next token.
+ *
+ * @param  {Array} `tokens`
+ * @param  {Number} `idx`
+ * @return {String} Empty string or newline
+ * @api private
+ */
+
+var getBreak = rules.getBreak = function getBreak(tokens, idx) {
+  idx = nextToken(tokens, idx);
+  if (idx < tokens.length && tokens[idx].type === 'list_item_close') {
+    return '';
+  }
+  return '\n';
+};
+
+/**
+ * Expose `rules`
+ */
+
+module.exports = rules;
+
+
+/***/ }),
+/* 284 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Block quotes
+
+
+
+
+module.exports = function blockquote(state, startLine, endLine, silent) {
+  var nextLine, lastLineEmpty, oldTShift, oldBMarks, oldIndent, oldParentType, lines,
+      terminatorRules,
+      i, l, terminate,
+      pos = state.bMarks[startLine] + state.tShift[startLine],
+      max = state.eMarks[startLine];
+
+  if (pos > max) { return false; }
+
+  // check the block quote marker
+  if (state.src.charCodeAt(pos++) !== 0x3E/* > */) { return false; }
+
+  if (state.level >= state.options.maxNesting) { return false; }
+
+  // we know that it's going to be a valid blockquote,
+  // so no point trying to find the end of it in silent mode
+  if (silent) { return true; }
+
+  // skip one optional space after '>'
+  if (state.src.charCodeAt(pos) === 0x20) { pos++; }
+
+  oldIndent = state.blkIndent;
+  state.blkIndent = 0;
+
+  oldBMarks = [ state.bMarks[startLine] ];
+  state.bMarks[startLine] = pos;
+
+  // check if we have an empty blockquote
+  pos = pos < max ? state.skipSpaces(pos) : pos;
+  lastLineEmpty = pos >= max;
+
+  oldTShift = [ state.tShift[startLine] ];
+  state.tShift[startLine] = pos - state.bMarks[startLine];
+
+  terminatorRules = state.parser.ruler.getRules('blockquote');
+
+  // Search the end of the block
+  //
+  // Block ends with either:
+  //  1. an empty line outside:
+  //     ```
+  //     > test
+  //
+  //     ```
+  //  2. an empty line inside:
+  //     ```
+  //     >
+  //     test
+  //     ```
+  //  3. another tag
+  //     ```
+  //     > test
+  //      - - -
+  //     ```
+  for (nextLine = startLine + 1; nextLine < endLine; nextLine++) {
+    pos = state.bMarks[nextLine] + state.tShift[nextLine];
+    max = state.eMarks[nextLine];
+
+    if (pos >= max) {
+      // Case 1: line is not inside the blockquote, and this line is empty.
+      break;
+    }
+
+    if (state.src.charCodeAt(pos++) === 0x3E/* > */) {
+      // This line is inside the blockquote.
+
+      // skip one optional space after '>'
+      if (state.src.charCodeAt(pos) === 0x20) { pos++; }
+
+      oldBMarks.push(state.bMarks[nextLine]);
+      state.bMarks[nextLine] = pos;
+
+      pos = pos < max ? state.skipSpaces(pos) : pos;
+      lastLineEmpty = pos >= max;
+
+      oldTShift.push(state.tShift[nextLine]);
+      state.tShift[nextLine] = pos - state.bMarks[nextLine];
+      continue;
+    }
+
+    // Case 2: line is not inside the blockquote, and the last line was empty.
+    if (lastLineEmpty) { break; }
+
+    // Case 3: another tag found.
+    terminate = false;
+    for (i = 0, l = terminatorRules.length; i < l; i++) {
+      if (terminatorRules[i](state, nextLine, endLine, true)) {
+        terminate = true;
+        break;
+      }
+    }
+    if (terminate) { break; }
+
+    oldBMarks.push(state.bMarks[nextLine]);
+    oldTShift.push(state.tShift[nextLine]);
+
+    // A negative number means that this is a paragraph continuation;
+    //
+    // Any negative number will do the job here, but it's better for it
+    // to be large enough to make any bugs obvious.
+    state.tShift[nextLine] = -1337;
+  }
+
+  oldParentType = state.parentType;
+  state.parentType = 'blockquote';
+  state.tokens.push({
+    type: 'blockquote_open',
+    lines: lines = [ startLine, 0 ],
+    level: state.level++
+  });
+  state.parser.tokenize(state, startLine, nextLine);
+  state.tokens.push({
+    type: 'blockquote_close',
+    level: --state.level
+  });
+  state.parentType = oldParentType;
+  lines[1] = state.line;
+
+  // Restore original tShift; this might not be necessary since the parser
+  // has already been here, but just to make sure we can do that.
+  for (i = 0; i < oldTShift.length; i++) {
+    state.bMarks[i + startLine] = oldBMarks[i];
+    state.tShift[i + startLine] = oldTShift[i];
+  }
+  state.blkIndent = oldIndent;
+
+  return true;
+};
+
+
+/***/ }),
+/* 285 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Code block (4 spaces padded)
+
+
+
+
+module.exports = function code(state, startLine, endLine/*, silent*/) {
+  var nextLine, last;
+
+  if (state.tShift[startLine] - state.blkIndent < 4) { return false; }
+
+  last = nextLine = startLine + 1;
+
+  while (nextLine < endLine) {
+    if (state.isEmpty(nextLine)) {
+      nextLine++;
+      continue;
+    }
+    if (state.tShift[nextLine] - state.blkIndent >= 4) {
+      nextLine++;
+      last = nextLine;
+      continue;
+    }
+    break;
+  }
+
+  state.line = nextLine;
+  state.tokens.push({
+    type: 'code',
+    content: state.getLines(startLine, last, 4 + state.blkIndent, true),
+    block: true,
+    lines: [ startLine, state.line ],
+    level: state.level
+  });
+
+  return true;
+};
+
+
+/***/ }),
+/* 286 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Definition lists
+
+
+
+
+// Search `[:~][\n ]`, returns next pos after marker on success
+// or -1 on fail.
+function skipMarker(state, line) {
+  var pos, marker,
+      start = state.bMarks[line] + state.tShift[line],
+      max = state.eMarks[line];
+
+  if (start >= max) { return -1; }
+
+  // Check bullet
+  marker = state.src.charCodeAt(start++);
+  if (marker !== 0x7E/* ~ */ && marker !== 0x3A/* : */) { return -1; }
+
+  pos = state.skipSpaces(start);
+
+  // require space after ":"
+  if (start === pos) { return -1; }
+
+  // no empty definitions, e.g. "  : "
+  if (pos >= max) { return -1; }
+
+  return pos;
+}
+
+function markTightParagraphs(state, idx) {
+  var i, l,
+      level = state.level + 2;
+
+  for (i = idx + 2, l = state.tokens.length - 2; i < l; i++) {
+    if (state.tokens[i].level === level && state.tokens[i].type === 'paragraph_open') {
+      state.tokens[i + 2].tight = true;
+      state.tokens[i].tight = true;
+      i += 2;
+    }
+  }
+}
+
+module.exports = function deflist(state, startLine, endLine, silent) {
+  var contentStart,
+      ddLine,
+      dtLine,
+      itemLines,
+      listLines,
+      listTokIdx,
+      nextLine,
+      oldIndent,
+      oldDDIndent,
+      oldParentType,
+      oldTShift,
+      oldTight,
+      prevEmptyEnd,
+      tight;
+
+  if (silent) {
+    // quirk: validation mode validates a dd block only, not a whole deflist
+    if (state.ddIndent < 0) { return false; }
+    return skipMarker(state, startLine) >= 0;
+  }
+
+  nextLine = startLine + 1;
+  if (state.isEmpty(nextLine)) {
+    if (++nextLine > endLine) { return false; }
+  }
+
+  if (state.tShift[nextLine] < state.blkIndent) { return false; }
+  contentStart = skipMarker(state, nextLine);
+  if (contentStart < 0) { return false; }
+
+  if (state.level >= state.options.maxNesting) { return false; }
+
+  // Start list
+  listTokIdx = state.tokens.length;
+
+  state.tokens.push({
+    type: 'dl_open',
+    lines: listLines = [ startLine, 0 ],
+    level: state.level++
+  });
+
+  //
+  // Iterate list items
+  //
+
+  dtLine = startLine;
+  ddLine = nextLine;
+
+  // One definition list can contain multiple DTs,
+  // and one DT can be followed by multiple DDs.
+  //
+  // Thus, there is two loops here, and label is
+  // needed to break out of the second one
+  //
+  /*eslint no-labels:0,block-scoped-var:0*/
+  OUTER:
+  for (;;) {
+    tight = true;
+    prevEmptyEnd = false;
+
+    state.tokens.push({
+      type: 'dt_open',
+      lines: [ dtLine, dtLine ],
+      level: state.level++
+    });
+    state.tokens.push({
+      type: 'inline',
+      content: state.getLines(dtLine, dtLine + 1, state.blkIndent, false).trim(),
+      level: state.level + 1,
+      lines: [ dtLine, dtLine ],
+      children: []
+    });
+    state.tokens.push({
+      type: 'dt_close',
+      level: --state.level
+    });
+
+    for (;;) {
+      state.tokens.push({
+        type: 'dd_open',
+        lines: itemLines = [ nextLine, 0 ],
+        level: state.level++
+      });
+
+      oldTight = state.tight;
+      oldDDIndent = state.ddIndent;
+      oldIndent = state.blkIndent;
+      oldTShift = state.tShift[ddLine];
+      oldParentType = state.parentType;
+      state.blkIndent = state.ddIndent = state.tShift[ddLine] + 2;
+      state.tShift[ddLine] = contentStart - state.bMarks[ddLine];
+      state.tight = true;
+      state.parentType = 'deflist';
+
+      state.parser.tokenize(state, ddLine, endLine, true);
+
+      // If any of list item is tight, mark list as tight
+      if (!state.tight || prevEmptyEnd) {
+        tight = false;
+      }
+      // Item become loose if finish with empty line,
+      // but we should filter last element, because it means list finish
+      prevEmptyEnd = (state.line - ddLine) > 1 && state.isEmpty(state.line - 1);
+
+      state.tShift[ddLine] = oldTShift;
+      state.tight = oldTight;
+      state.parentType = oldParentType;
+      state.blkIndent = oldIndent;
+      state.ddIndent = oldDDIndent;
+
+      state.tokens.push({
+        type: 'dd_close',
+        level: --state.level
+      });
+
+      itemLines[1] = nextLine = state.line;
+
+      if (nextLine >= endLine) { break OUTER; }
+
+      if (state.tShift[nextLine] < state.blkIndent) { break OUTER; }
+      contentStart = skipMarker(state, nextLine);
+      if (contentStart < 0) { break; }
+
+      ddLine = nextLine;
+
+      // go to the next loop iteration:
+      // insert DD tag and repeat checking
+    }
+
+    if (nextLine >= endLine) { break; }
+    dtLine = nextLine;
+
+    if (state.isEmpty(dtLine)) { break; }
+    if (state.tShift[dtLine] < state.blkIndent) { break; }
+
+    ddLine = dtLine + 1;
+    if (ddLine >= endLine) { break; }
+    if (state.isEmpty(ddLine)) { ddLine++; }
+    if (ddLine >= endLine) { break; }
+
+    if (state.tShift[ddLine] < state.blkIndent) { break; }
+    contentStart = skipMarker(state, ddLine);
+    if (contentStart < 0) { break; }
+
+    // go to the next loop iteration:
+    // insert DT and DD tags and repeat checking
+  }
+
+  // Finilize list
+  state.tokens.push({
+    type: 'dl_close',
+    level: --state.level
+  });
+  listLines[1] = nextLine;
+
+  state.line = nextLine;
+
+  // mark paragraphs tight if needed
+  if (tight) {
+    markTightParagraphs(state, listTokIdx);
+  }
+
+  return true;
+};
+
+
+/***/ }),
+/* 287 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// fences (``` lang, ~~~ lang)
+
+
+
+
+module.exports = function fences(state, startLine, endLine, silent) {
+  var marker, len, params, nextLine, mem,
+      haveEndMarker = false,
+      pos = state.bMarks[startLine] + state.tShift[startLine],
+      max = state.eMarks[startLine];
+
+  if (pos + 3 > max) { return false; }
+
+  marker = state.src.charCodeAt(pos);
+
+  if (marker !== 0x7E/* ~ */ && marker !== 0x60 /* ` */) {
+    return false;
+  }
+
+  // scan marker length
+  mem = pos;
+  pos = state.skipChars(pos, marker);
+
+  len = pos - mem;
+
+  if (len < 3) { return false; }
+
+  params = state.src.slice(pos, max).trim();
+
+  if (params.indexOf('`') >= 0) { return false; }
+
+  // Since start is found, we can report success here in validation mode
+  if (silent) { return true; }
+
+  // search end of block
+  nextLine = startLine;
+
+  for (;;) {
+    nextLine++;
+    if (nextLine >= endLine) {
+      // unclosed block should be autoclosed by end of document.
+      // also block seems to be autoclosed by end of parent
+      break;
+    }
+
+    pos = mem = state.bMarks[nextLine] + state.tShift[nextLine];
+    max = state.eMarks[nextLine];
+
+    if (pos < max && state.tShift[nextLine] < state.blkIndent) {
+      // non-empty line with negative indent should stop the list:
+      // - ```
+      //  test
+      break;
+    }
+
+    if (state.src.charCodeAt(pos) !== marker) { continue; }
+
+    if (state.tShift[nextLine] - state.blkIndent >= 4) {
+      // closing fence should be indented less than 4 spaces
+      continue;
+    }
+
+    pos = state.skipChars(pos, marker);
+
+    // closing code fence must be at least as long as the opening one
+    if (pos - mem < len) { continue; }
+
+    // make sure tail has spaces only
+    pos = state.skipSpaces(pos);
+
+    if (pos < max) { continue; }
+
+    haveEndMarker = true;
+    // found!
+    break;
+  }
+
+  // If a fence has heading spaces, they should be removed from its inner block
+  len = state.tShift[startLine];
+
+  state.line = nextLine + (haveEndMarker ? 1 : 0);
+  state.tokens.push({
+    type: 'fence',
+    params: params,
+    content: state.getLines(startLine + 1, nextLine, len, true),
+    lines: [ startLine, state.line ],
+    level: state.level
+  });
+
+  return true;
+};
+
+
+/***/ }),
+/* 288 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Process footnote reference list
+
+
+
+
+module.exports = function footnote(state, startLine, endLine, silent) {
+  var oldBMark, oldTShift, oldParentType, pos, label,
+      start = state.bMarks[startLine] + state.tShift[startLine],
+      max = state.eMarks[startLine];
+
+  // line should be at least 5 chars - "[^x]:"
+  if (start + 4 > max) { return false; }
+
+  if (state.src.charCodeAt(start) !== 0x5B/* [ */) { return false; }
+  if (state.src.charCodeAt(start + 1) !== 0x5E/* ^ */) { return false; }
+  if (state.level >= state.options.maxNesting) { return false; }
+
+  for (pos = start + 2; pos < max; pos++) {
+    if (state.src.charCodeAt(pos) === 0x20) { return false; }
+    if (state.src.charCodeAt(pos) === 0x5D /* ] */) {
+      break;
+    }
+  }
+
+  if (pos === start + 2) { return false; } // no empty footnote labels
+  if (pos + 1 >= max || state.src.charCodeAt(++pos) !== 0x3A /* : */) { return false; }
+  if (silent) { return true; }
+  pos++;
+
+  if (!state.env.footnotes) { state.env.footnotes = {}; }
+  if (!state.env.footnotes.refs) { state.env.footnotes.refs = {}; }
+  label = state.src.slice(start + 2, pos - 2);
+  state.env.footnotes.refs[':' + label] = -1;
+
+  state.tokens.push({
+    type: 'footnote_reference_open',
+    label: label,
+    level: state.level++
+  });
+
+  oldBMark = state.bMarks[startLine];
+  oldTShift = state.tShift[startLine];
+  oldParentType = state.parentType;
+  state.tShift[startLine] = state.skipSpaces(pos) - pos;
+  state.bMarks[startLine] = pos;
+  state.blkIndent += 4;
+  state.parentType = 'footnote';
+
+  if (state.tShift[startLine] < state.blkIndent) {
+    state.tShift[startLine] += state.blkIndent;
+    state.bMarks[startLine] -= state.blkIndent;
+  }
+
+  state.parser.tokenize(state, startLine, endLine, true);
+
+  state.parentType = oldParentType;
+  state.blkIndent -= 4;
+  state.tShift[startLine] = oldTShift;
+  state.bMarks[startLine] = oldBMark;
+
+  state.tokens.push({
+    type: 'footnote_reference_close',
+    level: --state.level
+  });
+
+  return true;
+};
+
+
+/***/ }),
+/* 289 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// heading (#, ##, ...)
+
+
+
+
+module.exports = function heading(state, startLine, endLine, silent) {
+  var ch, level, tmp,
+      pos = state.bMarks[startLine] + state.tShift[startLine],
+      max = state.eMarks[startLine];
+
+  if (pos >= max) { return false; }
+
+  ch  = state.src.charCodeAt(pos);
+
+  if (ch !== 0x23/* # */ || pos >= max) { return false; }
+
+  // count heading level
+  level = 1;
+  ch = state.src.charCodeAt(++pos);
+  while (ch === 0x23/* # */ && pos < max && level <= 6) {
+    level++;
+    ch = state.src.charCodeAt(++pos);
+  }
+
+  if (level > 6 || (pos < max && ch !== 0x20/* space */)) { return false; }
+
+  if (silent) { return true; }
+
+  // Let's cut tails like '    ###  ' from the end of string
+
+  max = state.skipCharsBack(max, 0x20, pos); // space
+  tmp = state.skipCharsBack(max, 0x23, pos); // #
+  if (tmp > pos && state.src.charCodeAt(tmp - 1) === 0x20/* space */) {
+    max = tmp;
+  }
+
+  state.line = startLine + 1;
+
+  state.tokens.push({ type: 'heading_open',
+    hLevel: level,
+    lines: [ startLine, state.line ],
+    level: state.level
+  });
+
+  // only if header is not empty
+  if (pos < max) {
+    state.tokens.push({
+      type: 'inline',
+      content: state.src.slice(pos, max).trim(),
+      level: state.level + 1,
+      lines: [ startLine, state.line ],
+      children: []
+    });
+  }
+  state.tokens.push({ type: 'heading_close', hLevel: level, level: state.level });
+
+  return true;
+};
+
+
+/***/ }),
+/* 290 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Horizontal rule
+
+
+
+
+module.exports = function hr(state, startLine, endLine, silent) {
+  var marker, cnt, ch,
+      pos = state.bMarks[startLine],
+      max = state.eMarks[startLine];
+
+  pos += state.tShift[startLine];
+
+  if (pos > max) { return false; }
+
+  marker = state.src.charCodeAt(pos++);
+
+  // Check hr marker
+  if (marker !== 0x2A/* * */ &&
+      marker !== 0x2D/* - */ &&
+      marker !== 0x5F/* _ */) {
+    return false;
+  }
+
+  // markers can be mixed with spaces, but there should be at least 3 one
+
+  cnt = 1;
+  while (pos < max) {
+    ch = state.src.charCodeAt(pos++);
+    if (ch !== marker && ch !== 0x20/* space */) { return false; }
+    if (ch === marker) { cnt++; }
+  }
+
+  if (cnt < 3) { return false; }
+
+  if (silent) { return true; }
+
+  state.line = startLine + 1;
+  state.tokens.push({
+    type: 'hr',
+    lines: [ startLine, state.line ],
+    level: state.level
+  });
+
+  return true;
+};
+
+
+/***/ }),
+/* 291 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// HTML block
+
+
+
+
+var block_names = __webpack_require__(272);
+
+
+var HTML_TAG_OPEN_RE = /^<([a-zA-Z]{1,15})[\s\/>]/;
+var HTML_TAG_CLOSE_RE = /^<\/([a-zA-Z]{1,15})[\s>]/;
+
+function isLetter(ch) {
+  /*eslint no-bitwise:0*/
+  var lc = ch | 0x20; // to lower case
+  return (lc >= 0x61/* a */) && (lc <= 0x7a/* z */);
+}
+
+module.exports = function htmlblock(state, startLine, endLine, silent) {
+  var ch, match, nextLine,
+      pos = state.bMarks[startLine],
+      max = state.eMarks[startLine],
+      shift = state.tShift[startLine];
+
+  pos += shift;
+
+  if (!state.options.html) { return false; }
+
+  if (shift > 3 || pos + 2 >= max) { return false; }
+
+  if (state.src.charCodeAt(pos) !== 0x3C/* < */) { return false; }
+
+  ch = state.src.charCodeAt(pos + 1);
+
+  if (ch === 0x21/* ! */ || ch === 0x3F/* ? */) {
+    // Directive start / comment start / processing instruction start
+    if (silent) { return true; }
+
+  } else if (ch === 0x2F/* / */ || isLetter(ch)) {
+
+    // Probably start or end of tag
+    if (ch === 0x2F/* \ */) {
+      // closing tag
+      match = state.src.slice(pos, max).match(HTML_TAG_CLOSE_RE);
+      if (!match) { return false; }
+    } else {
+      // opening tag
+      match = state.src.slice(pos, max).match(HTML_TAG_OPEN_RE);
+      if (!match) { return false; }
+    }
+    // Make sure tag name is valid
+    if (block_names[match[1].toLowerCase()] !== true) { return false; }
+    if (silent) { return true; }
+
+  } else {
+    return false;
+  }
+
+  // If we are here - we detected HTML block.
+  // Let's roll down till empty line (block end).
+  nextLine = startLine + 1;
+  while (nextLine < state.lineMax && !state.isEmpty(nextLine)) {
+    nextLine++;
+  }
+
+  state.line = nextLine;
+  state.tokens.push({
+    type: 'htmlblock',
+    level: state.level,
+    lines: [ startLine, state.line ],
+    content: state.getLines(startLine, nextLine, 0, true)
+  });
+
+  return true;
+};
+
+
+/***/ }),
+/* 292 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// lheading (---, ===)
+
+
+
+
+module.exports = function lheading(state, startLine, endLine/*, silent*/) {
+  var marker, pos, max,
+      next = startLine + 1;
+
+  if (next >= endLine) { return false; }
+  if (state.tShift[next] < state.blkIndent) { return false; }
+
+  // Scan next line
+
+  if (state.tShift[next] - state.blkIndent > 3) { return false; }
+
+  pos = state.bMarks[next] + state.tShift[next];
+  max = state.eMarks[next];
+
+  if (pos >= max) { return false; }
+
+  marker = state.src.charCodeAt(pos);
+
+  if (marker !== 0x2D/* - */ && marker !== 0x3D/* = */) { return false; }
+
+  pos = state.skipChars(pos, marker);
+
+  pos = state.skipSpaces(pos);
+
+  if (pos < max) { return false; }
+
+  pos = state.bMarks[startLine] + state.tShift[startLine];
+
+  state.line = next + 1;
+  state.tokens.push({
+    type: 'heading_open',
+    hLevel: marker === 0x3D/* = */ ? 1 : 2,
+    lines: [ startLine, state.line ],
+    level: state.level
+  });
+  state.tokens.push({
+    type: 'inline',
+    content: state.src.slice(pos, state.eMarks[startLine]).trim(),
+    level: state.level + 1,
+    lines: [ startLine, state.line - 1 ],
+    children: []
+  });
+  state.tokens.push({
+    type: 'heading_close',
+    hLevel: marker === 0x3D/* = */ ? 1 : 2,
+    level: state.level
+  });
+
+  return true;
+};
+
+
+/***/ }),
+/* 293 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Lists
+
+
+
+
+// Search `[-+*][\n ]`, returns next pos arter marker on success
+// or -1 on fail.
+function skipBulletListMarker(state, startLine) {
+  var marker, pos, max;
+
+  pos = state.bMarks[startLine] + state.tShift[startLine];
+  max = state.eMarks[startLine];
+
+  if (pos >= max) { return -1; }
+
+  marker = state.src.charCodeAt(pos++);
+  // Check bullet
+  if (marker !== 0x2A/* * */ &&
+      marker !== 0x2D/* - */ &&
+      marker !== 0x2B/* + */) {
+    return -1;
+  }
+
+  if (pos < max && state.src.charCodeAt(pos) !== 0x20) {
+    // " 1.test " - is not a list item
+    return -1;
+  }
+
+  return pos;
+}
+
+// Search `\d+[.)][\n ]`, returns next pos arter marker on success
+// or -1 on fail.
+function skipOrderedListMarker(state, startLine) {
+  var ch,
+      pos = state.bMarks[startLine] + state.tShift[startLine],
+      max = state.eMarks[startLine];
+
+  if (pos + 1 >= max) { return -1; }
+
+  ch = state.src.charCodeAt(pos++);
+
+  if (ch < 0x30/* 0 */ || ch > 0x39/* 9 */) { return -1; }
+
+  for (;;) {
+    // EOL -> fail
+    if (pos >= max) { return -1; }
+
+    ch = state.src.charCodeAt(pos++);
+
+    if (ch >= 0x30/* 0 */ && ch <= 0x39/* 9 */) {
+      continue;
+    }
+
+    // found valid marker
+    if (ch === 0x29/* ) */ || ch === 0x2e/* . */) {
+      break;
+    }
+
+    return -1;
+  }
+
+
+  if (pos < max && state.src.charCodeAt(pos) !== 0x20/* space */) {
+    // " 1.test " - is not a list item
+    return -1;
+  }
+  return pos;
+}
+
+function markTightParagraphs(state, idx) {
+  var i, l,
+      level = state.level + 2;
+
+  for (i = idx + 2, l = state.tokens.length - 2; i < l; i++) {
+    if (state.tokens[i].level === level && state.tokens[i].type === 'paragraph_open') {
+      state.tokens[i + 2].tight = true;
+      state.tokens[i].tight = true;
+      i += 2;
+    }
+  }
+}
+
+
+module.exports = function list(state, startLine, endLine, silent) {
+  var nextLine,
+      indent,
+      oldTShift,
+      oldIndent,
+      oldTight,
+      oldParentType,
+      start,
+      posAfterMarker,
+      max,
+      indentAfterMarker,
+      markerValue,
+      markerCharCode,
+      isOrdered,
+      contentStart,
+      listTokIdx,
+      prevEmptyEnd,
+      listLines,
+      itemLines,
+      tight = true,
+      terminatorRules,
+      i, l, terminate;
+
+  // Detect list type and position after marker
+  if ((posAfterMarker = skipOrderedListMarker(state, startLine)) >= 0) {
+    isOrdered = true;
+  } else if ((posAfterMarker = skipBulletListMarker(state, startLine)) >= 0) {
+    isOrdered = false;
+  } else {
+    return false;
+  }
+
+  if (state.level >= state.options.maxNesting) { return false; }
+
+  // We should terminate list on style change. Remember first one to compare.
+  markerCharCode = state.src.charCodeAt(posAfterMarker - 1);
+
+  // For validation mode we can terminate immediately
+  if (silent) { return true; }
+
+  // Start list
+  listTokIdx = state.tokens.length;
+
+  if (isOrdered) {
+    start = state.bMarks[startLine] + state.tShift[startLine];
+    markerValue = Number(state.src.substr(start, posAfterMarker - start - 1));
+
+    state.tokens.push({
+      type: 'ordered_list_open',
+      order: markerValue,
+      lines: listLines = [ startLine, 0 ],
+      level: state.level++
+    });
+
+  } else {
+    state.tokens.push({
+      type: 'bullet_list_open',
+      lines: listLines = [ startLine, 0 ],
+      level: state.level++
+    });
+  }
+
+  //
+  // Iterate list items
+  //
+
+  nextLine = startLine;
+  prevEmptyEnd = false;
+  terminatorRules = state.parser.ruler.getRules('list');
+
+  while (nextLine < endLine) {
+    contentStart = state.skipSpaces(posAfterMarker);
+    max = state.eMarks[nextLine];
+
+    if (contentStart >= max) {
+      // trimming space in "-    \n  3" case, indent is 1 here
+      indentAfterMarker = 1;
+    } else {
+      indentAfterMarker = contentStart - posAfterMarker;
+    }
+
+    // If we have more than 4 spaces, the indent is 1
+    // (the rest is just indented code block)
+    if (indentAfterMarker > 4) { indentAfterMarker = 1; }
+
+    // If indent is less than 1, assume that it's one, example:
+    //  "-\n  test"
+    if (indentAfterMarker < 1) { indentAfterMarker = 1; }
+
+    // "  -  test"
+    //  ^^^^^ - calculating total length of this thing
+    indent = (posAfterMarker - state.bMarks[nextLine]) + indentAfterMarker;
+
+    // Run subparser & write tokens
+    state.tokens.push({
+      type: 'list_item_open',
+      lines: itemLines = [ startLine, 0 ],
+      level: state.level++
+    });
+
+    oldIndent = state.blkIndent;
+    oldTight = state.tight;
+    oldTShift = state.tShift[startLine];
+    oldParentType = state.parentType;
+    state.tShift[startLine] = contentStart - state.bMarks[startLine];
+    state.blkIndent = indent;
+    state.tight = true;
+    state.parentType = 'list';
+
+    state.parser.tokenize(state, startLine, endLine, true);
+
+    // If any of list item is tight, mark list as tight
+    if (!state.tight || prevEmptyEnd) {
+      tight = false;
+    }
+    // Item become loose if finish with empty line,
+    // but we should filter last element, because it means list finish
+    prevEmptyEnd = (state.line - startLine) > 1 && state.isEmpty(state.line - 1);
+
+    state.blkIndent = oldIndent;
+    state.tShift[startLine] = oldTShift;
+    state.tight = oldTight;
+    state.parentType = oldParentType;
+
+    state.tokens.push({
+      type: 'list_item_close',
+      level: --state.level
+    });
+
+    nextLine = startLine = state.line;
+    itemLines[1] = nextLine;
+    contentStart = state.bMarks[startLine];
+
+    if (nextLine >= endLine) { break; }
+
+    if (state.isEmpty(nextLine)) {
+      break;
+    }
+
+    //
+    // Try to check if list is terminated or continued.
+    //
+    if (state.tShift[nextLine] < state.blkIndent) { break; }
+
+    // fail if terminating block found
+    terminate = false;
+    for (i = 0, l = terminatorRules.length; i < l; i++) {
+      if (terminatorRules[i](state, nextLine, endLine, true)) {
+        terminate = true;
+        break;
+      }
+    }
+    if (terminate) { break; }
+
+    // fail if list has another type
+    if (isOrdered) {
+      posAfterMarker = skipOrderedListMarker(state, nextLine);
+      if (posAfterMarker < 0) { break; }
+    } else {
+      posAfterMarker = skipBulletListMarker(state, nextLine);
+      if (posAfterMarker < 0) { break; }
+    }
+
+    if (markerCharCode !== state.src.charCodeAt(posAfterMarker - 1)) { break; }
+  }
+
+  // Finilize list
+  state.tokens.push({
+    type: isOrdered ? 'ordered_list_close' : 'bullet_list_close',
+    level: --state.level
+  });
+  listLines[1] = nextLine;
+
+  state.line = nextLine;
+
+  // mark paragraphs tight if needed
+  if (tight) {
+    markTightParagraphs(state, listTokIdx);
+  }
+
+  return true;
+};
+
+
+/***/ }),
+/* 294 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Paragraph
+
+
+
+
+module.exports = function paragraph(state, startLine/*, endLine*/) {
+  var endLine, content, terminate, i, l,
+      nextLine = startLine + 1,
+      terminatorRules;
+
+  endLine = state.lineMax;
+
+  // jump line-by-line until empty one or EOF
+  if (nextLine < endLine && !state.isEmpty(nextLine)) {
+    terminatorRules = state.parser.ruler.getRules('paragraph');
+
+    for (; nextLine < endLine && !state.isEmpty(nextLine); nextLine++) {
+      // this would be a code block normally, but after paragraph
+      // it's considered a lazy continuation regardless of what's there
+      if (state.tShift[nextLine] - state.blkIndent > 3) { continue; }
+
+      // Some tags can terminate paragraph without empty line.
+      terminate = false;
+      for (i = 0, l = terminatorRules.length; i < l; i++) {
+        if (terminatorRules[i](state, nextLine, endLine, true)) {
+          terminate = true;
+          break;
+        }
+      }
+      if (terminate) { break; }
+    }
+  }
+
+  content = state.getLines(startLine, nextLine, state.blkIndent, false).trim();
+
+  state.line = nextLine;
+  if (content.length) {
+    state.tokens.push({
+      type: 'paragraph_open',
+      tight: false,
+      lines: [ startLine, state.line ],
+      level: state.level
+    });
+    state.tokens.push({
+      type: 'inline',
+      content: content,
+      level: state.level + 1,
+      lines: [ startLine, state.line ],
+      children: []
+    });
+    state.tokens.push({
+      type: 'paragraph_close',
+      tight: false,
+      level: state.level
+    });
+  }
+
+  return true;
+};
+
+
+/***/ }),
+/* 295 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Parser state class
+
+
+
+
+function StateBlock(src, parser, options, env, tokens) {
+  var ch, s, start, pos, len, indent, indent_found;
+
+  this.src = src;
+
+  // Shortcuts to simplify nested calls
+  this.parser = parser;
+
+  this.options = options;
+
+  this.env = env;
+
+  //
+  // Internal state vartiables
+  //
+
+  this.tokens = tokens;
+
+  this.bMarks = [];  // line begin offsets for fast jumps
+  this.eMarks = [];  // line end offsets for fast jumps
+  this.tShift = [];  // indent for each line
+
+  // block parser variables
+  this.blkIndent  = 0; // required block content indent
+                       // (for example, if we are in list)
+  this.line       = 0; // line index in src
+  this.lineMax    = 0; // lines count
+  this.tight      = false;  // loose/tight mode for lists
+  this.parentType = 'root'; // if `list`, block parser stops on two newlines
+  this.ddIndent   = -1; // indent of the current dd block (-1 if there isn't any)
+
+  this.level = 0;
+
+  // renderer
+  this.result = '';
+
+  // Create caches
+  // Generate markers.
+  s = this.src;
+  indent = 0;
+  indent_found = false;
+
+  for (start = pos = indent = 0, len = s.length; pos < len; pos++) {
+    ch = s.charCodeAt(pos);
+
+    if (!indent_found) {
+      if (ch === 0x20/* space */) {
+        indent++;
+        continue;
+      } else {
+        indent_found = true;
+      }
+    }
+
+    if (ch === 0x0A || pos === len - 1) {
+      if (ch !== 0x0A) { pos++; }
+      this.bMarks.push(start);
+      this.eMarks.push(pos);
+      this.tShift.push(indent);
+
+      indent_found = false;
+      indent = 0;
+      start = pos + 1;
+    }
+  }
+
+  // Push fake entry to simplify cache bounds checks
+  this.bMarks.push(s.length);
+  this.eMarks.push(s.length);
+  this.tShift.push(0);
+
+  this.lineMax = this.bMarks.length - 1; // don't count last fake line
+}
+
+StateBlock.prototype.isEmpty = function isEmpty(line) {
+  return this.bMarks[line] + this.tShift[line] >= this.eMarks[line];
+};
+
+StateBlock.prototype.skipEmptyLines = function skipEmptyLines(from) {
+  for (var max = this.lineMax; from < max; from++) {
+    if (this.bMarks[from] + this.tShift[from] < this.eMarks[from]) {
+      break;
+    }
+  }
+  return from;
+};
+
+// Skip spaces from given position.
+StateBlock.prototype.skipSpaces = function skipSpaces(pos) {
+  for (var max = this.src.length; pos < max; pos++) {
+    if (this.src.charCodeAt(pos) !== 0x20/* space */) { break; }
+  }
+  return pos;
+};
+
+// Skip char codes from given position
+StateBlock.prototype.skipChars = function skipChars(pos, code) {
+  for (var max = this.src.length; pos < max; pos++) {
+    if (this.src.charCodeAt(pos) !== code) { break; }
+  }
+  return pos;
+};
+
+// Skip char codes reverse from given position - 1
+StateBlock.prototype.skipCharsBack = function skipCharsBack(pos, code, min) {
+  if (pos <= min) { return pos; }
+
+  while (pos > min) {
+    if (code !== this.src.charCodeAt(--pos)) { return pos + 1; }
+  }
+  return pos;
+};
+
+// cut lines range from source.
+StateBlock.prototype.getLines = function getLines(begin, end, indent, keepLastLF) {
+  var i, first, last, queue, shift,
+      line = begin;
+
+  if (begin >= end) {
+    return '';
+  }
+
+  // Opt: don't use push queue for single line;
+  if (line + 1 === end) {
+    first = this.bMarks[line] + Math.min(this.tShift[line], indent);
+    last = keepLastLF ? this.eMarks[line] + 1 : this.eMarks[line];
+    return this.src.slice(first, last);
+  }
+
+  queue = new Array(end - begin);
+
+  for (i = 0; line < end; line++, i++) {
+    shift = this.tShift[line];
+    if (shift > indent) { shift = indent; }
+    if (shift < 0) { shift = 0; }
+
+    first = this.bMarks[line] + shift;
+
+    if (line + 1 < end || keepLastLF) {
+      // No need for bounds check because we have fake entry on tail.
+      last = this.eMarks[line] + 1;
+    } else {
+      last = this.eMarks[line];
+    }
+
+    queue[i] = this.src.slice(first, last);
+  }
+
+  return queue.join('');
+};
+
+
+module.exports = StateBlock;
+
+
+/***/ }),
+/* 296 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// GFM table, non-standard
+
+
+
+
+function getLine(state, line) {
+  var pos = state.bMarks[line] + state.blkIndent,
+      max = state.eMarks[line];
+
+  return state.src.substr(pos, max - pos);
+}
+
+module.exports = function table(state, startLine, endLine, silent) {
+  var ch, lineText, pos, i, nextLine, rows, cell,
+      aligns, t, tableLines, tbodyLines;
+
+  // should have at least three lines
+  if (startLine + 2 > endLine) { return false; }
+
+  nextLine = startLine + 1;
+
+  if (state.tShift[nextLine] < state.blkIndent) { return false; }
+
+  // first character of the second line should be '|' or '-'
+
+  pos = state.bMarks[nextLine] + state.tShift[nextLine];
+  if (pos >= state.eMarks[nextLine]) { return false; }
+
+  ch = state.src.charCodeAt(pos);
+  if (ch !== 0x7C/* | */ && ch !== 0x2D/* - */ && ch !== 0x3A/* : */) { return false; }
+
+  lineText = getLine(state, startLine + 1);
+  if (!/^[-:| ]+$/.test(lineText)) { return false; }
+
+  rows = lineText.split('|');
+  if (rows <= 2) { return false; }
+  aligns = [];
+  for (i = 0; i < rows.length; i++) {
+    t = rows[i].trim();
+    if (!t) {
+      // allow empty columns before and after table, but not in between columns;
+      // e.g. allow ` |---| `, disallow ` ---||--- `
+      if (i === 0 || i === rows.length - 1) {
+        continue;
+      } else {
+        return false;
+      }
+    }
+
+    if (!/^:?-+:?$/.test(t)) { return false; }
+    if (t.charCodeAt(t.length - 1) === 0x3A/* : */) {
+      aligns.push(t.charCodeAt(0) === 0x3A/* : */ ? 'center' : 'right');
+    } else if (t.charCodeAt(0) === 0x3A/* : */) {
+      aligns.push('left');
+    } else {
+      aligns.push('');
+    }
+  }
+
+  lineText = getLine(state, startLine).trim();
+  if (lineText.indexOf('|') === -1) { return false; }
+  rows = lineText.replace(/^\||\|$/g, '').split('|');
+  if (aligns.length !== rows.length) { return false; }
+  if (silent) { return true; }
+
+  state.tokens.push({
+    type: 'table_open',
+    lines: tableLines = [ startLine, 0 ],
+    level: state.level++
+  });
+  state.tokens.push({
+    type: 'thead_open',
+    lines: [ startLine, startLine + 1 ],
+    level: state.level++
+  });
+
+  state.tokens.push({
+    type: 'tr_open',
+    lines: [ startLine, startLine + 1 ],
+    level: state.level++
+  });
+  for (i = 0; i < rows.length; i++) {
+    state.tokens.push({
+      type: 'th_open',
+      align: aligns[i],
+      lines: [ startLine, startLine + 1 ],
+      level: state.level++
+    });
+    state.tokens.push({
+      type: 'inline',
+      content: rows[i].trim(),
+      lines: [ startLine, startLine + 1 ],
+      level: state.level,
+      children: []
+    });
+    state.tokens.push({ type: 'th_close', level: --state.level });
+  }
+  state.tokens.push({ type: 'tr_close', level: --state.level });
+  state.tokens.push({ type: 'thead_close', level: --state.level });
+
+  state.tokens.push({
+    type: 'tbody_open',
+    lines: tbodyLines = [ startLine + 2, 0 ],
+    level: state.level++
+  });
+
+  for (nextLine = startLine + 2; nextLine < endLine; nextLine++) {
+    if (state.tShift[nextLine] < state.blkIndent) { break; }
+
+    lineText = getLine(state, nextLine).trim();
+    if (lineText.indexOf('|') === -1) { break; }
+    rows = lineText.replace(/^\||\|$/g, '').split('|');
+
+    state.tokens.push({ type: 'tr_open', level: state.level++ });
+    for (i = 0; i < rows.length; i++) {
+      state.tokens.push({ type: 'td_open', align: aligns[i], level: state.level++ });
+      // 0x7c === '|'
+      cell = rows[i].substring(
+          rows[i].charCodeAt(0) === 0x7c ? 1 : 0,
+          rows[i].charCodeAt(rows[i].length - 1) === 0x7c ? rows[i].length - 1 : rows[i].length
+      ).trim();
+      state.tokens.push({
+        type: 'inline',
+        content: cell,
+        level: state.level,
+        children: []
+      });
+      state.tokens.push({ type: 'td_close', level: --state.level });
+    }
+    state.tokens.push({ type: 'tr_close', level: --state.level });
+  }
+  state.tokens.push({ type: 'tbody_close', level: --state.level });
+  state.tokens.push({ type: 'table_close', level: --state.level });
+
+  tableLines[1] = tbodyLines[1] = nextLine;
+  state.line = nextLine;
+  return true;
+};
+
+
+/***/ }),
+/* 297 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Parse abbreviation definitions, i.e. `*[abbr]: description`
+//
+
+
+
+
+var StateInline    = __webpack_require__(61);
+var parseLinkLabel = __webpack_require__(36);
+
+
+function parseAbbr(str, parserInline, options, env) {
+  var state, labelEnd, pos, max, label, title;
+
+  if (str.charCodeAt(0) !== 0x2A/* * */) { return -1; }
+  if (str.charCodeAt(1) !== 0x5B/* [ */) { return -1; }
+
+  if (str.indexOf(']:') === -1) { return -1; }
+
+  state = new StateInline(str, parserInline, options, env, []);
+  labelEnd = parseLinkLabel(state, 1);
+
+  if (labelEnd < 0 || str.charCodeAt(labelEnd + 1) !== 0x3A/* : */) { return -1; }
+
+  max = state.posMax;
+
+  // abbr title is always one line, so looking for ending "\n" here
+  for (pos = labelEnd + 2; pos < max; pos++) {
+    if (state.src.charCodeAt(pos) === 0x0A) { break; }
+  }
+
+  label = str.slice(2, labelEnd);
+  title = str.slice(labelEnd + 2, pos).trim();
+  if (title.length === 0) { return -1; }
+  if (!env.abbreviations) { env.abbreviations = {}; }
+  // prepend ':' to avoid conflict with Object.prototype members
+  if (typeof env.abbreviations[':' + label] === 'undefined') {
+    env.abbreviations[':' + label] = title;
+  }
+
+  return pos;
+}
+
+module.exports = function abbr(state) {
+  var tokens = state.tokens, i, l, content, pos;
+
+  if (state.inlineMode) {
+    return;
+  }
+
+  // Parse inlines
+  for (i = 1, l = tokens.length - 1; i < l; i++) {
+    if (tokens[i - 1].type === 'paragraph_open' &&
+        tokens[i].type === 'inline' &&
+        tokens[i + 1].type === 'paragraph_close') {
+
+      content = tokens[i].content;
+      while (content.length) {
+        pos = parseAbbr(content, state.inline, state.options, state.env);
+        if (pos < 0) { break; }
+        content = content.slice(pos).trim();
+      }
+
+      tokens[i].content = content;
+      if (!content.length) {
+        tokens[i - 1].tight = true;
+        tokens[i + 1].tight = true;
+      }
+    }
+  }
+};
+
+
+/***/ }),
+/* 298 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Enclose abbreviations in <abbr> tags
+//
+
+
+
+var PUNCT_CHARS = ' \n()[]\'".,!?-';
+
+
+// from Google closure library
+// http://closure-library.googlecode.com/git-history/docs/local_closure_goog_string_string.js.source.html#line1021
+function regEscape(s) {
+  return s.replace(/([-()\[\]{}+?*.$\^|,:#<!\\])/g, '\\$1');
+}
+
+
+module.exports = function abbr2(state) {
+  var i, j, l, tokens, token, text, nodes, pos, level, reg, m, regText,
+      blockTokens = state.tokens;
+
+  if (!state.env.abbreviations) { return; }
+  if (!state.env.abbrRegExp) {
+    regText = '(^|[' + PUNCT_CHARS.split('').map(regEscape).join('') + '])'
+            + '(' + Object.keys(state.env.abbreviations).map(function (x) {
+                      return x.substr(1);
+                    }).sort(function (a, b) {
+                      return b.length - a.length;
+                    }).map(regEscape).join('|') + ')'
+            + '($|[' + PUNCT_CHARS.split('').map(regEscape).join('') + '])';
+    state.env.abbrRegExp = new RegExp(regText, 'g');
+  }
+  reg = state.env.abbrRegExp;
+
+  for (j = 0, l = blockTokens.length; j < l; j++) {
+    if (blockTokens[j].type !== 'inline') { continue; }
+    tokens = blockTokens[j].children;
+
+    // We scan from the end, to keep position when new tags added.
+    for (i = tokens.length - 1; i >= 0; i--) {
+      token = tokens[i];
+      if (token.type !== 'text') { continue; }
+
+      pos = 0;
+      text = token.content;
+      reg.lastIndex = 0;
+      level = token.level;
+      nodes = [];
+
+      while ((m = reg.exec(text))) {
+        if (reg.lastIndex > pos) {
+          nodes.push({
+            type: 'text',
+            content: text.slice(pos, m.index + m[1].length),
+            level: level
+          });
+        }
+
+        nodes.push({
+          type: 'abbr_open',
+          title: state.env.abbreviations[':' + m[2]],
+          level: level++
+        });
+        nodes.push({
+          type: 'text',
+          content: m[2],
+          level: level
+        });
+        nodes.push({
+          type: 'abbr_close',
+          level: --level
+        });
+        pos = reg.lastIndex - m[3].length;
+      }
+
+      if (!nodes.length) { continue; }
+
+      if (pos < text.length) {
+        nodes.push({
+          type: 'text',
+          content: text.slice(pos),
+          level: level
+        });
+      }
+
+      // replace current node
+      blockTokens[j].children = tokens = [].concat(tokens.slice(0, i), nodes, tokens.slice(i + 1));
+    }
+  }
+};
+
+
+/***/ }),
+/* 299 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+module.exports = function block(state) {
+
+  if (state.inlineMode) {
+    state.tokens.push({
+      type: 'inline',
+      content: state.src.replace(/\n/g, ' ').trim(),
+      level: 0,
+      lines: [ 0, 1 ],
+      children: []
+    });
+
+  } else {
+    state.block.parse(state.src, state.options, state.env, state.tokens);
+  }
+};
+
+
+/***/ }),
+/* 300 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+
+module.exports = function footnote_block(state) {
+  var i, l, j, t, lastParagraph, list, tokens, current, currentLabel,
+      level = 0,
+      insideRef = false,
+      refTokens = {};
+
+  if (!state.env.footnotes) { return; }
+
+  state.tokens = state.tokens.filter(function(tok) {
+    if (tok.type === 'footnote_reference_open') {
+      insideRef = true;
+      current = [];
+      currentLabel = tok.label;
+      return false;
+    }
+    if (tok.type === 'footnote_reference_close') {
+      insideRef = false;
+      // prepend ':' to avoid conflict with Object.prototype members
+      refTokens[':' + currentLabel] = current;
+      return false;
+    }
+    if (insideRef) { current.push(tok); }
+    return !insideRef;
+  });
+
+  if (!state.env.footnotes.list) { return; }
+  list = state.env.footnotes.list;
+
+  state.tokens.push({
+    type: 'footnote_block_open',
+    level: level++
+  });
+  for (i = 0, l = list.length; i < l; i++) {
+    state.tokens.push({
+      type: 'footnote_open',
+      id: i,
+      level: level++
+    });
+
+    if (list[i].tokens) {
+      tokens = [];
+      tokens.push({
+        type: 'paragraph_open',
+        tight: false,
+        level: level++
+      });
+      tokens.push({
+        type: 'inline',
+        content: '',
+        level: level,
+        children: list[i].tokens
+      });
+      tokens.push({
+        type: 'paragraph_close',
+        tight: false,
+        level: --level
+      });
+    } else if (list[i].label) {
+      tokens = refTokens[':' + list[i].label];
+    }
+
+    state.tokens = state.tokens.concat(tokens);
+    if (state.tokens[state.tokens.length - 1].type === 'paragraph_close') {
+      lastParagraph = state.tokens.pop();
+    } else {
+      lastParagraph = null;
+    }
+
+    t = list[i].count > 0 ? list[i].count : 1;
+    for (j = 0; j < t; j++) {
+      state.tokens.push({
+        type: 'footnote_anchor',
+        id: i,
+        subId: j,
+        level: level
+      });
+    }
+
+    if (lastParagraph) {
+      state.tokens.push(lastParagraph);
+    }
+
+    state.tokens.push({
+      type: 'footnote_close',
+      level: --level
+    });
+  }
+  state.tokens.push({
+    type: 'footnote_block_close',
+    level: --level
+  });
+};
+
+
+/***/ }),
+/* 301 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+module.exports = function inline(state) {
+  var tokens = state.tokens, tok, i, l;
+
+  // Parse inlines
+  for (i = 0, l = tokens.length; i < l; i++) {
+    tok = tokens[i];
+    if (tok.type === 'inline') {
+      state.inline.parse(tok.content, state.options, state.env, tok.children);
+    }
+  }
+};
+
+
+/***/ }),
+/* 302 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Replace link-like texts with link nodes.
+//
+// Currently restricted by `inline.validateLink()` to http/https/ftp
+//
+
+
+
+var Autolinker = __webpack_require__(116);
+
+
+var LINK_SCAN_RE = /www|@|\:\/\//;
+
+
+function isLinkOpen(str) {
+  return /^<a[>\s]/i.test(str);
+}
+function isLinkClose(str) {
+  return /^<\/a\s*>/i.test(str);
+}
+
+// Stupid fabric to avoid singletons, for thread safety.
+// Required for engines like Nashorn.
+//
+function createLinkifier() {
+  var links = [];
+  var autolinker = new Autolinker({
+    stripPrefix: false,
+    url: true,
+    email: true,
+    twitter: false,
+    replaceFn: function (linker, match) {
+      // Only collect matched strings but don't change anything.
+      switch (match.getType()) {
+        /*eslint default-case:0*/
+        case 'url':
+          links.push({
+            text: match.matchedText,
+            url: match.getUrl()
+          });
+          break;
+        case 'email':
+          links.push({
+            text: match.matchedText,
+            // normalize email protocol
+            url: 'mailto:' + match.getEmail().replace(/^mailto:/i, '')
+          });
+          break;
+      }
+      return false;
+    }
+  });
+
+  return {
+    links: links,
+    autolinker: autolinker
+  };
+}
+
+
+module.exports = function linkify(state) {
+  var i, j, l, tokens, token, text, nodes, ln, pos, level, htmlLinkLevel,
+      blockTokens = state.tokens,
+      linkifier = null, links, autolinker;
+
+  if (!state.options.linkify) { return; }
+
+  for (j = 0, l = blockTokens.length; j < l; j++) {
+    if (blockTokens[j].type !== 'inline') { continue; }
+    tokens = blockTokens[j].children;
+
+    htmlLinkLevel = 0;
+
+    // We scan from the end, to keep position when new tags added.
+    // Use reversed logic in links start/end match
+    for (i = tokens.length - 1; i >= 0; i--) {
+      token = tokens[i];
+
+      // Skip content of markdown links
+      if (token.type === 'link_close') {
+        i--;
+        while (tokens[i].level !== token.level && tokens[i].type !== 'link_open') {
+          i--;
+        }
+        continue;
+      }
+
+      // Skip content of html tag links
+      if (token.type === 'htmltag') {
+        if (isLinkOpen(token.content) && htmlLinkLevel > 0) {
+          htmlLinkLevel--;
+        }
+        if (isLinkClose(token.content)) {
+          htmlLinkLevel++;
+        }
+      }
+      if (htmlLinkLevel > 0) { continue; }
+
+      if (token.type === 'text' && LINK_SCAN_RE.test(token.content)) {
+
+        // Init linkifier in lazy manner, only if required.
+        if (!linkifier) {
+          linkifier = createLinkifier();
+          links = linkifier.links;
+          autolinker = linkifier.autolinker;
+        }
+
+        text = token.content;
+        links.length = 0;
+        autolinker.link(text);
+
+        if (!links.length) { continue; }
+
+        // Now split string to nodes
+        nodes = [];
+        level = token.level;
+
+        for (ln = 0; ln < links.length; ln++) {
+
+          if (!state.inline.validateLink(links[ln].url)) { continue; }
+
+          pos = text.indexOf(links[ln].text);
+
+          if (pos) {
+            level = level;
+            nodes.push({
+              type: 'text',
+              content: text.slice(0, pos),
+              level: level
+            });
+          }
+          nodes.push({
+            type: 'link_open',
+            href: links[ln].url,
+            title: '',
+            level: level++
+          });
+          nodes.push({
+            type: 'text',
+            content: links[ln].text,
+            level: level
+          });
+          nodes.push({
+            type: 'link_close',
+            level: --level
+          });
+          text = text.slice(pos + links[ln].text.length);
+        }
+        if (text.length) {
+          nodes.push({
+            type: 'text',
+            content: text,
+            level: level
+          });
+        }
+
+        // replace current node
+        blockTokens[j].children = tokens = [].concat(tokens.slice(0, i), nodes, tokens.slice(i + 1));
+      }
+    }
+  }
+};
+
+
+/***/ }),
+/* 303 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+
+var StateInline          = __webpack_require__(61);
+var parseLinkLabel       = __webpack_require__(36);
+var parseLinkDestination = __webpack_require__(113);
+var parseLinkTitle       = __webpack_require__(114);
+var normalizeReference   = __webpack_require__(112);
+
+
+function parseReference(str, parser, options, env) {
+  var state, labelEnd, pos, max, code, start, href, title, label;
+
+  if (str.charCodeAt(0) !== 0x5B/* [ */) { return -1; }
+
+  if (str.indexOf(']:') === -1) { return -1; }
+
+  state = new StateInline(str, parser, options, env, []);
+  labelEnd = parseLinkLabel(state, 0);
+
+  if (labelEnd < 0 || str.charCodeAt(labelEnd + 1) !== 0x3A/* : */) { return -1; }
+
+  max = state.posMax;
+
+  // [label]:   destination   'title'
+  //         ^^^ skip optional whitespace here
+  for (pos = labelEnd + 2; pos < max; pos++) {
+    code = state.src.charCodeAt(pos);
+    if (code !== 0x20 && code !== 0x0A) { break; }
+  }
+
+  // [label]:   destination   'title'
+  //            ^^^^^^^^^^^ parse this
+  if (!parseLinkDestination(state, pos)) { return -1; }
+  href = state.linkContent;
+  pos = state.pos;
+
+  // [label]:   destination   'title'
+  //                       ^^^ skipping those spaces
+  start = pos;
+  for (pos = pos + 1; pos < max; pos++) {
+    code = state.src.charCodeAt(pos);
+    if (code !== 0x20 && code !== 0x0A) { break; }
+  }
+
+  // [label]:   destination   'title'
+  //                          ^^^^^^^ parse this
+  if (pos < max && start !== pos && parseLinkTitle(state, pos)) {
+    title = state.linkContent;
+    pos = state.pos;
+  } else {
+    title = '';
+    pos = start;
+  }
+
+  // ensure that the end of the line is empty
+  while (pos < max && state.src.charCodeAt(pos) === 0x20/* space */) { pos++; }
+  if (pos < max && state.src.charCodeAt(pos) !== 0x0A) { return -1; }
+
+  label = normalizeReference(str.slice(1, labelEnd));
+  if (typeof env.references[label] === 'undefined') {
+    env.references[label] = { title: title, href: href };
+  }
+
+  return pos;
+}
+
+
+module.exports = function references(state) {
+  var tokens = state.tokens, i, l, content, pos;
+
+  state.env.references = state.env.references || {};
+
+  if (state.inlineMode) {
+    return;
+  }
+
+  // Scan definitions in paragraph inlines
+  for (i = 1, l = tokens.length - 1; i < l; i++) {
+    if (tokens[i].type === 'inline' &&
+        tokens[i - 1].type === 'paragraph_open' &&
+        tokens[i + 1].type === 'paragraph_close') {
+
+      content = tokens[i].content;
+      while (content.length) {
+        pos = parseReference(content, state.inline, state.options, state.env);
+        if (pos < 0) { break; }
+        content = content.slice(pos).trim();
+      }
+
+      tokens[i].content = content;
+      if (!content.length) {
+        tokens[i - 1].tight = true;
+        tokens[i + 1].tight = true;
+      }
+    }
+  }
+};
+
+
+/***/ }),
+/* 304 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Simple typographical replacements
+//
+
+
+// TODO:
+// - fractionals 1/2, 1/4, 3/4 -> ½, ¼, ¾
+// - miltiplication 2 x 4 -> 2 × 4
+
+var RARE_RE = /\+-|\.\.|\?\?\?\?|!!!!|,,|--/;
+
+var SCOPED_ABBR_RE = /\((c|tm|r|p)\)/ig;
+var SCOPED_ABBR = {
+  'c': '©',
+  'r': '®',
+  'p': '§',
+  'tm': '™'
+};
+
+function replaceScopedAbbr(str) {
+  if (str.indexOf('(') < 0) { return str; }
+
+  return str.replace(SCOPED_ABBR_RE, function(match, name) {
+    return SCOPED_ABBR[name.toLowerCase()];
+  });
+}
+
+
+module.exports = function replace(state) {
+  var i, token, text, inlineTokens, blkIdx;
+
+  if (!state.options.typographer) { return; }
+
+  for (blkIdx = state.tokens.length - 1; blkIdx >= 0; blkIdx--) {
+
+    if (state.tokens[blkIdx].type !== 'inline') { continue; }
+
+    inlineTokens = state.tokens[blkIdx].children;
+
+    for (i = inlineTokens.length - 1; i >= 0; i--) {
+      token = inlineTokens[i];
+      if (token.type === 'text') {
+        text = token.content;
+
+        text = replaceScopedAbbr(text);
+
+        if (RARE_RE.test(text)) {
+          text = text
+            .replace(/\+-/g, '±')
+            // .., ..., ....... -> …
+            // but ?..... & !..... -> ?.. & !..
+            .replace(/\.{2,}/g, '…').replace(/([?!])…/g, '$1..')
+            .replace(/([?!]){4,}/g, '$1$1$1').replace(/,{2,}/g, ',')
+            // em-dash
+            .replace(/(^|[^-])---([^-]|$)/mg, '$1\u2014$2')
+            // en-dash
+            .replace(/(^|\s)--(\s|$)/mg, '$1\u2013$2')
+            .replace(/(^|[^-\s])--([^-\s]|$)/mg, '$1\u2013$2');
+        }
+
+        token.content = text;
+      }
+    }
+  }
+};
+
+
+/***/ }),
+/* 305 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Convert straight quotation marks to typographic ones
+//
+
+
+
+var QUOTE_TEST_RE = /['"]/;
+var QUOTE_RE = /['"]/g;
+var PUNCT_RE = /[-\s()\[\]]/;
+var APOSTROPHE = '’';
+
+// This function returns true if the character at `pos`
+// could be inside a word.
+function isLetter(str, pos) {
+  if (pos < 0 || pos >= str.length) { return false; }
+  return !PUNCT_RE.test(str[pos]);
+}
+
+
+function replaceAt(str, index, ch) {
+  return str.substr(0, index) + ch + str.substr(index + 1);
+}
+
+
+module.exports = function smartquotes(state) {
+  /*eslint max-depth:0*/
+  var i, token, text, t, pos, max, thisLevel, lastSpace, nextSpace, item,
+      canOpen, canClose, j, isSingle, blkIdx, tokens,
+      stack;
+
+  if (!state.options.typographer) { return; }
+
+  stack = [];
+
+  for (blkIdx = state.tokens.length - 1; blkIdx >= 0; blkIdx--) {
+
+    if (state.tokens[blkIdx].type !== 'inline') { continue; }
+
+    tokens = state.tokens[blkIdx].children;
+    stack.length = 0;
+
+    for (i = 0; i < tokens.length; i++) {
+      token = tokens[i];
+
+      if (token.type !== 'text' || QUOTE_TEST_RE.test(token.text)) { continue; }
+
+      thisLevel = tokens[i].level;
+
+      for (j = stack.length - 1; j >= 0; j--) {
+        if (stack[j].level <= thisLevel) { break; }
+      }
+      stack.length = j + 1;
+
+      text = token.content;
+      pos = 0;
+      max = text.length;
+
+      /*eslint no-labels:0,block-scoped-var:0*/
+      OUTER:
+      while (pos < max) {
+        QUOTE_RE.lastIndex = pos;
+        t = QUOTE_RE.exec(text);
+        if (!t) { break; }
+
+        lastSpace = !isLetter(text, t.index - 1);
+        pos = t.index + 1;
+        isSingle = (t[0] === "'");
+        nextSpace = !isLetter(text, pos);
+
+        if (!nextSpace && !lastSpace) {
+          // middle of word
+          if (isSingle) {
+            token.content = replaceAt(token.content, t.index, APOSTROPHE);
+          }
+          continue;
+        }
+
+        canOpen = !nextSpace;
+        canClose = !lastSpace;
+
+        if (canClose) {
+          // this could be a closing quote, rewind the stack to get a match
+          for (j = stack.length - 1; j >= 0; j--) {
+            item = stack[j];
+            if (stack[j].level < thisLevel) { break; }
+            if (item.single === isSingle && stack[j].level === thisLevel) {
+              item = stack[j];
+              if (isSingle) {
+                tokens[item.token].content = replaceAt(tokens[item.token].content, item.pos, state.options.quotes[2]);
+                token.content = replaceAt(token.content, t.index, state.options.quotes[3]);
+              } else {
+                tokens[item.token].content = replaceAt(tokens[item.token].content, item.pos, state.options.quotes[0]);
+                token.content = replaceAt(token.content, t.index, state.options.quotes[1]);
+              }
+              stack.length = j;
+              continue OUTER;
+            }
+          }
+        }
+
+        if (canOpen) {
+          stack.push({
+            token: i,
+            pos: t.index,
+            single: isSingle,
+            level: thisLevel
+          });
+        } else if (canClose && isSingle) {
+          token.content = replaceAt(token.content, t.index, APOSTROPHE);
+        }
+      }
+    }
+  }
+};
+
+
+/***/ }),
+/* 306 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Process autolinks '<protocol:...>'
+
+
+
+var url_schemas   = __webpack_require__(274);
+var normalizeLink = __webpack_require__(111);
+
+
+/*eslint max-len:0*/
+var EMAIL_RE    = /^<([a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*)>/;
+var AUTOLINK_RE = /^<([a-zA-Z.\-]{1,25}):([^<>\x00-\x20]*)>/;
+
+
+module.exports = function autolink(state, silent) {
+  var tail, linkMatch, emailMatch, url, fullUrl, pos = state.pos;
+
+  if (state.src.charCodeAt(pos) !== 0x3C/* < */) { return false; }
+
+  tail = state.src.slice(pos);
+
+  if (tail.indexOf('>') < 0) { return false; }
+
+  linkMatch = tail.match(AUTOLINK_RE);
+
+  if (linkMatch) {
+    if (url_schemas.indexOf(linkMatch[1].toLowerCase()) < 0) { return false; }
+
+    url = linkMatch[0].slice(1, -1);
+    fullUrl = normalizeLink(url);
+    if (!state.parser.validateLink(url)) { return false; }
+
+    if (!silent) {
+      state.push({
+        type: 'link_open',
+        href: fullUrl,
+        level: state.level
+      });
+      state.push({
+        type: 'text',
+        content: url,
+        level: state.level + 1
+      });
+      state.push({ type: 'link_close', level: state.level });
+    }
+
+    state.pos += linkMatch[0].length;
+    return true;
+  }
+
+  emailMatch = tail.match(EMAIL_RE);
+
+  if (emailMatch) {
+
+    url = emailMatch[0].slice(1, -1);
+
+    fullUrl = normalizeLink('mailto:' + url);
+    if (!state.parser.validateLink(fullUrl)) { return false; }
+
+    if (!silent) {
+      state.push({
+        type: 'link_open',
+        href: fullUrl,
+        level: state.level
+      });
+      state.push({
+        type: 'text',
+        content: url,
+        level: state.level + 1
+      });
+      state.push({ type: 'link_close', level: state.level });
+    }
+
+    state.pos += emailMatch[0].length;
+    return true;
+  }
+
+  return false;
+};
+
+
+/***/ }),
+/* 307 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Parse backticks
+
+
+
+module.exports = function backticks(state, silent) {
+  var start, max, marker, matchStart, matchEnd,
+      pos = state.pos,
+      ch = state.src.charCodeAt(pos);
+
+  if (ch !== 0x60/* ` */) { return false; }
+
+  start = pos;
+  pos++;
+  max = state.posMax;
+
+  while (pos < max && state.src.charCodeAt(pos) === 0x60/* ` */) { pos++; }
+
+  marker = state.src.slice(start, pos);
+
+  matchStart = matchEnd = pos;
+
+  while ((matchStart = state.src.indexOf('`', matchEnd)) !== -1) {
+    matchEnd = matchStart + 1;
+
+    while (matchEnd < max && state.src.charCodeAt(matchEnd) === 0x60/* ` */) { matchEnd++; }
+
+    if (matchEnd - matchStart === marker.length) {
+      if (!silent) {
+        state.push({
+          type: 'code',
+          content: state.src.slice(pos, matchStart)
+                              .replace(/[ \n]+/g, ' ')
+                              .trim(),
+          block: false,
+          level: state.level
+        });
+      }
+      state.pos = matchEnd;
+      return true;
+    }
+  }
+
+  if (!silent) { state.pending += marker; }
+  state.pos += marker.length;
+  return true;
+};
+
+
+/***/ }),
+/* 308 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Process ~~deleted text~~
+
+
+
+module.exports = function del(state, silent) {
+  var found,
+      pos,
+      stack,
+      max = state.posMax,
+      start = state.pos,
+      lastChar,
+      nextChar;
+
+  if (state.src.charCodeAt(start) !== 0x7E/* ~ */) { return false; }
+  if (silent) { return false; } // don't run any pairs in validation mode
+  if (start + 4 >= max) { return false; }
+  if (state.src.charCodeAt(start + 1) !== 0x7E/* ~ */) { return false; }
+  if (state.level >= state.options.maxNesting) { return false; }
+
+  lastChar = start > 0 ? state.src.charCodeAt(start - 1) : -1;
+  nextChar = state.src.charCodeAt(start + 2);
+
+  if (lastChar === 0x7E/* ~ */) { return false; }
+  if (nextChar === 0x7E/* ~ */) { return false; }
+  if (nextChar === 0x20 || nextChar === 0x0A) { return false; }
+
+  pos = start + 2;
+  while (pos < max && state.src.charCodeAt(pos) === 0x7E/* ~ */) { pos++; }
+  if (pos > start + 3) {
+    // sequence of 4+ markers taking as literal, same as in a emphasis
+    state.pos += pos - start;
+    if (!silent) { state.pending += state.src.slice(start, pos); }
+    return true;
+  }
+
+  state.pos = start + 2;
+  stack = 1;
+
+  while (state.pos + 1 < max) {
+    if (state.src.charCodeAt(state.pos) === 0x7E/* ~ */) {
+      if (state.src.charCodeAt(state.pos + 1) === 0x7E/* ~ */) {
+        lastChar = state.src.charCodeAt(state.pos - 1);
+        nextChar = state.pos + 2 < max ? state.src.charCodeAt(state.pos + 2) : -1;
+        if (nextChar !== 0x7E/* ~ */ && lastChar !== 0x7E/* ~ */) {
+          if (lastChar !== 0x20 && lastChar !== 0x0A) {
+            // closing '~~'
+            stack--;
+          } else if (nextChar !== 0x20 && nextChar !== 0x0A) {
+            // opening '~~'
+            stack++;
+          } // else {
+            //  // standalone ' ~~ ' indented with spaces
+            // }
+          if (stack <= 0) {
+            found = true;
+            break;
+          }
+        }
+      }
+    }
+
+    state.parser.skipToken(state);
+  }
+
+  if (!found) {
+    // parser failed to find ending tag, so it's not valid emphasis
+    state.pos = start;
+    return false;
+  }
+
+  // found!
+  state.posMax = state.pos;
+  state.pos = start + 2;
+
+  if (!silent) {
+    state.push({ type: 'del_open', level: state.level++ });
+    state.parser.tokenize(state);
+    state.push({ type: 'del_close', level: --state.level });
+  }
+
+  state.pos = state.posMax + 2;
+  state.posMax = max;
+  return true;
+};
+
+
+/***/ }),
+/* 309 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Process *this* and _that_
+
+
+
+
+function isAlphaNum(code) {
+  return (code >= 0x30 /* 0 */ && code <= 0x39 /* 9 */) ||
+         (code >= 0x41 /* A */ && code <= 0x5A /* Z */) ||
+         (code >= 0x61 /* a */ && code <= 0x7A /* z */);
+}
+
+// parse sequence of emphasis markers,
+// "start" should point at a valid marker
+function scanDelims(state, start) {
+  var pos = start, lastChar, nextChar, count,
+      can_open = true,
+      can_close = true,
+      max = state.posMax,
+      marker = state.src.charCodeAt(start);
+
+  lastChar = start > 0 ? state.src.charCodeAt(start - 1) : -1;
+
+  while (pos < max && state.src.charCodeAt(pos) === marker) { pos++; }
+  if (pos >= max) { can_open = false; }
+  count = pos - start;
+
+  if (count >= 4) {
+    // sequence of four or more unescaped markers can't start/end an emphasis
+    can_open = can_close = false;
+  } else {
+    nextChar = pos < max ? state.src.charCodeAt(pos) : -1;
+
+    // check whitespace conditions
+    if (nextChar === 0x20 || nextChar === 0x0A) { can_open = false; }
+    if (lastChar === 0x20 || lastChar === 0x0A) { can_close = false; }
+
+    if (marker === 0x5F /* _ */) {
+      // check if we aren't inside the word
+      if (isAlphaNum(lastChar)) { can_open = false; }
+      if (isAlphaNum(nextChar)) { can_close = false; }
+    }
+  }
+
+  return {
+    can_open: can_open,
+    can_close: can_close,
+    delims: count
+  };
+}
+
+module.exports = function emphasis(state, silent) {
+  var startCount,
+      count,
+      found,
+      oldCount,
+      newCount,
+      stack,
+      res,
+      max = state.posMax,
+      start = state.pos,
+      marker = state.src.charCodeAt(start);
+
+  if (marker !== 0x5F/* _ */ && marker !== 0x2A /* * */) { return false; }
+  if (silent) { return false; } // don't run any pairs in validation mode
+
+  res = scanDelims(state, start);
+  startCount = res.delims;
+  if (!res.can_open) {
+    state.pos += startCount;
+    if (!silent) { state.pending += state.src.slice(start, state.pos); }
+    return true;
+  }
+
+  if (state.level >= state.options.maxNesting) { return false; }
+
+  state.pos = start + startCount;
+  stack = [ startCount ];
+
+  while (state.pos < max) {
+    if (state.src.charCodeAt(state.pos) === marker) {
+      res = scanDelims(state, state.pos);
+      count = res.delims;
+      if (res.can_close) {
+        oldCount = stack.pop();
+        newCount = count;
+
+        while (oldCount !== newCount) {
+          if (newCount < oldCount) {
+            stack.push(oldCount - newCount);
+            break;
+          }
+
+          // assert(newCount > oldCount)
+          newCount -= oldCount;
+
+          if (stack.length === 0) { break; }
+          state.pos += oldCount;
+          oldCount = stack.pop();
+        }
+
+        if (stack.length === 0) {
+          startCount = oldCount;
+          found = true;
+          break;
+        }
+        state.pos += count;
+        continue;
+      }
+
+      if (res.can_open) { stack.push(count); }
+      state.pos += count;
+      continue;
+    }
+
+    state.parser.skipToken(state);
+  }
+
+  if (!found) {
+    // parser failed to find ending tag, so it's not valid emphasis
+    state.pos = start;
+    return false;
+  }
+
+  // found!
+  state.posMax = state.pos;
+  state.pos = start + startCount;
+
+  if (!silent) {
+    if (startCount === 2 || startCount === 3) {
+      state.push({ type: 'strong_open', level: state.level++ });
+    }
+    if (startCount === 1 || startCount === 3) {
+      state.push({ type: 'em_open', level: state.level++ });
+    }
+
+    state.parser.tokenize(state);
+
+    if (startCount === 1 || startCount === 3) {
+      state.push({ type: 'em_close', level: --state.level });
+    }
+    if (startCount === 2 || startCount === 3) {
+      state.push({ type: 'strong_close', level: --state.level });
+    }
+  }
+
+  state.pos = state.posMax + startCount;
+  state.posMax = max;
+  return true;
+};
+
+
+/***/ }),
+/* 310 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Process html entity - &#123;, &#xAF;, &quot;, ...
+
+
+
+var entities          = __webpack_require__(110);
+var has               = __webpack_require__(7).has;
+var isValidEntityCode = __webpack_require__(7).isValidEntityCode;
+var fromCodePoint     = __webpack_require__(7).fromCodePoint;
+
+
+var DIGITAL_RE = /^&#((?:x[a-f0-9]{1,8}|[0-9]{1,8}));/i;
+var NAMED_RE   = /^&([a-z][a-z0-9]{1,31});/i;
+
+
+module.exports = function entity(state, silent) {
+  var ch, code, match, pos = state.pos, max = state.posMax;
+
+  if (state.src.charCodeAt(pos) !== 0x26/* & */) { return false; }
+
+  if (pos + 1 < max) {
+    ch = state.src.charCodeAt(pos + 1);
+
+    if (ch === 0x23 /* # */) {
+      match = state.src.slice(pos).match(DIGITAL_RE);
+      if (match) {
+        if (!silent) {
+          code = match[1][0].toLowerCase() === 'x' ? parseInt(match[1].slice(1), 16) : parseInt(match[1], 10);
+          state.pending += isValidEntityCode(code) ? fromCodePoint(code) : fromCodePoint(0xFFFD);
+        }
+        state.pos += match[0].length;
+        return true;
+      }
+    } else {
+      match = state.src.slice(pos).match(NAMED_RE);
+      if (match) {
+        if (has(entities, match[1])) {
+          if (!silent) { state.pending += entities[match[1]]; }
+          state.pos += match[0].length;
+          return true;
+        }
+      }
+    }
+  }
+
+  if (!silent) { state.pending += '&'; }
+  state.pos++;
+  return true;
+};
+
+
+/***/ }),
+/* 311 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Proceess escaped chars and hardbreaks
+
+
+
+var ESCAPED = [];
+
+for (var i = 0; i < 256; i++) { ESCAPED.push(0); }
+
+'\\!"#$%&\'()*+,./:;<=>?@[]^_`{|}~-'
+  .split('').forEach(function(ch) { ESCAPED[ch.charCodeAt(0)] = 1; });
+
+
+module.exports = function escape(state, silent) {
+  var ch, pos = state.pos, max = state.posMax;
+
+  if (state.src.charCodeAt(pos) !== 0x5C/* \ */) { return false; }
+
+  pos++;
+
+  if (pos < max) {
+    ch = state.src.charCodeAt(pos);
+
+    if (ch < 256 && ESCAPED[ch] !== 0) {
+      if (!silent) { state.pending += state.src[pos]; }
+      state.pos += 2;
+      return true;
+    }
+
+    if (ch === 0x0A) {
+      if (!silent) {
+        state.push({
+          type: 'hardbreak',
+          level: state.level
+        });
+      }
+
+      pos++;
+      // skip leading whitespaces from next line
+      while (pos < max && state.src.charCodeAt(pos) === 0x20) { pos++; }
+
+      state.pos = pos;
+      return true;
+    }
+  }
+
+  if (!silent) { state.pending += '\\'; }
+  state.pos++;
+  return true;
+};
+
+
+/***/ }),
+/* 312 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Process inline footnotes (^[...])
+
+
+
+var parseLinkLabel = __webpack_require__(36);
+
+
+module.exports = function footnote_inline(state, silent) {
+  var labelStart,
+      labelEnd,
+      footnoteId,
+      oldLength,
+      max = state.posMax,
+      start = state.pos;
+
+  if (start + 2 >= max) { return false; }
+  if (state.src.charCodeAt(start) !== 0x5E/* ^ */) { return false; }
+  if (state.src.charCodeAt(start + 1) !== 0x5B/* [ */) { return false; }
+  if (state.level >= state.options.maxNesting) { return false; }
+
+  labelStart = start + 2;
+  labelEnd = parseLinkLabel(state, start + 1);
+
+  // parser failed to find ']', so it's not a valid note
+  if (labelEnd < 0) { return false; }
+
+  // We found the end of the link, and know for a fact it's a valid link;
+  // so all that's left to do is to call tokenizer.
+  //
+  if (!silent) {
+    if (!state.env.footnotes) { state.env.footnotes = {}; }
+    if (!state.env.footnotes.list) { state.env.footnotes.list = []; }
+    footnoteId = state.env.footnotes.list.length;
+
+    state.pos = labelStart;
+    state.posMax = labelEnd;
+
+    state.push({
+      type: 'footnote_ref',
+      id: footnoteId,
+      level: state.level
+    });
+    state.linkLevel++;
+    oldLength = state.tokens.length;
+    state.parser.tokenize(state);
+    state.env.footnotes.list[footnoteId] = { tokens: state.tokens.splice(oldLength) };
+    state.linkLevel--;
+  }
+
+  state.pos = labelEnd + 1;
+  state.posMax = max;
+  return true;
+};
+
+
+/***/ }),
+/* 313 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Process footnote references ([^...])
+
+
+
+
+module.exports = function footnote_ref(state, silent) {
+  var label,
+      pos,
+      footnoteId,
+      footnoteSubId,
+      max = state.posMax,
+      start = state.pos;
+
+  // should be at least 4 chars - "[^x]"
+  if (start + 3 > max) { return false; }
+
+  if (!state.env.footnotes || !state.env.footnotes.refs) { return false; }
+  if (state.src.charCodeAt(start) !== 0x5B/* [ */) { return false; }
+  if (state.src.charCodeAt(start + 1) !== 0x5E/* ^ */) { return false; }
+  if (state.level >= state.options.maxNesting) { return false; }
+
+  for (pos = start + 2; pos < max; pos++) {
+    if (state.src.charCodeAt(pos) === 0x20) { return false; }
+    if (state.src.charCodeAt(pos) === 0x0A) { return false; }
+    if (state.src.charCodeAt(pos) === 0x5D /* ] */) {
+      break;
+    }
+  }
+
+  if (pos === start + 2) { return false; } // no empty footnote labels
+  if (pos >= max) { return false; }
+  pos++;
+
+  label = state.src.slice(start + 2, pos - 1);
+  if (typeof state.env.footnotes.refs[':' + label] === 'undefined') { return false; }
+
+  if (!silent) {
+    if (!state.env.footnotes.list) { state.env.footnotes.list = []; }
+
+    if (state.env.footnotes.refs[':' + label] < 0) {
+      footnoteId = state.env.footnotes.list.length;
+      state.env.footnotes.list[footnoteId] = { label: label, count: 0 };
+      state.env.footnotes.refs[':' + label] = footnoteId;
+    } else {
+      footnoteId = state.env.footnotes.refs[':' + label];
+    }
+
+    footnoteSubId = state.env.footnotes.list[footnoteId].count;
+    state.env.footnotes.list[footnoteId].count++;
+
+    state.push({
+      type: 'footnote_ref',
+      id: footnoteId,
+      subId: footnoteSubId,
+      level: state.level
+    });
+  }
+
+  state.pos = pos;
+  state.posMax = max;
+  return true;
+};
+
+
+/***/ }),
+/* 314 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Process html tags
+
+
+
+
+var HTML_TAG_RE = __webpack_require__(273).HTML_TAG_RE;
+
+
+function isLetter(ch) {
+  /*eslint no-bitwise:0*/
+  var lc = ch | 0x20; // to lower case
+  return (lc >= 0x61/* a */) && (lc <= 0x7a/* z */);
+}
+
+
+module.exports = function htmltag(state, silent) {
+  var ch, match, max, pos = state.pos;
+
+  if (!state.options.html) { return false; }
+
+  // Check start
+  max = state.posMax;
+  if (state.src.charCodeAt(pos) !== 0x3C/* < */ ||
+      pos + 2 >= max) {
+    return false;
+  }
+
+  // Quick fail on second char
+  ch = state.src.charCodeAt(pos + 1);
+  if (ch !== 0x21/* ! */ &&
+      ch !== 0x3F/* ? */ &&
+      ch !== 0x2F/* / */ &&
+      !isLetter(ch)) {
+    return false;
+  }
+
+  match = state.src.slice(pos).match(HTML_TAG_RE);
+  if (!match) { return false; }
+
+  if (!silent) {
+    state.push({
+      type: 'htmltag',
+      content: state.src.slice(pos, pos + match[0].length),
+      level: state.level
+    });
+  }
+  state.pos += match[0].length;
+  return true;
+};
+
+
+/***/ }),
+/* 315 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Process ++inserted text++
+
+
+
+module.exports = function ins(state, silent) {
+  var found,
+      pos,
+      stack,
+      max = state.posMax,
+      start = state.pos,
+      lastChar,
+      nextChar;
+
+  if (state.src.charCodeAt(start) !== 0x2B/* + */) { return false; }
+  if (silent) { return false; } // don't run any pairs in validation mode
+  if (start + 4 >= max) { return false; }
+  if (state.src.charCodeAt(start + 1) !== 0x2B/* + */) { return false; }
+  if (state.level >= state.options.maxNesting) { return false; }
+
+  lastChar = start > 0 ? state.src.charCodeAt(start - 1) : -1;
+  nextChar = state.src.charCodeAt(start + 2);
+
+  if (lastChar === 0x2B/* + */) { return false; }
+  if (nextChar === 0x2B/* + */) { return false; }
+  if (nextChar === 0x20 || nextChar === 0x0A) { return false; }
+
+  pos = start + 2;
+  while (pos < max && state.src.charCodeAt(pos) === 0x2B/* + */) { pos++; }
+  if (pos !== start + 2) {
+    // sequence of 3+ markers taking as literal, same as in a emphasis
+    state.pos += pos - start;
+    if (!silent) { state.pending += state.src.slice(start, pos); }
+    return true;
+  }
+
+  state.pos = start + 2;
+  stack = 1;
+
+  while (state.pos + 1 < max) {
+    if (state.src.charCodeAt(state.pos) === 0x2B/* + */) {
+      if (state.src.charCodeAt(state.pos + 1) === 0x2B/* + */) {
+        lastChar = state.src.charCodeAt(state.pos - 1);
+        nextChar = state.pos + 2 < max ? state.src.charCodeAt(state.pos + 2) : -1;
+        if (nextChar !== 0x2B/* + */ && lastChar !== 0x2B/* + */) {
+          if (lastChar !== 0x20 && lastChar !== 0x0A) {
+            // closing '++'
+            stack--;
+          } else if (nextChar !== 0x20 && nextChar !== 0x0A) {
+            // opening '++'
+            stack++;
+          } // else {
+            //  // standalone ' ++ ' indented with spaces
+            // }
+          if (stack <= 0) {
+            found = true;
+            break;
+          }
+        }
+      }
+    }
+
+    state.parser.skipToken(state);
+  }
+
+  if (!found) {
+    // parser failed to find ending tag, so it's not valid emphasis
+    state.pos = start;
+    return false;
+  }
+
+  // found!
+  state.posMax = state.pos;
+  state.pos = start + 2;
+
+  if (!silent) {
+    state.push({ type: 'ins_open', level: state.level++ });
+    state.parser.tokenize(state);
+    state.push({ type: 'ins_close', level: --state.level });
+  }
+
+  state.pos = state.posMax + 2;
+  state.posMax = max;
+  return true;
+};
+
+
+/***/ }),
+/* 316 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Process [links](<to> "stuff")
+
+
+
+var parseLinkLabel       = __webpack_require__(36);
+var parseLinkDestination = __webpack_require__(113);
+var parseLinkTitle       = __webpack_require__(114);
+var normalizeReference   = __webpack_require__(112);
+
+
+module.exports = function links(state, silent) {
+  var labelStart,
+      labelEnd,
+      label,
+      href,
+      title,
+      pos,
+      ref,
+      code,
+      isImage = false,
+      oldPos = state.pos,
+      max = state.posMax,
+      start = state.pos,
+      marker = state.src.charCodeAt(start);
+
+  if (marker === 0x21/* ! */) {
+    isImage = true;
+    marker = state.src.charCodeAt(++start);
+  }
+
+  if (marker !== 0x5B/* [ */) { return false; }
+  if (state.level >= state.options.maxNesting) { return false; }
+
+  labelStart = start + 1;
+  labelEnd = parseLinkLabel(state, start);
+
+  // parser failed to find ']', so it's not a valid link
+  if (labelEnd < 0) { return false; }
+
+  pos = labelEnd + 1;
+  if (pos < max && state.src.charCodeAt(pos) === 0x28/* ( */) {
+    //
+    // Inline link
+    //
+
+    // [link](  <href>  "title"  )
+    //        ^^ skipping these spaces
+    pos++;
+    for (; pos < max; pos++) {
+      code = state.src.charCodeAt(pos);
+      if (code !== 0x20 && code !== 0x0A) { break; }
+    }
+    if (pos >= max) { return false; }
+
+    // [link](  <href>  "title"  )
+    //          ^^^^^^ parsing link destination
+    start = pos;
+    if (parseLinkDestination(state, pos)) {
+      href = state.linkContent;
+      pos = state.pos;
+    } else {
+      href = '';
+    }
+
+    // [link](  <href>  "title"  )
+    //                ^^ skipping these spaces
+    start = pos;
+    for (; pos < max; pos++) {
+      code = state.src.charCodeAt(pos);
+      if (code !== 0x20 && code !== 0x0A) { break; }
+    }
+
+    // [link](  <href>  "title"  )
+    //                  ^^^^^^^ parsing link title
+    if (pos < max && start !== pos && parseLinkTitle(state, pos)) {
+      title = state.linkContent;
+      pos = state.pos;
+
+      // [link](  <href>  "title"  )
+      //                         ^^ skipping these spaces
+      for (; pos < max; pos++) {
+        code = state.src.charCodeAt(pos);
+        if (code !== 0x20 && code !== 0x0A) { break; }
+      }
+    } else {
+      title = '';
+    }
+
+    if (pos >= max || state.src.charCodeAt(pos) !== 0x29/* ) */) {
+      state.pos = oldPos;
+      return false;
+    }
+    pos++;
+  } else {
+    //
+    // Link reference
+    //
+
+    // do not allow nested reference links
+    if (state.linkLevel > 0) { return false; }
+
+    // [foo]  [bar]
+    //      ^^ optional whitespace (can include newlines)
+    for (; pos < max; pos++) {
+      code = state.src.charCodeAt(pos);
+      if (code !== 0x20 && code !== 0x0A) { break; }
+    }
+
+    if (pos < max && state.src.charCodeAt(pos) === 0x5B/* [ */) {
+      start = pos + 1;
+      pos = parseLinkLabel(state, pos);
+      if (pos >= 0) {
+        label = state.src.slice(start, pos++);
+      } else {
+        pos = start - 1;
+      }
+    }
+
+    // covers label === '' and label === undefined
+    // (collapsed reference link and shortcut reference link respectively)
+    if (!label) {
+      if (typeof label === 'undefined') {
+        pos = labelEnd + 1;
+      }
+      label = state.src.slice(labelStart, labelEnd);
+    }
+
+    ref = state.env.references[normalizeReference(label)];
+    if (!ref) {
+      state.pos = oldPos;
+      return false;
+    }
+    href = ref.href;
+    title = ref.title;
+  }
+
+  //
+  // We found the end of the link, and know for a fact it's a valid link;
+  // so all that's left to do is to call tokenizer.
+  //
+  if (!silent) {
+    state.pos = labelStart;
+    state.posMax = labelEnd;
+
+    if (isImage) {
+      state.push({
+        type: 'image',
+        src: href,
+        title: title,
+        alt: state.src.substr(labelStart, labelEnd - labelStart),
+        level: state.level
+      });
+    } else {
+      state.push({
+        type: 'link_open',
+        href: href,
+        title: title,
+        level: state.level++
+      });
+      state.linkLevel++;
+      state.parser.tokenize(state);
+      state.linkLevel--;
+      state.push({ type: 'link_close', level: --state.level });
+    }
+  }
+
+  state.pos = pos;
+  state.posMax = max;
+  return true;
+};
+
+
+/***/ }),
+/* 317 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Process ==highlighted text==
+
+
+
+module.exports = function del(state, silent) {
+  var found,
+      pos,
+      stack,
+      max = state.posMax,
+      start = state.pos,
+      lastChar,
+      nextChar;
+
+  if (state.src.charCodeAt(start) !== 0x3D/* = */) { return false; }
+  if (silent) { return false; } // don't run any pairs in validation mode
+  if (start + 4 >= max) { return false; }
+  if (state.src.charCodeAt(start + 1) !== 0x3D/* = */) { return false; }
+  if (state.level >= state.options.maxNesting) { return false; }
+
+  lastChar = start > 0 ? state.src.charCodeAt(start - 1) : -1;
+  nextChar = state.src.charCodeAt(start + 2);
+
+  if (lastChar === 0x3D/* = */) { return false; }
+  if (nextChar === 0x3D/* = */) { return false; }
+  if (nextChar === 0x20 || nextChar === 0x0A) { return false; }
+
+  pos = start + 2;
+  while (pos < max && state.src.charCodeAt(pos) === 0x3D/* = */) { pos++; }
+  if (pos !== start + 2) {
+    // sequence of 3+ markers taking as literal, same as in a emphasis
+    state.pos += pos - start;
+    if (!silent) { state.pending += state.src.slice(start, pos); }
+    return true;
+  }
+
+  state.pos = start + 2;
+  stack = 1;
+
+  while (state.pos + 1 < max) {
+    if (state.src.charCodeAt(state.pos) === 0x3D/* = */) {
+      if (state.src.charCodeAt(state.pos + 1) === 0x3D/* = */) {
+        lastChar = state.src.charCodeAt(state.pos - 1);
+        nextChar = state.pos + 2 < max ? state.src.charCodeAt(state.pos + 2) : -1;
+        if (nextChar !== 0x3D/* = */ && lastChar !== 0x3D/* = */) {
+          if (lastChar !== 0x20 && lastChar !== 0x0A) {
+            // closing '=='
+            stack--;
+          } else if (nextChar !== 0x20 && nextChar !== 0x0A) {
+            // opening '=='
+            stack++;
+          } // else {
+            //  // standalone ' == ' indented with spaces
+            // }
+          if (stack <= 0) {
+            found = true;
+            break;
+          }
+        }
+      }
+    }
+
+    state.parser.skipToken(state);
+  }
+
+  if (!found) {
+    // parser failed to find ending tag, so it's not valid emphasis
+    state.pos = start;
+    return false;
+  }
+
+  // found!
+  state.posMax = state.pos;
+  state.pos = start + 2;
+
+  if (!silent) {
+    state.push({ type: 'mark_open', level: state.level++ });
+    state.parser.tokenize(state);
+    state.push({ type: 'mark_close', level: --state.level });
+  }
+
+  state.pos = state.posMax + 2;
+  state.posMax = max;
+  return true;
+};
+
+
+/***/ }),
+/* 318 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Proceess '\n'
+
+
+
+module.exports = function newline(state, silent) {
+  var pmax, max, pos = state.pos;
+
+  if (state.src.charCodeAt(pos) !== 0x0A/* \n */) { return false; }
+
+  pmax = state.pending.length - 1;
+  max = state.posMax;
+
+  // '  \n' -> hardbreak
+  // Lookup in pending chars is bad practice! Don't copy to other rules!
+  // Pending string is stored in concat mode, indexed lookups will cause
+  // convertion to flat mode.
+  if (!silent) {
+    if (pmax >= 0 && state.pending.charCodeAt(pmax) === 0x20) {
+      if (pmax >= 1 && state.pending.charCodeAt(pmax - 1) === 0x20) {
+        // Strip out all trailing spaces on this line.
+        for (var i = pmax - 2; i >= 0; i--) {
+          if (state.pending.charCodeAt(i) !== 0x20) {
+            state.pending = state.pending.substring(0, i + 1);
+            break;
+          }
+        }
+        state.push({
+          type: 'hardbreak',
+          level: state.level
+        });
+      } else {
+        state.pending = state.pending.slice(0, -1);
+        state.push({
+          type: 'softbreak',
+          level: state.level
+        });
+      }
+
+    } else {
+      state.push({
+        type: 'softbreak',
+        level: state.level
+      });
+    }
+  }
+
+  pos++;
+
+  // skip heading spaces for next line
+  while (pos < max && state.src.charCodeAt(pos) === 0x20) { pos++; }
+
+  state.pos = pos;
+  return true;
+};
+
+
+/***/ }),
+/* 319 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Process ~subscript~
+
+
+
+// same as UNESCAPE_MD_RE plus a space
+var UNESCAPE_RE = /\\([ \\!"#$%&'()*+,.\/:;<=>?@[\]^_`{|}~-])/g;
+
+module.exports = function sub(state, silent) {
+  var found,
+      content,
+      max = state.posMax,
+      start = state.pos;
+
+  if (state.src.charCodeAt(start) !== 0x7E/* ~ */) { return false; }
+  if (silent) { return false; } // don't run any pairs in validation mode
+  if (start + 2 >= max) { return false; }
+  if (state.level >= state.options.maxNesting) { return false; }
+
+  state.pos = start + 1;
+
+  while (state.pos < max) {
+    if (state.src.charCodeAt(state.pos) === 0x7E/* ~ */) {
+      found = true;
+      break;
+    }
+
+    state.parser.skipToken(state);
+  }
+
+  if (!found || start + 1 === state.pos) {
+    state.pos = start;
+    return false;
+  }
+
+  content = state.src.slice(start + 1, state.pos);
+
+  // don't allow unescaped spaces/newlines inside
+  if (content.match(/(^|[^\\])(\\\\)*\s/)) {
+    state.pos = start;
+    return false;
+  }
+
+  // found!
+  state.posMax = state.pos;
+  state.pos = start + 1;
+
+  if (!silent) {
+    state.push({
+      type: 'sub',
+      level: state.level,
+      content: content.replace(UNESCAPE_RE, '$1')
+    });
+  }
+
+  state.pos = state.posMax + 1;
+  state.posMax = max;
+  return true;
+};
+
+
+/***/ }),
+/* 320 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Process ^superscript^
+
+
+
+// same as UNESCAPE_MD_RE plus a space
+var UNESCAPE_RE = /\\([ \\!"#$%&'()*+,.\/:;<=>?@[\]^_`{|}~-])/g;
+
+module.exports = function sup(state, silent) {
+  var found,
+      content,
+      max = state.posMax,
+      start = state.pos;
+
+  if (state.src.charCodeAt(start) !== 0x5E/* ^ */) { return false; }
+  if (silent) { return false; } // don't run any pairs in validation mode
+  if (start + 2 >= max) { return false; }
+  if (state.level >= state.options.maxNesting) { return false; }
+
+  state.pos = start + 1;
+
+  while (state.pos < max) {
+    if (state.src.charCodeAt(state.pos) === 0x5E/* ^ */) {
+      found = true;
+      break;
+    }
+
+    state.parser.skipToken(state);
+  }
+
+  if (!found || start + 1 === state.pos) {
+    state.pos = start;
+    return false;
+  }
+
+  content = state.src.slice(start + 1, state.pos);
+
+  // don't allow unescaped spaces/newlines inside
+  if (content.match(/(^|[^\\])(\\\\)*\s/)) {
+    state.pos = start;
+    return false;
+  }
+
+  // found!
+  state.posMax = state.pos;
+  state.pos = start + 1;
+
+  if (!silent) {
+    state.push({
+      type: 'sup',
+      level: state.level,
+      content: content.replace(UNESCAPE_RE, '$1')
+    });
+  }
+
+  state.pos = state.posMax + 1;
+  state.posMax = max;
+  return true;
+};
+
+
+/***/ }),
+/* 321 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// Skip text characters for text token, place those to pending buffer
+// and increment current pos
+
+
+
+// Rule to skip pure text
+// '{}$%@~+=:' reserved for extentions
+
+function isTerminatorChar(ch) {
+  switch (ch) {
+    case 0x0A/* \n */:
+    case 0x5C/* \ */:
+    case 0x60/* ` */:
+    case 0x2A/* * */:
+    case 0x5F/* _ */:
+    case 0x5E/* ^ */:
+    case 0x5B/* [ */:
+    case 0x5D/* ] */:
+    case 0x21/* ! */:
+    case 0x26/* & */:
+    case 0x3C/* < */:
+    case 0x3E/* > */:
+    case 0x7B/* { */:
+    case 0x7D/* } */:
+    case 0x24/* $ */:
+    case 0x25/* % */:
+    case 0x40/* @ */:
+    case 0x7E/* ~ */:
+    case 0x2B/* + */:
+    case 0x3D/* = */:
+    case 0x3A/* : */:
+      return true;
+    default:
+      return false;
+  }
+}
+
+module.exports = function text(state, silent) {
+  var pos = state.pos;
+
+  while (pos < state.posMax && !isTerminatorChar(state.src.charCodeAt(pos))) {
+    pos++;
+  }
+
+  if (pos === state.pos) { return false; }
+
+  if (!silent) { state.pending += state.src.slice(state.pos, pos); }
+
+  state.pos = pos;
+
+  return true;
+};
+
+
+/***/ }),
+/* 322 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__(323);
+
+
+/***/ }),
+/* 323 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/* WEBPACK VAR INJECTION */(function(global, module) {
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _ponyfill = __webpack_require__(324);
+
+var _ponyfill2 = _interopRequireDefault(_ponyfill);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var root; /* global window */
+
+
+if (typeof self !== 'undefined') {
+  root = self;
+} else if (typeof window !== 'undefined') {
+  root = window;
+} else if (typeof global !== 'undefined') {
+  root = global;
+} else if (true) {
+  root = module;
+} else {
+  root = Function('return this')();
+}
+
+var result = (0, _ponyfill2['default'])(root);
+exports['default'] = result;
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(38), __webpack_require__(325)(module)))
+
+/***/ }),
+/* 324 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+exports['default'] = symbolObservablePonyfill;
+function symbolObservablePonyfill(root) {
+	var result;
+	var _Symbol = root.Symbol;
+
+	if (typeof _Symbol === 'function') {
+		if (_Symbol.observable) {
+			result = _Symbol.observable;
+		} else {
+			result = _Symbol('observable');
+			_Symbol.observable = result;
+		}
+	} else {
+		result = '@@observable';
+	}
+
+	return result;
+};
+
+/***/ }),
+/* 325 */
+/***/ (function(module, exports) {
+
+module.exports = function(module) {
+	if(!module.webpackPolyfill) {
+		module.deprecate = function() {};
+		module.paths = [];
+		// module.parent = undefined by default
+		if(!module.children) module.children = [];
+		Object.defineProperty(module, "loaded", {
+			enumerable: true,
+			get: function() {
+				return module.l;
+			}
+		});
+		Object.defineProperty(module, "id", {
+			enumerable: true,
+			get: function() {
+				return module.i;
+			}
+		});
+		module.webpackPolyfill = 1;
+	}
+	return module;
+};
 
 
 /***/ })
