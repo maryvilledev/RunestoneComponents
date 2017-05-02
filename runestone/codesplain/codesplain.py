@@ -8,7 +8,7 @@ def setup(app):
     app.add_stylesheet('codesplain.css')
 
 TEMPLATE = """
-<div data-component="codesplain" data-snippet="%(snippet_key)s"></div>
+<div class="cd_section" data-component="codesplain" data-snippet="%(snippet_key)s"></div>
 """
 
 class CodesplainNode(nodes.General, nodes.Element):
